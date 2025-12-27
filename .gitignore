@@ -1,0 +1,15 @@
+# IDE
+/.idea/
+/.trae/
+/.vscode/
+
+# environment
+.env
+
+# binary
+__pycache__/
+*.py[cod]
+*$py.class
+
+# venv
+/.venv/
