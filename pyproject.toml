@@ -6,6 +6,9 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi[standard]>=0.128.0",
+    "PyJWT>=2.9.0",
     "pydantic>=2.12.5",
+    "psycopg[binary]>=3.2",
+    "sqlmodel>=0.0.31",
     "uvicorn[standard]>=0.40.0",
 ]
