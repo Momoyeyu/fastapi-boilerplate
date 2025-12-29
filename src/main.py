@@ -2,9 +2,9 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from src.conf.db import close_db, init_db
-from src.middleware.auth import setup_jwt_middleware
-from src.user.handler import router as user_router
+from conf.db import close_db, init_db
+from middleware.auth import setup_jwt_middleware
+from user.handler import router as user_router
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):

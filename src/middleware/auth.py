@@ -4,7 +4,7 @@ from typing import Any, Dict
 import jwt as pyjwt
 from fastapi import HTTPException, Request, FastAPI
 
-from src.conf.config import JWT_ALGORITHM, JWT_EXPIRE_SECONDS, JWT_SECRET
+from conf.config import JWT_ALGORITHM, JWT_EXPIRE_SECONDS, JWT_SECRET
 
 
 EXEMPT_PATHS: set[str] = set()
