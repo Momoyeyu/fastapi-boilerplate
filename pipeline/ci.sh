@@ -117,13 +117,10 @@ echo "$OUTPUT"
 SUMMARY_LINE="$(echo "$OUTPUT" | grep -E '^[0-9]+ (passed|failed|skipped|xfailed|xpassed|error|errors)' | tail -n 1)"
 if [[ -n "${SUMMARY_LINE:-}" ]]; then
   echo
-  echo "测试汇总: $SUMMARY_LINE"
+  echo "Test summary: $SUMMARY_LINE"
 fi
 
 COVERAGE_TOTAL="$(echo "$OUTPUT" | awk '/^TOTAL/ {print $NF}' | tail -n 1)"
-if [[ -n "${COVERAGE_TOTAL:-}" ]]; then
-  echo "覆盖率(TOTAL): $COVERAGE_TOTAL"
-fi
 
 if [[ $STATUS -ne 0 ]]; then
   exit $STATUS
