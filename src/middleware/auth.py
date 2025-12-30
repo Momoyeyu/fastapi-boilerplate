@@ -1,7 +1,7 @@
 import time
 from typing import Any, Dict
 
-import jwt as pyjwt
+import jwt
 from fastapi import HTTPException, Request, FastAPI
 
 from conf.config import JWT_ALGORITHM, JWT_EXPIRE_SECONDS, JWT_SECRET
@@ -20,14 +20,14 @@ def exempt(path: str):
 def create_token(subject: Dict[str, Any]) -> str:
     now = int(time.time())
     payload = {"sub": subject, "iat": now, "exp": now + JWT_EXPIRE_SECONDS}
-    return pyjwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
 def verify_token(token: str) -> Dict[str, Any]:
     try:
-        decoded = pyjwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        decoded = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         return decoded
-    except pyjwt.PyJWTError:
+    except jwt.PyJWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
 
