@@ -83,6 +83,21 @@ def test_setup_jwt_middleware_freezes_route_registration():
             return {"ok": True}
 
 
+def test_user_login_returns_token_in_header(monkeypatch: pytest.MonkeyPatch):
+    auth.EXEMPT_PATHS.clear()
+    app = FastAPI()
+    app.include_router(user_handler.router)
+    auth.setup_jwt_middleware(app)
+    client = TestClient(app)
+
+    monkeypatch.setattr(user_handler.service, "login_user", lambda username, password: "token-123", raising=True)
+
+    resp = client.post("/user/login", json={"username": "alice", "password": "pw"})
+    assert resp.status_code == 200
+    assert resp.json() == {}
+    assert resp.headers.get("x-jwt-token") == "token-123"
+
+
 def test_get_username_returns_username_from_request_state_when_middleware_installed():
     auth.EXEMPT_PATHS.clear()
     app = FastAPI()

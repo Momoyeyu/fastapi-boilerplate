@@ -15,8 +15,7 @@ class UserLoginRequest(BaseModel):
     password: str
 
 class UserLoginResponse(BaseModel):
-    token: str
-    token_type: str = "Bearer"
+    pass
 
 
 class UserWhoAmIResponse(BaseModel):

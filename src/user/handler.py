@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Response
 
 from common import erri
 from user import dto
@@ -18,10 +18,11 @@ async def register(request: Request, body: dto.UserRegisterRequest):
 
 @auth.exempt
 @router.post("/login", response_model=dto.UserLoginResponse)
-async def login(request: Request, body: dto.UserLoginRequest):
+async def login(request: Request, body: dto.UserLoginRequest, response: Response):
     try:
         token = service.login_user(body.username, body.password)
-        return dto.UserLoginResponse(token=token)
+        response.headers["x-jwt-token"] = token
+        return dto.UserLoginResponse()
     except erri.BusinessError as e:
         raise HTTPException(status_code=e.status_code, detail=e.msg)
 
