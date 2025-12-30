@@ -4,13 +4,7 @@ import pytest
 
 from common import error
 from user import service
-
-
-class _User:
-    def __init__(self, *, id: int | None, username: str, password: str):
-        self.id = id
-        self.username = username
-        self.password = password
+from user.model import User
 
 
 def test_get_password_hash_uses_salt(monkeypatch: pytest.MonkeyPatch):
@@ -21,7 +15,7 @@ def test_get_password_hash_uses_salt(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_register_user_when_user_exists(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(service, "get_user", lambda username: _User(id=1, username=username, password="x"), raising=True)
+    monkeypatch.setattr(service, "get_user", lambda username: User(id=1, username=username, password="x"), raising=True)
     with pytest.raises(error.BusinessError) as exc:
         service.register_user("alice", "pw")
     assert exc.value.status_code == 409
@@ -36,7 +30,7 @@ def test_register_user_success_hashes_password_and_calls_create(monkeypatch: pyt
     def _create_user(username: str, password: str):
         captured["username"] = username
         captured["password"] = password
-        return _User(id=123, username=username, password=password)
+        return User(id=123, username=username, password=password)
 
     monkeypatch.setattr(service, "create_user", _create_user, raising=True)
 
@@ -58,7 +52,7 @@ def test_register_user_create_failed_returns_none(monkeypatch: pytest.MonkeyPatc
 def test_register_user_create_failed_returns_user_without_id(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(service, "get_user", lambda username: None, raising=True)
     monkeypatch.setattr(
-        service, "create_user", lambda username, password: _User(id=None, username=username, password=password), raising=True
+        service, "create_user", lambda username, password: User(id=None, username=username, password=password), raising=True
     )
     with pytest.raises(error.BusinessError) as exc:
         service.register_user("alice", "pw")
@@ -74,7 +68,7 @@ def test_login_user_user_not_found(monkeypatch: pytest.MonkeyPatch):
 
 def test_login_user_password_mismatch(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(service, "PASSWORD_SALT", "salt", raising=True)
-    user = _User(id=1, username="alice", password=service.get_password_hash("correct"))
+    user = User(id=1, username="alice", password=service.get_password_hash("correct"))
     monkeypatch.setattr(service, "get_user", lambda username: user, raising=True)
     with pytest.raises(error.BusinessError) as exc:
         service.login_user("alice", "wrong")
@@ -83,7 +77,7 @@ def test_login_user_password_mismatch(monkeypatch: pytest.MonkeyPatch):
 
 def test_login_user_user_without_id(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(service, "PASSWORD_SALT", "salt", raising=True)
-    user = _User(id=None, username="alice", password=service.get_password_hash("pw"))
+    user = User(id=None, username="alice", password=service.get_password_hash("pw"))
     monkeypatch.setattr(service, "get_user", lambda username: user, raising=True)
     with pytest.raises(error.BusinessError) as exc:
         service.login_user("alice", "pw")
@@ -92,7 +86,7 @@ def test_login_user_user_without_id(monkeypatch: pytest.MonkeyPatch):
 
 def test_login_user_success_creates_token(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(service, "PASSWORD_SALT", "salt", raising=True)
-    user = _User(id=7, username="alice", password=service.get_password_hash("pw"))
+    user = User(id=7, username="alice", password=service.get_password_hash("pw"))
     monkeypatch.setattr(service, "get_user", lambda username: user, raising=True)
 
     captured: dict[str, object] = {}
