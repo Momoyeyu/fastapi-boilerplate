@@ -4,7 +4,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from common import error
+from common import erri
 from middleware import auth
 from user import service
 from user.model import User
@@ -19,7 +19,7 @@ def test_get_password_hash_uses_salt(monkeypatch: pytest.MonkeyPatch):
 
 def test_register_user_when_user_exists(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(service, "get_user", lambda username: User(id=1, username=username, password="x"), raising=True)
-    with pytest.raises(error.BusinessError) as exc:
+    with pytest.raises(erri.BusinessError) as exc:
         service.register_user("alice", "pw")
     assert exc.value.status_code == 409
 
@@ -47,7 +47,7 @@ def test_register_user_success_hashes_password_and_calls_create(monkeypatch: pyt
 def test_register_user_create_failed_returns_none(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(service, "get_user", lambda username: None, raising=True)
     monkeypatch.setattr(service, "create_user", lambda username, password: None, raising=True)
-    with pytest.raises(error.BusinessError) as exc:
+    with pytest.raises(erri.BusinessError) as exc:
         service.register_user("alice", "pw")
     assert exc.value.status_code == 500
 
@@ -57,14 +57,14 @@ def test_register_user_create_failed_returns_user_without_id(monkeypatch: pytest
     monkeypatch.setattr(
         service, "create_user", lambda username, password: User(id=None, username=username, password=password), raising=True
     )
-    with pytest.raises(error.BusinessError) as exc:
+    with pytest.raises(erri.BusinessError) as exc:
         service.register_user("alice", "pw")
     assert exc.value.status_code == 500
 
 
 def test_login_user_user_not_found(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(service, "get_user", lambda username: None, raising=True)
-    with pytest.raises(error.BusinessError) as exc:
+    with pytest.raises(erri.BusinessError) as exc:
         service.login_user("alice", "pw")
     assert exc.value.status_code == 401
 
@@ -73,7 +73,7 @@ def test_login_user_password_mismatch(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(service, "PASSWORD_SALT", "salt", raising=True)
     user = User(id=1, username="alice", password=service.get_password_hash("correct"))
     monkeypatch.setattr(service, "get_user", lambda username: user, raising=True)
-    with pytest.raises(error.BusinessError) as exc:
+    with pytest.raises(erri.BusinessError) as exc:
         service.login_user("alice", "wrong")
     assert exc.value.status_code == 401
 
@@ -82,7 +82,7 @@ def test_login_user_user_without_id(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(service, "PASSWORD_SALT", "salt", raising=True)
     user = User(id=None, username="alice", password=service.get_password_hash("pw"))
     monkeypatch.setattr(service, "get_user", lambda username: user, raising=True)
-    with pytest.raises(error.BusinessError) as exc:
+    with pytest.raises(erri.BusinessError) as exc:
         service.login_user("alice", "pw")
     assert exc.value.status_code == 401
 

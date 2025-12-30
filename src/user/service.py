@@ -1,6 +1,6 @@
 import hashlib
 
-from common import error
+from common import erri
 from conf.config import PASSWORD_SALT
 from middleware import auth
 from user.model import create_user, get_user, User
@@ -11,11 +11,11 @@ def get_password_hash(password: str) -> str:
 
 def register_user(username: str, password: str) -> User:
     if get_user(username):
-        raise error.conflict("User already exists")
+        raise erri.conflict("User already exists")
     encrypted_password = get_password_hash(password)
     user = create_user(username, encrypted_password)
     if not user or user.id is None:
-        raise error.internal("Create user failed")
+        raise erri.internal("Create user failed")
     return user
 
 
@@ -23,5 +23,5 @@ def login_user(username: str, password: str) -> str:
     user = get_user(username)
     encrypted_password = get_password_hash(password)
     if not user or user.password != encrypted_password or user.id is None:
-        raise error.unauthorized("Invalid credentials")
+        raise erri.unauthorized("Invalid credentials")
     return auth.create_token({"id": user.id, "username": user.username})

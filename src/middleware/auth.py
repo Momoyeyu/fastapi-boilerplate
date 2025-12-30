@@ -6,7 +6,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from jwt import PyJWT, PyJWTError
 
-from common import error
+from common import erri
 from conf.config import JWT_ALGORITHM, JWT_EXPIRE_SECONDS, JWT_SECRET
 
 
@@ -36,7 +36,7 @@ def verify_token(token: str) -> Dict[str, Any]:
         decoded = _jwt().decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         return decoded
     except PyJWTError:
-        raise error.unauthorized("Invalid token")
+        raise erri.unauthorized("Invalid token")
 
 
 def setup_jwt_middleware(app: FastAPI):
@@ -52,7 +52,7 @@ def setup_jwt_middleware(app: FastAPI):
         token = auth.split(" ", 1)[1]
         try:
             payload = verify_token(token)
-        except error.BusinessError as e:
+        except erri.BusinessError as e:
             return JSONResponse(status_code=e.status_code, content={"msg": e.msg})
         except HTTPException as e:
             return JSONResponse(status_code=e.status_code, content={"msg": e.detail})

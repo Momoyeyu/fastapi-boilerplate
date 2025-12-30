@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 
-from common import error
+from common import erri
 from user import dto
 from user import service
 from middleware import auth
@@ -13,7 +13,7 @@ async def register(request: dto.UserRegisterRequest):
     try:
         user = service.register_user(request.username, request.password)
         return dto.UserRegisterResponse(id=user.id, username=user.username)
-    except error.BusinessError as e:
+    except erri.BusinessError as e:
         raise HTTPException(status_code=e.status_code, detail=e.msg)
 
 @auth.exempt("/user/login")
@@ -22,5 +22,5 @@ async def login(request: dto.UserLoginRequest):
     try:
         token = service.login_user(request.username, request.password)
         return dto.UserLoginResponse(token=token)
-    except error.BusinessError as e:
+    except erri.BusinessError as e:
         raise HTTPException(status_code=e.status_code, detail=e.msg)
