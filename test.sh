@@ -11,10 +11,21 @@ mkdir -p "$OUTPUT_DIR"
 
 export COVERAGE_FILE="$OUTPUT_DIR/.coverage"
 
-PYTEST_ARGS=(
-  "src/tests"
-  "-q"
-  "--cov=user.service"
+SERVICE_COV_ARGS=()
+while IFS= read -r file; do
+  rel="${file#"$ROOT_DIR/src/"}"
+  module="${rel%.py}"
+  module="${module//\//.}"
+  SERVICE_COV_ARGS+=("--cov=$module")
+done < <(find "$ROOT_DIR/src" -type f -name "service.py" | sort)
+
+if [[ ${#SERVICE_COV_ARGS[@]} -eq 0 ]]; then
+  SERVICE_COV_ARGS+=("--cov=src")
+fi
+
+PYTEST_ARGS=("src/tests" "-q")
+PYTEST_ARGS+=("${SERVICE_COV_ARGS[@]}")
+PYTEST_ARGS+=(
   "--cov-report=term-missing"
   "--cov-report=xml:$OUTPUT_DIR/coverage.xml"
   "--junitxml=$OUTPUT_DIR/junit.xml"
