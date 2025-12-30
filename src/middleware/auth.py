@@ -3,8 +3,10 @@ from functools import lru_cache
 from typing import Any, Dict
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from jwt import PyJWT, PyJWTError
 
+from common import error
 from conf.config import JWT_ALGORITHM, JWT_EXPIRE_SECONDS, JWT_SECRET
 
 
@@ -34,7 +36,7 @@ def verify_token(token: str) -> Dict[str, Any]:
         decoded = _jwt().decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         return decoded
     except PyJWTError:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        raise error.unauthorized("Invalid token")
 
 
 def setup_jwt_middleware(app: FastAPI):
@@ -46,8 +48,13 @@ def setup_jwt_middleware(app: FastAPI):
 
         auth = request.headers.get("Authorization")
         if not auth or not auth.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Unauthorized")
+            return JSONResponse(status_code=401, content={"msg": "Unauthorized"})
         token = auth.split(" ", 1)[1]
-        payload = verify_token(token)
+        try:
+            payload = verify_token(token)
+        except error.BusinessError as e:
+            return JSONResponse(status_code=e.status_code, content={"msg": e.msg})
+        except HTTPException as e:
+            return JSONResponse(status_code=e.status_code, content={"msg": e.detail})
         request.state.user = payload.get("sub")
         return await call_next(request)

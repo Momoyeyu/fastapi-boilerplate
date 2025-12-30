@@ -1,8 +1,11 @@
 import hashlib
 
 import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
 from common import error
+from middleware import auth
 from user import service
 from user.model import User
 
@@ -100,3 +103,33 @@ def test_login_user_success_creates_token(monkeypatch: pytest.MonkeyPatch):
     token = service.login_user("alice", "pw")
     assert token == "token-123"
     assert captured["subject"] == {"id": 7, "username": "alice"}
+
+
+def test_jwt_middleware_returns_401_when_missing_authorization_header():
+    auth.EXEMPT_PATHS.clear()
+    app = FastAPI()
+    auth.setup_jwt_middleware(app)
+
+    @app.get("/protected")
+    async def protected():
+        return {"ok": True}
+
+    client = TestClient(app)
+    resp = client.get("/protected")
+    assert resp.status_code == 401
+    assert resp.json() == {"msg": "Unauthorized"}
+
+
+def test_jwt_middleware_returns_401_when_token_invalid():
+    auth.EXEMPT_PATHS.clear()
+    app = FastAPI()
+    auth.setup_jwt_middleware(app)
+
+    @app.get("/protected")
+    async def protected():
+        return {"ok": True}
+
+    client = TestClient(app)
+    resp = client.get("/protected", headers={"Authorization": "Bearer not-a-jwt"})
+    assert resp.status_code == 401
+    assert resp.json() == {"msg": "Invalid token"}
