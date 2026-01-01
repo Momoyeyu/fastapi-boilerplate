@@ -1,0 +1,61 @@
+services:
+  gate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["bash", "-lc", "bash pipeline/ci.sh"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@db/fastapi-demo
+      CI: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: fastapi-demo
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d fastapi-demo"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["bash", "-lc", "python -c 'from conf.alembic_runner import upgrade_head; upgrade_head()'"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@db/fastapi-demo
+    depends_on:
+      db:
+        condition: service_healthy
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@db/fastapi-demo
+    ports:
+      - "8000:8000"
+    depends_on:
+      gate:
+        condition: service_completed_successfully
+      migrate:
+        condition: service_completed_successfully
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8000/ >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+
+volumes:
+  postgres_data:

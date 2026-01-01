@@ -1,0 +1,6 @@
+coverage:
+  threshold: 80
+  include:
+    - "src/**/service.py"
+    - "src/middleware/auth.py"
+  exclude: []
