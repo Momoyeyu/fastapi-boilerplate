@@ -18,6 +18,6 @@ dependencies = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["src/tests"]
+testpaths = ["tests/unit"]
 pythonpath = ["src"]
 cache_dir = "output/.pytest_cache"

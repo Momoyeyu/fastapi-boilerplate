@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
 export PYTHONPATH="${PYTHONPATH:-$ROOT_DIR/src}"
 
 set +e
-OUTPUT="$(uv run pytest src/tests -q 2>&1)"
+OUTPUT="$(uv run pytest tests/unit -q 2>&1)"
 STATUS=$?
 set -e
 
