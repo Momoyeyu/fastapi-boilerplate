@@ -102,7 +102,7 @@ for module in "${_COV_LINES[@]:1}"; do
   SERVICE_COV_ARGS+=("--cov=$module")
 done
 
-PYTEST_ARGS=("src/tests" "-q")
+PYTEST_ARGS=("tests/unit" "-q")
 PYTEST_ARGS+=("${SERVICE_COV_ARGS[@]}")
 PYTEST_ARGS+=(
   "--cov-report=term-missing"
