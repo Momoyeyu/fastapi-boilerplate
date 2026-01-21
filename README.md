@@ -8,7 +8,7 @@
 
 [中文文档](README_zh.md) | [English](README.md)
 
-A modern, production-ready FastAPI boilerplate and demo project designed to kickstart your backend development. This project integrates best practices for project structure, database management, authentication, and DevOps pipelines.
+A modern, production-ready FastAPI boilerplate designed to kickstart your backend development. This project provides a solid foundation with best practices for project structure, database management, authentication, testing, and CI/CD pipelines — so you can focus on building your business logic.
 
 ## ✨ Features
 

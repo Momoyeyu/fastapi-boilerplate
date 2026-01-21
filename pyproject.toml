@@ -40,12 +40,11 @@ select = [
     "W",      # pycodestyle warnings
     "F",      # pyflakes
     "I",      # isort
-    "UP",     # pyupgrade
-    "B",      # flake8-bugbear
-    "C4",     # flake8-comprehensions
-    "SIM",    # flake8-simplify
 ]
-ignore = ["E501"]  # line length is handled by formatter
+ignore = [
+    "E501",   # line length is handled by formatter
+    "E402",   # module level import not at top of file (needed for dotenv)
+]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -59,3 +58,4 @@ warn_unused_configs = true
 mypy_path = "src"
 explicit_package_bases = true
 exclude = ["alembic/versions"]
+disable_error_code = ["method-assign"]

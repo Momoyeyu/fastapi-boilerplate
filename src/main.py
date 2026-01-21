@@ -1,4 +1,3 @@
-# Load environment variables first, before any other imports
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -6,16 +5,15 @@ from dotenv import load_dotenv
 _env_path = Path(__file__).resolve().parent.parent / ".env"
 load_dotenv(_env_path)
 
-# Standard imports (must be after dotenv loading)
-from collections.abc import AsyncGenerator  # noqa: E402
-from contextlib import asynccontextmanager  # noqa: E402
-from typing import Any  # noqa: E402
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+from typing import Any
 
-from fastapi import APIRouter, FastAPI  # noqa: E402
+from fastapi import APIRouter, FastAPI
 
-from conf.db import close_db, init_db  # noqa: E402
-from middleware.auth import setup_jwt_middleware  # noqa: E402
-from user.handler import router as user_router  # noqa: E402
+from conf.db import close_db, init_db
+from middleware.auth import setup_jwt_middleware
+from user.handler import router as user_router
 
 
 @asynccontextmanager

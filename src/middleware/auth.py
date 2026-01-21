@@ -48,12 +48,12 @@ def _freeze_route_registration(app: FastAPI) -> None:
     def _blocked(*_: object, **__: object) -> NoReturn:
         raise RuntimeError("Routes are frozen. Register all routes before setup_jwt_middleware.")
 
-    app.include_router = _blocked  # type: ignore[method-assign]
-    app.add_api_route = _blocked  # type: ignore[method-assign]
-    app.add_route = _blocked  # type: ignore[method-assign]
-    app.mount = _blocked  # type: ignore[method-assign]
-    app.router.include_router = _blocked  # type: ignore[method-assign]
-    app.router.add_api_route = _blocked  # type: ignore[method-assign]
+    app.include_router = _blocked
+    app.add_api_route = _blocked
+    app.add_route = _blocked
+    app.mount = _blocked
+    app.router.include_router = _blocked
+    app.router.add_api_route = _blocked
 
 
 def create_token(user: User) -> str:
