@@ -90,6 +90,12 @@ fastapi-boilerplate/
     The API will be available at `http://localhost:8000`.
     Interactive docs (Swagger UI): `http://localhost:8000/docs`
 
+3.  **Debug Mode (Optional)**
+    Set `DEBUG=true` in your `.env` file to enable development features:
+    - Swagger UI (`/docs`), ReDoc (`/redoc`), and OpenAPI schema (`/openapi.json`) are accessible without authentication
+    
+    > ⚠️ **Note**: In production, keep `DEBUG=false` (default) to require authentication for API documentation.
+
 ### Running with Docker
 
 Build and run the entire stack (App + DB + Migration):
@@ -128,6 +134,8 @@ Run all lint checks:
 ```bash
 bash scripts/lint.sh
 ```
+
+The script will prompt you to auto-format if any formatting issues are detected (`[y/n]`).
 
 Or run individually:
 

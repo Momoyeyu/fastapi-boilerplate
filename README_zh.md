@@ -90,6 +90,12 @@ fastapi-boilerplate/
     API 服务将在 `http://localhost:8000` 启动。
     交互式文档 (Swagger UI): `http://localhost:8000/docs`
 
+3.  **调试模式（可选）**
+    在 `.env` 文件中设置 `DEBUG=true` 以启用开发功能：
+    - Swagger UI (`/docs`)、ReDoc (`/redoc`) 和 OpenAPI schema (`/openapi.json`) 无需认证即可访问
+    
+    > ⚠️ **注意**：生产环境请保持 `DEBUG=false`（默认值），以确保 API 文档需要认证才能访问。
+
 ### 使用 Docker 运行
 
 构建并启动整个技术栈 (应用 + 数据库 + 迁移)：
@@ -128,6 +134,8 @@ uv sync --all-extras
 ```bash
 bash scripts/lint.sh
 ```
+
+如果检测到格式问题，脚本会提示你是否自动格式化 (`[y/n]`)。
 
 或者单独运行：
 
