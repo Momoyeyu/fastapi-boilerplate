@@ -29,11 +29,9 @@ fastapi-boilerplate/
 ├── .github/
 │   └── workflows/
 │       └── ci.yml          # GitHub Actions CI workflow
-├── pipeline/               # CI/CD pipelines
-│   ├── ci.sh               # CI entry script (local/Jenkins)
-│   └── ci.yml              # Coverage configuration
 ├── scripts/
-│   └── lint.sh             # Local linting script
+│   ├── lint.sh             # Local linting script
+│   └── test.sh             # Run tests with coverage stats
 ├── src/                    # Source code
 │   ├── common/             # Shared utilities & error handling
 │   ├── conf/               # Configuration & Database setup
@@ -44,7 +42,9 @@ fastapi-boilerplate/
 │   └── main.py             # App entry point
 ├── tests/                  # Unit & Integration tests
 │   ├── unit/               # Unit tests (mocked dependencies)
-│   └── integration/        # Integration tests (SQLite in-memory)
+│   ├── integration/        # Integration tests (SQLite in-memory)
+│   └── test.yml            # Test configuration (coverage threshold, paths)
+├── .env.example            # Environment variables template
 ├── docker-compose.yml      # Docker services (App + DB)
 ├── pyproject.toml          # Project dependencies & tool configs
 ├── run.sh                  # Local startup script
@@ -153,11 +153,17 @@ uv run ruff format src tests
 
 This project includes both **unit tests** and **integration tests**.
 
-#### Run all tests (with CI pipeline):
+#### Run all tests with statistics:
 
 ```bash
-bash pipeline/ci.sh
+bash scripts/test.sh
 ```
+
+This will output:
+- Unit test success rate
+- Unit test coverage percentage
+- Integration test success rate
+- Coverage threshold check (default: 80%)
 
 #### Run tests separately:
 
@@ -165,8 +171,8 @@ bash pipeline/ci.sh
 # Unit tests only
 uv run pytest tests/unit -v
 
-# Integration tests only (uses SQLite in-memory)
-DATABASE_URL="sqlite:///:memory:" uv run pytest tests/integration -v
+# Integration tests only
+uv run pytest tests/integration -v
 
 # All tests
 uv run pytest tests -v
@@ -186,7 +192,7 @@ This project includes GitHub Actions workflow (`.github/workflows/ci.yml`) that 
 1. **Lint Job**: ruff check, ruff format, mypy
 2. **Test Job**: Unit tests + Integration tests with coverage threshold (80%)
 
-The workflow triggers on push/PR to `main`, `master`, and `develop` branches.
+The workflow triggers on push/PR to `master` branch.
 
 ## 📄 License
 
