@@ -10,7 +10,9 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import APIRouter, FastAPI
+from loguru import logger
 
+from conf import logging
 from conf.db import close_db, init_db
 from middleware.auth import setup_jwt_middleware
 from user.handler import router as user_router
@@ -19,7 +21,9 @@ from user.handler import router as user_router
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     init_db()
+    logger.info("Application started")
     yield
+    logger.info("Application shutdown")
     close_db()
 
 
@@ -39,6 +43,8 @@ def init_middlewares(_app: FastAPI) -> None:
 
 
 def create_app() -> FastAPI:
+    logging.must_init()
+
     _app = FastAPI(
         title="FastAPI + UV Project",
         description="A FastAPI demo initialized by UV",
