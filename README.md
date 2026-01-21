@@ -33,8 +33,10 @@ fastapi-demo/
 │   │   └── ...
 │   ├── middleware/         # Custom middlewares (Auth, etc.)
 │   ├── user/               # User module (Domain logic)
-│   ├── main.py             # App entry point
-│   └── tests/              # Unit & Integration tests
+│   └── main.py             # App entry point
+├── tests/                  # Unit & Integration tests
+│   ├── unit/               # Unit tests
+│   └── integration/        # Integration tests
 ├── docker-compose.yml      # Docker services (App + DB)
 ├── pyproject.toml          # Project dependencies
 ├── run.sh                  # Local startup script
@@ -114,7 +116,7 @@ bash pipeline/ci.sh
 Or run pytest directly:
 
 ```bash
-uv run pytest src/tests
+uv run pytest tests
 ```
 
 ## 📄 License
