@@ -30,4 +30,3 @@ def conflict(detail: str) -> BusinessError:
 
 def internal(detail: str) -> BusinessError:
     return BusinessError(status_code=500, detail=detail)
-

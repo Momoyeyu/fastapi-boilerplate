@@ -1,0 +1,12 @@
+# Test configuration
+# Used by: scripts/test.sh, .github/workflows/ci.yml
+
+coverage:
+  # Minimum coverage percentage required
+  threshold: 80
+  # Files to include in coverage measurement (glob patterns)
+  include:
+    - "src/**/service.py"
+    - "src/middleware/auth.py"
+  # Files to exclude from coverage (glob patterns)
+  exclude: []

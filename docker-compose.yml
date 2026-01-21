@@ -5,7 +5,7 @@ services:
       dockerfile: Dockerfile
     command: ["bash", "-lc", "bash pipeline/ci.sh"]
     environment:
-      DATABASE_URL: postgresql+psycopg://postgres:postgres@db/fastapi-demo
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@db/fastapi-boilerplate
       CI: "true"
     depends_on:
       db:
@@ -16,11 +16,11 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: fastapi-demo
+      POSTGRES_DB: fastapi-boilerplate
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d fastapi-demo"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d fastapi-boilerplate"]
       interval: 5s
       timeout: 3s
       retries: 12
@@ -31,7 +31,7 @@ services:
       dockerfile: Dockerfile
     command: ["bash", "-lc", "python -c 'from conf.alembic_runner import upgrade_head; upgrade_head()'"]
     environment:
-      DATABASE_URL: postgresql+psycopg://postgres:postgres@db/fastapi-demo
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@db/fastapi-boilerplate
     depends_on:
       db:
         condition: service_healthy
@@ -41,7 +41,7 @@ services:
       context: .
       dockerfile: Dockerfile
     environment:
-      DATABASE_URL: postgresql+psycopg://postgres:postgres@db/fastapi-demo
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@db/fastapi-boilerplate
     ports:
       - "8000:8000"
     depends_on:

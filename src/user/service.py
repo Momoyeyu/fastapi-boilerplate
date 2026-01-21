@@ -3,7 +3,8 @@ import hashlib
 from common import erri
 from conf.config import PASSWORD_SALT
 from middleware import auth
-from user.model import create_user, get_user, update_user_profile, User
+from user.model import User, create_user, get_user, update_user_profile
+
 
 def get_password_hash(password: str) -> str:
     return hashlib.sha512((password + PASSWORD_SALT).encode("utf-8")).hexdigest()

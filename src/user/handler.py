@@ -1,43 +1,45 @@
 from fastapi import APIRouter, HTTPException, Request, Response
 
 from common import erri
-from user import dto
-from user import service
 from middleware import auth
+from user import dto, service
 
 router = APIRouter(prefix="/user", tags=["user"])
 
+
 @auth.exempt
 @router.post("/register", response_model=dto.UserRegisterResponse)
-async def register(request: Request, body: dto.UserRegisterRequest):
+async def register(request: Request, body: dto.UserRegisterRequest) -> dto.UserRegisterResponse:
     try:
         user = service.register_user(body.username, body.password)
+        assert user.id is not None  # guaranteed by service
         return dto.UserRegisterResponse(id=user.id, username=user.username)
     except erri.BusinessError as e:
-        raise HTTPException(status_code=e.status_code, detail=e.detail)
+        raise HTTPException(status_code=e.status_code, detail=e.detail) from None
+
 
 @auth.exempt
 @router.post("/login", response_model=dto.UserLoginResponse)
-async def login(request: Request, body: dto.UserLoginRequest, response: Response):
+async def login(request: Request, body: dto.UserLoginRequest, response: Response) -> dto.UserLoginResponse:
     try:
         token = service.login_user(body.username, body.password)
         response.headers["x-jwt-token"] = token
         return dto.UserLoginResponse()
     except erri.BusinessError as e:
-        raise HTTPException(status_code=e.status_code, detail=e.detail)
+        raise HTTPException(status_code=e.status_code, detail=e.detail) from None
 
 
 @router.get("/whoami", response_model=dto.UserWhoAmIResponse)
-async def whoami(request: Request):
+async def whoami(request: Request) -> dto.UserWhoAmIResponse:
     try:
         username = auth.get_username(request)
         return dto.UserWhoAmIResponse(username=username)
     except erri.BusinessError as e:
-        raise HTTPException(status_code=e.status_code, detail=e.detail)
+        raise HTTPException(status_code=e.status_code, detail=e.detail) from None
 
 
 @router.get("/me", response_model=dto.UserProfileResponse)
-async def get_me(request: Request):
+async def get_me(request: Request) -> dto.UserProfileResponse:
     try:
         username = auth.get_username(request)
         user = service.get_user_profile(username)
@@ -50,11 +52,11 @@ async def get_me(request: Request):
             is_active=user.is_active,
         )
     except erri.BusinessError as e:
-        raise HTTPException(status_code=e.status_code, detail=e.detail)
+        raise HTTPException(status_code=e.status_code, detail=e.detail) from None
 
 
 @router.patch("/me", response_model=dto.UserProfileResponse)
-async def update_me(request: Request, body: dto.UserProfileUpdateRequest):
+async def update_me(request: Request, body: dto.UserProfileUpdateRequest) -> dto.UserProfileResponse:
     try:
         username = auth.get_username(request)
         user = service.update_my_profile(
@@ -72,4 +74,4 @@ async def update_me(request: Request, body: dto.UserProfileUpdateRequest):
             is_active=user.is_active,
         )
     except erri.BusinessError as e:
-        raise HTTPException(status_code=e.status_code, detail=e.detail)
+        raise HTTPException(status_code=e.status_code, detail=e.detail) from None

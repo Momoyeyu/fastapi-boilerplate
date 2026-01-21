@@ -1,23 +1,24 @@
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
-from sqlmodel import Field, SQLModel, Session, select
+from sqlmodel import Field, Session, SQLModel, select
 
 from conf.db import engine
+
 
 class User(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     username: str = Field(unique=True)
     password: str
-    nickname: Optional[str] = Field(default=None)
-    email: Optional[str] = Field(default=None)
-    avatar_url: Optional[str] = Field(default=None)
+    nickname: str | None = Field(default=None)
+    email: str | None = Field(default=None)
+    avatar_url: str | None = Field(default=None)
     role: str = Field(default="user")
     is_active: bool = Field(default=True)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
-def create_user(username: str, password: str) -> Optional[User]:
+
+def create_user(username: str, password: str) -> User | None:
     user = User(username=username, password=password, nickname=username)
     with Session(engine) as session:
         try:
@@ -29,7 +30,8 @@ def create_user(username: str, password: str) -> Optional[User]:
             return None
     return user
 
-def get_user(username: str) -> Optional[User]:
+
+def get_user(username: str) -> User | None:
     with Session(engine) as session:
         return session.exec(select(User).where(User.username == username)).one_or_none()
 
@@ -37,10 +39,10 @@ def get_user(username: str) -> Optional[User]:
 def update_user_profile(
     username: str,
     *,
-    nickname: Optional[str] = None,
-    email: Optional[str] = None,
-    avatar_url: Optional[str] = None,
-) -> Optional[User]:
+    nickname: str | None = None,
+    email: str | None = None,
+    avatar_url: str | None = None,
+) -> User | None:
     with Session(engine) as session:
         user = session.exec(select(User).where(User.username == username)).one_or_none()
         if not user:
@@ -53,7 +55,7 @@ def update_user_profile(
         if avatar_url is not None:
             user.avatar_url = avatar_url
 
-        user.updated_at = datetime.now(timezone.utc)
+        user.updated_at = datetime.now(UTC)
         session.add(user)
         session.commit()
         session.refresh(user)

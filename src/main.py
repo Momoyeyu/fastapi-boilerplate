@@ -1,4 +1,13 @@
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+_env_path = Path(__file__).resolve().parent.parent / ".env"
+load_dotenv(_env_path)
+
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from typing import Any
 
 from fastapi import APIRouter, FastAPI
 
@@ -8,7 +17,7 @@ from user.handler import router as user_router
 
 
 @asynccontextmanager
-async def lifespan(_app: FastAPI):
+async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     init_db()
     yield
     close_db()
@@ -18,7 +27,7 @@ def init_routers(_app: FastAPI) -> None:
     root_router = APIRouter()
 
     @root_router.get("/")
-    async def root():
+    async def root() -> dict[str, Any]:
         return {"message": "Hello FastAPI + UV!"}
 
     _app.include_router(root_router)
@@ -41,5 +50,6 @@ def create_app() -> FastAPI:
     init_middlewares(_app)
 
     return _app
+
 
 app = create_app()

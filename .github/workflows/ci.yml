@@ -1,0 +1,155 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: uv sync --frozen --all-extras
+
+      - name: Run ruff check
+        run: uv run ruff check src tests
+
+      - name: Run ruff format check
+        run: uv run ruff format --check src tests
+
+      - name: Run mypy
+        run: uv run mypy src
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Create output directory
+        run: mkdir -p output
+
+      - name: Run unit tests
+        run: |
+          # Parse tests/test.yml and run pytest with coverage config
+          uv run python -c "
+          import yaml
+          import glob
+          import os
+          import subprocess
+          import sys
+
+          with open('tests/test.yml', 'r') as f:
+              cfg = yaml.safe_load(f) or {}
+
+          cov_cfg = cfg.get('coverage') or {}
+          include_patterns = cov_cfg.get('include') or ['src/**/service.py']
+          exclude_patterns = cov_cfg.get('exclude') or []
+
+          if isinstance(include_patterns, str):
+              include_patterns = [include_patterns]
+          if isinstance(exclude_patterns, str):
+              exclude_patterns = [exclude_patterns]
+
+          def expand(patterns):
+              files = set()
+              for pattern in patterns:
+                  for path in glob.glob(pattern, recursive=True):
+                      if os.path.isfile(path) and path.endswith('.py'):
+                          files.add(os.path.normpath(path))
+              return files
+
+          include_files = expand(include_patterns)
+          exclude_files = expand(exclude_patterns)
+          selected = sorted(include_files - exclude_files)
+
+          modules = []
+          for f in selected:
+              if f.startswith('src/'):
+                  mod = f[4:-3].replace('/', '.')
+                  modules.append(mod)
+
+          # Build pytest command
+          cmd = ['uv', 'run', 'pytest', 'tests/unit', '-q']
+          for m in modules:
+              cmd.append(f'--cov={m}')
+          if not modules:
+              cmd.append('--cov=src')
+          cmd.extend([
+              '--cov-report=term-missing',
+              '--cov-report=xml:output/coverage.xml',
+              '--junitxml=output/junit-unit.xml'
+          ])
+
+          result = subprocess.run(cmd)
+          sys.exit(result.returncode)
+          "
+
+      - name: Run integration tests
+        run: |
+          uv run pytest tests/integration -q \
+            --junitxml=output/junit-integration.xml
+
+      - name: Check coverage threshold
+        run: |
+          uv run python -c "
+          import xml.etree.ElementTree as ET
+          import yaml
+
+          with open('tests/test.yml', 'r') as f:
+              cfg = yaml.safe_load(f) or {}
+          threshold = float(cfg.get('coverage', {}).get('threshold', 80))
+
+          tree = ET.parse('output/coverage.xml')
+          root = tree.getroot()
+          line_rate = float(root.attrib.get('line-rate', 0))
+          coverage = line_rate * 100
+
+          print(f'Coverage: {coverage:.2f}%')
+          print(f'Threshold: {threshold:.2f}%')
+          if coverage < threshold:
+              raise SystemExit(f'Coverage {coverage:.2f}% is below {threshold:.2f}% threshold')
+          print('Coverage gate PASSED')
+          "
+
+      - name: Upload test reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-reports
+          path: output/
+          retention-days: 7

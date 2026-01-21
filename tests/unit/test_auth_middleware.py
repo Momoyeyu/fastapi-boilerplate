@@ -1,6 +1,7 @@
 import pytest
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.testclient import TestClient
+
 from middleware import auth
 from user import handler as user_handler
 from user.model import User
@@ -78,6 +79,7 @@ def test_setup_jwt_middleware_freezes_route_registration():
     auth.setup_jwt_middleware(app)
 
     with pytest.raises(RuntimeError):
+
         @app.get("/late")
         async def late():
             return {"ok": True}

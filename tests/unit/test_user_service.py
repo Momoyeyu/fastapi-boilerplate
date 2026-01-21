@@ -52,7 +52,10 @@ def test_register_user_create_failed_returns_none(monkeypatch: pytest.MonkeyPatc
 def test_register_user_create_failed_returns_user_without_id(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(service, "get_user", lambda username: None, raising=True)
     monkeypatch.setattr(
-        service, "create_user", lambda username, password: User(id=None, username=username, password=password), raising=True
+        service,
+        "create_user",
+        lambda username, password: User(id=None, username=username, password=password),
+        raising=True,
     )
     with pytest.raises(erri.BusinessError) as exc:
         service.register_user("alice", "pw")
