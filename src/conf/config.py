@@ -3,12 +3,14 @@ import os
 
 def _getenv(name: str, default: str) -> str:
     value = os.getenv(name)
-    return value if value not in (None, "") else default
+    if value is None or value == "":
+        return default
+    return value
 
 
 DATABASE_URL = _getenv(
     "DATABASE_URL",
-    "postgresql+psycopg://postgres:postgres@localhost/fastapi-demo",
+    "postgresql+psycopg://postgres:postgres@localhost/fastapi-boilerplate",
 )
 
 PASSWORD_SALT = _getenv("PASSWORD_SALT", "Jacky Su")

@@ -1,18 +1,20 @@
-from typing import Optional
-
 from pydantic import BaseModel
+
 
 class UserRegisterRequest(BaseModel):
     username: str
     password: str
 
+
 class UserRegisterResponse(BaseModel):
     id: int
     username: str
 
+
 class UserLoginRequest(BaseModel):
     username: str
     password: str
+
 
 class UserLoginResponse(BaseModel):
     pass
@@ -24,14 +26,14 @@ class UserWhoAmIResponse(BaseModel):
 
 class UserProfileResponse(BaseModel):
     username: str
-    nickname: Optional[str]
-    email: Optional[str]
-    avatar_url: Optional[str]
+    nickname: str | None
+    email: str | None
+    avatar_url: str | None
     role: str
     is_active: bool
 
 
 class UserProfileUpdateRequest(BaseModel):
-    nickname: Optional[str] = None
-    email: Optional[str] = None
-    avatar_url: Optional[str] = None
+    nickname: str | None = None
+    email: str | None = None
+    avatar_url: str | None = None

@@ -1,7 +1,7 @@
 [project]
-name = "fastapi-demo"
+name = "fastapi-boilerplate"
 version = "0.1.0"
-description = "Add your description here"
+description = "A modern, production-ready FastAPI boilerplate"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -17,7 +17,44 @@ dependencies = [
     "alembic>=1.17.2",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+]
+
 [tool.pytest.ini_options]
-testpaths = ["tests/unit"]
+testpaths = ["tests/unit", "tests/integration"]
 pythonpath = ["src"]
 cache_dir = "output/.pytest_cache"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "SIM",    # flake8-simplify
+]
+ignore = ["E501"]  # line length is handled by formatter
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+mypy_path = "src"
+explicit_package_bases = true
+exclude = ["alembic/versions"]

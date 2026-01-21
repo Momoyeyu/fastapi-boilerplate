@@ -14,9 +14,25 @@ if ! command -v uv >/dev/null 2>&1; then
   export PATH="$HOME/.local/bin:$PATH"
 fi
 
-uv sync --frozen
+uv sync --frozen --all-extras
 
 uv run python -m compileall src
+
+# === Lint checks ===
+echo "=== Running ruff check ==="
+uv run ruff check src tests
+
+echo ""
+echo "=== Running ruff format check ==="
+uv run ruff format --check src tests
+
+echo ""
+echo "=== Running mypy ==="
+uv run mypy src
+
+echo ""
+echo "=== Lint checks passed ==="
+echo ""
 
 uv run python -c "from conf.alembic_runner import upgrade_head; upgrade_head()"
 
@@ -102,32 +118,57 @@ for module in "${_COV_LINES[@]:1}"; do
   SERVICE_COV_ARGS+=("--cov=$module")
 done
 
+# === Unit Tests ===
+echo "=== Running unit tests ==="
 PYTEST_ARGS=("tests/unit" "-q")
 PYTEST_ARGS+=("${SERVICE_COV_ARGS[@]}")
 PYTEST_ARGS+=(
   "--cov-report=term-missing"
   "--cov-report=xml:$OUTPUT_DIR/coverage.xml"
-  "--junitxml=$OUTPUT_DIR/junit.xml"
+  "--junitxml=$OUTPUT_DIR/junit-unit.xml"
 )
 
 set +e
 OUTPUT="$(uv run pytest "${PYTEST_ARGS[@]}" 2>&1)"
-STATUS=$?
+UNIT_STATUS=$?
 set -e
 
-echo "$OUTPUT" > "$OUTPUT_DIR/pytest.log"
+echo "$OUTPUT" > "$OUTPUT_DIR/pytest-unit.log"
 echo "$OUTPUT"
 
 SUMMARY_LINE="$(echo "$OUTPUT" | grep -E '^[0-9]+ (passed|failed|skipped|xfailed|xpassed|error|errors)' | tail -n 1)"
 if [[ -n "${SUMMARY_LINE:-}" ]]; then
   echo
-  echo "Test summary: $SUMMARY_LINE"
+  echo "Unit test summary: $SUMMARY_LINE"
 fi
 
 COVERAGE_TOTAL="$(echo "$OUTPUT" | awk '/^TOTAL/ {print $NF}' | tail -n 1)"
 
-if [[ $STATUS -ne 0 ]]; then
-  exit $STATUS
+if [[ $UNIT_STATUS -ne 0 ]]; then
+  exit $UNIT_STATUS
+fi
+
+# === Integration Tests ===
+echo ""
+echo "=== Running integration tests ==="
+export DATABASE_URL="sqlite:///:memory:"
+
+set +e
+INT_OUTPUT="$(uv run pytest tests/integration -q --junitxml=$OUTPUT_DIR/junit-integration.xml 2>&1)"
+INT_STATUS=$?
+set -e
+
+echo "$INT_OUTPUT" > "$OUTPUT_DIR/pytest-integration.log"
+echo "$INT_OUTPUT"
+
+INT_SUMMARY="$(echo "$INT_OUTPUT" | grep -E '^[0-9]+ (passed|failed|skipped|xfailed|xpassed|error|errors)' | tail -n 1)"
+if [[ -n "${INT_SUMMARY:-}" ]]; then
+  echo
+  echo "Integration test summary: $INT_SUMMARY"
+fi
+
+if [[ $INT_STATUS -ne 0 ]]; then
+  exit $INT_STATUS
 fi
 
 python - <<'PY'

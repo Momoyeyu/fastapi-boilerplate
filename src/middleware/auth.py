@@ -1,8 +1,9 @@
 import time
+from collections.abc import Awaitable, Callable
 from functools import lru_cache
-from typing import Any, Callable, Dict, TypeVar
+from typing import Any, NoReturn
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 from jwt import PyJWT, PyJWTError
@@ -22,17 +23,15 @@ _EXEMPT_ENDPOINT_ATTR = "__jwt_exempt__"
 _ROUTES_FROZEN_ATTR = "__jwt_routes_frozen__"
 _SETUP_ATTR = "__jwt_middleware_installed__"
 
-TFunc = TypeVar("TFunc", bound=Callable[..., Any])
 
-
-def exempt(fn: TFunc) -> TFunc:
+def exempt[TFunc: Callable[..., Any]](fn: TFunc) -> TFunc:
     setattr(fn, _EXEMPT_ENDPOINT_ATTR, True)
     return fn
 
 
 def _build_exempt_paths(app: FastAPI) -> set[str]:
     paths: set[str] = set()
-    for route in list(getattr(app, "router").routes):
+    for route in list(app.router.routes):
         if not isinstance(route, APIRoute):
             continue
         if getattr(route.endpoint, _EXEMPT_ENDPOINT_ATTR, False):
@@ -46,15 +45,15 @@ def _freeze_route_registration(app: FastAPI) -> None:
 
     setattr(app, _ROUTES_FROZEN_ATTR, True)
 
-    def _blocked(*_: object, **__: object):
+    def _blocked(*_: object, **__: object) -> NoReturn:
         raise RuntimeError("Routes are frozen. Register all routes before setup_jwt_middleware.")
 
-    app.include_router = _blocked
-    app.add_api_route = _blocked
-    app.add_route = _blocked
-    app.mount = _blocked
-    app.router.include_router = _blocked
-    app.router.add_api_route = _blocked
+    app.include_router = _blocked  # type: ignore[method-assign]
+    app.add_api_route = _blocked  # type: ignore[method-assign]
+    app.add_route = _blocked  # type: ignore[method-assign]
+    app.mount = _blocked  # type: ignore[method-assign]
+    app.router.include_router = _blocked  # type: ignore[method-assign]
+    app.router.add_api_route = _blocked  # type: ignore[method-assign]
 
 
 def create_token(user: User) -> str:
@@ -63,12 +62,12 @@ def create_token(user: User) -> str:
     return _jwt().encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
-def verify_token(token: str) -> Dict[str, Any]:
+def verify_token(token: str) -> dict[str, Any]:
     try:
-        decoded = _jwt().decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        decoded: dict[str, Any] = _jwt().decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         return decoded
     except PyJWTError:
-        raise erri.unauthorized("Invalid token")
+        raise erri.unauthorized("Invalid token") from None
 
 
 def get_username(request: Request) -> str:
@@ -87,7 +86,7 @@ def get_username(request: Request) -> str:
     raise erri.unauthorized("Unauthorized")
 
 
-def setup_jwt_middleware(app: FastAPI):
+def setup_jwt_middleware(app: FastAPI) -> None:
     if getattr(app, _SETUP_ATTR, False):
         return
 
@@ -96,7 +95,7 @@ def setup_jwt_middleware(app: FastAPI):
     setattr(app, _SETUP_ATTR, True)
 
     @app.middleware("http")
-    async def jwt_middleware(request: Request, call_next):
+    async def jwt_middleware(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
         path = request.url.path
         if path in EXEMPT_PATHS:
             return await call_next(request)

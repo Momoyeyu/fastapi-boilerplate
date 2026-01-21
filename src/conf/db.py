@@ -1,7 +1,7 @@
 from sqlmodel import create_engine
 
-from conf.config import DATABASE_URL
 from conf.alembic_runner import upgrade_head
+from conf.config import DATABASE_URL
 
 engine = create_engine(DATABASE_URL)
 

@@ -1,8 +1,10 @@
-# FastAPI Demo & Boilerplate (脚手架)
+# FastAPI Boilerplate (脚手架)
 
+[![CI](https://github.com/yourusername/fastapi-boilerplate/actions/workflows/ci.yml/badge.svg)](https://github.com/yourusername/fastapi-boilerplate/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.112+-009688.svg?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
 [中文文档](README_zh.md) | [English](README.md)
 
@@ -16,16 +18,22 @@
 -   **身份验证**: 基于 JWT 的身份验证中间件，包含安全的密码哈希处理。
 -   **依赖管理**: 使用 **uv** 进行极速的 Python 包管理。
 -   **Docker 支持**: 提供完整的 **Docker Compose** 配置，支持本地开发和容器化部署。
--   **CI/CD 流水线**: 包含 Shell 编写的 CI 脚本 (`pipeline/ci.sh`)，用于自动化测试和覆盖率检查。
+-   **CI/CD 流水线**: GitHub Actions 工作流，包含静态检查和自动化测试。
+-   **代码质量**: 使用 **ruff** 进行代码检查与格式化，**mypy** 进行类型检查。
 -   **清晰架构**: 模块化的 `src/` 目录结构，分离关注点 (Handler, Service, Model, DTO)。
 
 ## 📂 项目结构
 
 ```text
-fastapi-demo/
+fastapi-boilerplate/
+├── .github/
+│   └── workflows/
+│       └── ci.yml          # GitHub Actions CI 工作流
 ├── pipeline/               # CI/CD 流水线脚本
-│   ├── ci.sh               # CI 入口脚本
-│   └── ci.yml              # GitHub Actions 工作流示例
+│   ├── ci.sh               # CI 入口脚本 (本地/Jenkins)
+│   └── ci.yml              # 覆盖率配置
+├── scripts/
+│   └── lint.sh             # 本地代码检查脚本
 ├── src/                    # 源代码目录
 │   ├── common/             # 通用工具与错误处理
 │   ├── conf/               # 配置与数据库设置
@@ -35,10 +43,10 @@ fastapi-demo/
 │   ├── user/               # 用户模块 (领域逻辑)
 │   └── main.py             # 应用入口文件
 ├── tests/                  # 单元测试与集成测试
-│   ├── unit/               # 单元测试
-│   └── integration/        # 集成测试
+│   ├── unit/               # 单元测试 (mock 依赖)
+│   └── integration/        # 集成测试 (SQLite 内存数据库)
 ├── docker-compose.yml      # Docker 服务编排 (App + DB)
-├── pyproject.toml          # 项目依赖配置
+├── pyproject.toml          # 项目依赖与工具配置
 ├── run.sh                  # 本地启动脚本
 └── README.md               # 项目文档
 ```
@@ -55,8 +63,8 @@ fastapi-demo/
 
 1.  **克隆仓库**
     ```bash
-    git clone https://github.com/yourusername/fastapi-demo.git
-    cd fastapi-demo
+    git clone https://github.com/yourusername/fastapi-boilerplate.git
+    cd fastapi-boilerplate
     ```
 
 2.  **安装依赖**
@@ -105,19 +113,80 @@ docker-compose up --build
     uv run alembic upgrade head
     ```
 
+### 代码质量
+
+本项目使用 **ruff** 进行代码检查与格式化，**mypy** 进行类型检查。
+
+安装开发依赖：
+
+```bash
+uv sync --all-extras
+```
+
+运行所有检查：
+
+```bash
+bash scripts/lint.sh
+```
+
+或者单独运行：
+
+```bash
+# 代码检查
+uv run ruff check src tests
+
+# 格式检查
+uv run ruff format --check src tests
+
+# 类型检查
+uv run mypy src
+```
+
+自动修复问题：
+
+```bash
+uv run ruff check --fix src tests
+uv run ruff format src tests
+```
+
 ### 测试
 
-运行测试套件并查看覆盖率报告：
+本项目包含**单元测试**和**集成测试**。
+
+#### 运行完整测试 (CI 流水线)：
 
 ```bash
 bash pipeline/ci.sh
 ```
 
-或者直接运行 pytest：
+#### 单独运行测试：
 
 ```bash
-uv run pytest tests
+# 仅单元测试
+uv run pytest tests/unit -v
+
+# 仅集成测试 (使用 SQLite 内存数据库)
+DATABASE_URL="sqlite:///:memory:" uv run pytest tests/integration -v
+
+# 所有测试
+uv run pytest tests -v
 ```
+
+#### 测试覆盖率
+
+覆盖率报告生成在 `output/` 目录：
+- `coverage.xml` - XML 格式，供 CI 工具使用
+- `junit-unit.xml` - 单元测试 JUnit 报告
+- `junit-integration.xml` - 集成测试 JUnit 报告
+
+### CI/CD
+
+本项目包含 GitHub Actions 工作流 (`.github/workflows/ci.yml`)，执行以下步骤：
+
+1. **Lint Job**: ruff check、ruff format、mypy 类型检查
+2. **Test Job**: 单元测试 + 集成测试，覆盖率阈值 80%
+
+工作流在 `main`、`master`、`develop` 分支的 push/PR 时触发。
 
 ## 📄 许可证
 
