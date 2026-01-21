@@ -9,7 +9,7 @@ from fastapi.routing import APIRoute
 from jwt import PyJWT, PyJWTError
 
 from common import erri
-from conf.config import JWT_ALGORITHM, JWT_EXPIRE_SECONDS, JWT_SECRET
+from conf.config import DEBUG, JWT_ALGORITHM, JWT_EXPIRE_SECONDS, JWT_SECRET
 from user.model import User
 
 
@@ -18,12 +18,14 @@ def _jwt() -> PyJWT:
     return PyJWT()
 
 
-# 白名单路径，默认包含 FastAPI 文档路径
-EXEMPT_PATHS: set[str] = {
-    "/docs",           # Swagger UI
-    "/redoc",          # ReDoc
-    "/openapi.json",   # OpenAPI schema
+DEBUG_EXEMPT_PATHS = {
+    "/docs",  # Swagger UI
+    "/redoc",  # ReDoc
+    "/openapi.json",  # OpenAPI schema
 }
+
+# 白名单路径，DEBUG 模式下包含 FastAPI 文档路径
+EXEMPT_PATHS: set[str] = set()
 _EXEMPT_ENDPOINT_ATTR = "__jwt_exempt__"
 _ROUTES_FROZEN_ATTR = "__jwt_routes_frozen__"
 _SETUP_ATTR = "__jwt_middleware_installed__"
@@ -95,6 +97,7 @@ def setup_jwt_middleware(app: FastAPI) -> None:
     if getattr(app, _SETUP_ATTR, False):
         return
 
+    EXEMPT_PATHS.update(DEBUG_EXEMPT_PATHS if DEBUG else set())
     EXEMPT_PATHS.update(_build_exempt_paths(app))
     _freeze_route_registration(app)
     setattr(app, _SETUP_ATTR, True)

@@ -1,5 +1,8 @@
 import os
 
+# Debug
+DEBUG = os.getenv("DEBUG", "false").lower() in ("true", "1", "yes")
+
 # Database
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
