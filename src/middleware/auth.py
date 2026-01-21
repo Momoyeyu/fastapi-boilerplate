@@ -18,7 +18,12 @@ def _jwt() -> PyJWT:
     return PyJWT()
 
 
-EXEMPT_PATHS: set[str] = set()
+# 白名单路径，默认包含 FastAPI 文档路径
+EXEMPT_PATHS: set[str] = {
+    "/docs",           # Swagger UI
+    "/redoc",          # ReDoc
+    "/openapi.json",   # OpenAPI schema
+}
 _EXEMPT_ENDPOINT_ATTR = "__jwt_exempt__"
 _ROUTES_FROZEN_ATTR = "__jwt_routes_frozen__"
 _SETUP_ATTR = "__jwt_middleware_installed__"
