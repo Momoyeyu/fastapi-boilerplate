@@ -16,6 +16,7 @@
 -   **ORM 与数据库**: 使用 **SQLModel** (SQLAlchemy + Pydantic) 配合 **PostgreSQL**。
 -   **自动迁移**: 集成 **Alembic**，支持服务启动时自动同步数据库表结构。
 -   **身份验证**: 基于 JWT 的身份验证中间件，包含安全的密码哈希处理。
+-   **结构化日志**: 使用 **Loguru** 实现，支持控制台彩色输出、文件轮转、自动保留与压缩。
 -   **依赖管理**: 使用 **uv** 进行极速的 Python 包管理。
 -   **Docker 支持**: 提供完整的 **Docker Compose** 配置，支持本地开发和容器化部署。
 -   **CI/CD 流水线**: GitHub Actions 工作流，包含静态检查和自动化测试。
@@ -44,6 +45,8 @@ fastapi-boilerplate/
 │   ├── unit/               # 单元测试 (mock 依赖)
 │   ├── integration/        # 集成测试 (SQLite 内存数据库)
 │   └── test.yml            # 测试配置（覆盖率阈值、路径）
+├── logs/                   # 应用日志目录 (自动创建)
+│   └── backend_{date}.log  # 每日日志文件 (自动轮转)
 ├── .env.example            # 环境变量模板
 ├── docker-compose.yml      # Docker 服务编排 (App + DB)
 ├── pyproject.toml          # 项目依赖与工具配置
@@ -90,6 +93,12 @@ fastapi-boilerplate/
     API 服务将在 `http://localhost:8000` 启动。
     交互式文档 (Swagger UI): `http://localhost:8000/docs`
 
+3.  **调试模式（可选）**
+    在 `.env` 文件中设置 `DEBUG=true` 以启用开发功能：
+    - Swagger UI (`/docs`)、ReDoc (`/redoc`) 和 OpenAPI schema (`/openapi.json`) 无需认证即可访问
+    
+    > ⚠️ **注意**：生产环境请保持 `DEBUG=false`（默认值），以确保 API 文档需要认证才能访问。
+
 ### 使用 Docker 运行
 
 构建并启动整个技术栈 (应用 + 数据库 + 迁移)：
@@ -113,6 +122,29 @@ docker-compose up --build
     uv run alembic upgrade head
     ```
 
+### 日志
+
+本项目使用 **Loguru** 进行结构化日志记录，配置文件位于 `src/conf/logging.py`。
+
+**功能特性：**
+-   **控制台输出**: 彩色、易读的日志输出到 stderr
+-   **文件输出**: 日志写入 `logs/backend_{日期}.log`（如 `backend_2024-01-22.log`）
+-   **自动轮转**: 每日午夜自动轮转
+-   **自动保留**: 旧日志保留 7 天
+-   **自动压缩**: 轮转后的日志自动压缩为 `.zip`
+-   **日志级别**: `DEBUG=true` 时为 DEBUG 级别，否则为 INFO 级别
+
+**使用示例：**
+
+```python
+from loguru import logger
+
+logger.info("User logged in", user_id=123)
+logger.error("Failed to process request", exc_info=True)
+```
+
+日志文件存储在 `logs/` 目录（首次运行时自动创建）。
+
 ### 代码质量
 
 本项目使用 **ruff** 进行代码检查与格式化，**mypy** 进行类型检查。
@@ -128,6 +160,8 @@ uv sync --all-extras
 ```bash
 bash scripts/lint.sh
 ```
+
+如果检测到格式问题，脚本会提示你是否自动格式化 (`[y/n]`)。
 
 或者单独运行：
 
