@@ -44,45 +44,59 @@ class TestUserLogin:
     """Tests for POST /user/login endpoint."""
 
     def test_login_success(self, client: TestClient):
-        """Test successful login returns JWT token in header."""
+        """Test successful login returns OAuth2 compliant token response."""
         # Register user first
         client.post(
             "/user/register",
             json={"username": "login_user", "password": "secret123"},
         )
 
-        # Login
+        # Login (OAuth2 form-data format)
         response = client.post(
             "/user/login",
-            json={"username": "login_user", "password": "secret123"},
+            data={"username": "login_user", "password": "secret123"},
         )
         assert response.status_code == 200
-        assert "x-jwt-token" in response.headers
-        token = response.headers["x-jwt-token"]
-        assert len(token) > 0
+        data = response.json()
+        # OAuth2 required fields (RFC 6749 Section 5.1)
+        assert "access_token" in data
+        assert data["token_type"] == "bearer"
+        assert len(data["access_token"]) > 0
+        # expires_in is RECOMMENDED by RFC 6749
+        assert "expires_in" in data
+        assert isinstance(data["expires_in"], int)
+        assert data["expires_in"] > 0
 
     def test_login_wrong_password(self, client: TestClient):
-        """Test login fails with wrong password."""
+        """Test login fails with wrong password returns OAuth2 error."""
         # Register user first
         client.post(
             "/user/register",
             json={"username": "wrong_pass_user", "password": "correct_pass"},
         )
 
-        # Try login with wrong password
+        # Try login with wrong password (OAuth2 form-data format)
         response = client.post(
             "/user/login",
-            json={"username": "wrong_pass_user", "password": "wrong_pass"},
+            data={"username": "wrong_pass_user", "password": "wrong_pass"},
         )
-        assert response.status_code == 401
+        # OAuth2 error response (RFC 6749 Section 5.2)
+        assert response.status_code == 400
+        data = response.json()["detail"]
+        assert data["error"] == "invalid_grant"
+        assert "error_description" in data
 
     def test_login_nonexistent_user(self, client: TestClient):
-        """Test login fails for non-existent user."""
+        """Test login fails for non-existent user returns OAuth2 error."""
         response = client.post(
             "/user/login",
-            json={"username": "nonexistent", "password": "anypass"},
+            data={"username": "nonexistent", "password": "anypass"},
         )
-        assert response.status_code == 401
+        # OAuth2 error response (RFC 6749 Section 5.2)
+        assert response.status_code == 400
+        data = response.json()["detail"]
+        assert data["error"] == "invalid_grant"
+        assert "error_description" in data
 
 
 class TestProtectedEndpoints:
@@ -102,9 +116,9 @@ class TestProtectedEndpoints:
         )
         login_response = client.post(
             "/user/login",
-            json={"username": "auth_user", "password": "authpass"},
+            data={"username": "auth_user", "password": "authpass"},
         )
-        token = login_response.headers["x-jwt-token"]
+        token = login_response.json()["access_token"]
 
         # Access protected endpoint
         response = client.get(

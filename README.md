@@ -100,6 +100,16 @@ fastapi-boilerplate/
     
     > ⚠️ **Note**: In production, keep `DEBUG=false` (default) to require authentication for API documentation.
 
+4.  **Testing APIs with Swagger UI**
+    The project supports OAuth2 Password Flow for Swagger UI authentication:
+    1. Visit `http://localhost:8000/docs`
+    2. Click the **"Authorize"** button in the top right
+    3. Enter admin credentials (default: `admin` / `admin`)
+    4. Click **"Authorize"** to login
+    5. Now you can test all protected endpoints directly from Swagger UI
+    
+    > The admin account is automatically created on application startup based on `ADMIN_USERNAME` and `ADMIN_PASSWORD` settings.
+
 ### Running with Docker
 
 Build and run the entire stack (App + DB + Migration):
@@ -142,6 +152,8 @@ This project uses **pydantic-settings** for type-safe configuration management, 
 | `jwt_secret` | `JWT_SECRET` | `Momoyeyu` | Secret key for JWT tokens |
 | `jwt_algorithm` | `JWT_ALGORITHM` | `HS256` | JWT signing algorithm |
 | `jwt_expire_seconds` | `JWT_EXPIRE_SECONDS` | `3600` | JWT token expiration time |
+| `admin_username` | `ADMIN_USERNAME` | `admin` | Admin account username (auto-created on startup) |
+| `admin_password` | `ADMIN_PASSWORD` | `admin` | Admin account password |
 
 **Usage:**
 

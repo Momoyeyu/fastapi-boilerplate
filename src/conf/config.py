@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     jwt_secret: str = "Momoyeyu"
     jwt_algorithm: str = "HS256"
     jwt_expire_seconds: int = 3600
+    admin_username: str = "admin"
+    admin_password: str = "admin"
 
 
 settings = Settings()

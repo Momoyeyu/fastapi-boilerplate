@@ -1,6 +1,6 @@
 import time
 from collections.abc import Awaitable, Callable
-from functools import lru_cache
+from functools import cache
 from typing import Any, NoReturn
 
 from fastapi import FastAPI, HTTPException, Request, Response
@@ -13,7 +13,7 @@ from conf.config import settings
 from user.model import User
 
 
-@lru_cache(maxsize=1)
+@cache
 def _jwt() -> PyJWT:
     return PyJWT()
 
@@ -63,10 +63,17 @@ def _freeze_route_registration(app: FastAPI) -> None:
     app.router.add_api_route = _blocked
 
 
-def create_token(user: User) -> str:
+def create_token(user: User) -> tuple[str, int]:
+    """Create a JWT token for the user.
+
+    Returns:
+        A tuple of (access_token, expires_in).
+    """
     now = int(time.time())
-    payload = {"sub": user.username, "iat": now, "exp": now + settings.jwt_expire_seconds}
-    return _jwt().encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+    expires_in = settings.jwt_expire_seconds
+    payload = {"sub": user.username, "iat": now, "exp": now + expires_in}
+    token = _jwt().encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+    return token, expires_in
 
 
 def verify_token(token: str) -> dict[str, Any]:
