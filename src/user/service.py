@@ -40,3 +40,11 @@ def update_my_profile(username: str, *, nickname: str | None, email: str | None,
     if not user:
         raise erri.not_found("User not found")
     return user
+
+
+def ensure_admin_user() -> None:
+    """Ensure the admin user exists, create if not."""
+    if get_user(settings.admin_username):
+        return
+    encrypted_password = get_password_hash(settings.admin_password)
+    create_user(settings.admin_username, encrypted_password, role="admin")

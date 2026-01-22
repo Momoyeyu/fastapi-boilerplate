@@ -7,13 +7,16 @@ from loguru import logger
 
 from conf import logging
 from conf.db import close_db, init_db
+from conf.openapi import setup_openapi
 from middleware.auth import setup_jwt_middleware
 from user.handler import router as user_router
+from user.service import ensure_admin_user
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     init_db()
+    ensure_admin_user()
     logger.info("Application started")
     yield
     logger.info("Application shutdown")
@@ -47,6 +50,9 @@ def create_app() -> FastAPI:
 
     init_routers(_app)
     init_middlewares(_app)
+
+    # Swagger Documents
+    setup_openapi(_app)
 
     return _app
 
