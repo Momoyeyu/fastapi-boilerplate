@@ -16,6 +16,7 @@
 -   **ORM 与数据库**: 使用 **SQLModel** (SQLAlchemy + Pydantic) 配合 **PostgreSQL**。
 -   **自动迁移**: 集成 **Alembic**，支持服务启动时自动同步数据库表结构。
 -   **身份验证**: 基于 JWT 的身份验证中间件，包含安全的密码哈希处理。
+-   **配置管理**: 使用 **pydantic-settings** 进行类型安全的配置管理，自动从 `.env` 文件加载。
 -   **结构化日志**: 使用 **Loguru** 实现，支持控制台彩色输出、文件轮转、自动保留与压缩。
 -   **依赖管理**: 使用 **uv** 进行极速的 Python 包管理。
 -   **Docker 支持**: 提供完整的 **Docker Compose** 配置，支持本地开发和容器化部署。
@@ -121,6 +122,37 @@ docker-compose up --build
     # 手动应用迁移 (如果需要)
     uv run alembic upgrade head
     ```
+
+### 配置管理
+
+本项目使用 **pydantic-settings** 进行类型安全的配置管理，配置文件位于 `src/conf/config.py`。
+
+**功能特性：**
+-   **自动加载**: 自动从 `.env` 文件和环境变量加载配置
+-   **类型安全**: 所有配置项都经过 Pydantic 验证
+-   **单例模式**: 全局共享单一 `settings` 实例
+
+**可用配置项：**
+
+| 配置项 | 环境变量 | 默认值 | 说明 |
+|--------|----------|--------|------|
+| `debug` | `DEBUG` | `false` | 启用调试模式 |
+| `database_url` | `DATABASE_URL` | PostgreSQL 本地 | 数据库连接字符串 |
+| `password_salt` | `PASSWORD_SALT` | `Momoyeyu` | 密码哈希盐值 |
+| `jwt_secret` | `JWT_SECRET` | `Momoyeyu` | JWT 签名密钥 |
+| `jwt_algorithm` | `JWT_ALGORITHM` | `HS256` | JWT 签名算法 |
+| `jwt_expire_seconds` | `JWT_EXPIRE_SECONDS` | `3600` | JWT 过期时间（秒） |
+
+**使用示例：**
+
+```python
+from conf.config import settings
+
+if settings.debug:
+    print("调试模式已启用")
+
+print(f"数据库: {settings.database_url}")
+```
 
 ### 日志
 

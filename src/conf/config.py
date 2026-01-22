@@ -1,18 +1,23 @@
-import os
+from pathlib import Path
 
-# Debug
-DEBUG = os.getenv("DEBUG", "false").lower() in ("true", "1", "yes")
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# Database
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql+psycopg://postgres:postgres@localhost/fastapi-boilerplate",
-)
+_ENV_FILE = Path(__file__).resolve().parent.parent.parent / ".env"
 
-# Security
-PASSWORD_SALT = os.getenv("PASSWORD_SALT", "Momoyeyu")
 
-# JWT
-JWT_SECRET = os.getenv("JWT_SECRET", "Momoyeyu")
-JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
-JWT_EXPIRE_SECONDS = int(os.getenv("JWT_EXPIRE_SECONDS", "3600"))
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=_ENV_FILE,
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    debug: bool = False
+    database_url: str = "postgresql+psycopg://postgres:postgres@localhost/fastapi-boilerplate"
+    password_salt: str = "Momoyeyu"
+    jwt_secret: str = "Momoyeyu"
+    jwt_algorithm: str = "HS256"
+    jwt_expire_seconds: int = 3600
+
+
+settings = Settings()

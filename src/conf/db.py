@@ -1,9 +1,9 @@
 from sqlmodel import create_engine
 
 from conf.alembic_runner import upgrade_head
-from conf.config import DATABASE_URL
+from conf.config import settings
 
-engine = create_engine(DATABASE_URL)
+engine = create_engine(settings.database_url)
 
 
 def init_db() -> None:

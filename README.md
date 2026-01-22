@@ -16,6 +16,7 @@ A modern, production-ready FastAPI boilerplate designed to kickstart your backen
 -   **ORM & Database**: Uses **SQLModel** (SQLAlchemy + Pydantic) with **PostgreSQL**.
 -   **Auto-Migrations**: Integrated **Alembic** for automatic database schema synchronization on startup.
 -   **Authentication**: JWT-based authentication middleware with secure password hashing.
+-   **Configuration**: Type-safe settings management with **pydantic-settings**, auto-loading from `.env` files.
 -   **Structured Logging**: Powered by **Loguru** with console coloring, file rotation, retention, and compression.
 -   **Package Management**: Powered by **uv** for extremely fast dependency management.
 -   **Docker Ready**: Full **Docker Compose** support for local development and deployment.
@@ -121,6 +122,37 @@ This project uses **Alembic** for schema migrations.
     # Apply migration manually (if needed)
     uv run alembic upgrade head
     ```
+
+### Configuration
+
+This project uses **pydantic-settings** for type-safe configuration management, defined in `src/conf/config.py`.
+
+**Features:**
+-   **Auto-loading**: Automatically loads from `.env` file and environment variables
+-   **Type-safe**: All settings are validated with Pydantic
+-   **Singleton pattern**: Single `settings` instance shared across the application
+
+**Available Settings:**
+
+| Setting | Environment Variable | Default | Description |
+|---------|---------------------|---------|-------------|
+| `debug` | `DEBUG` | `false` | Enable debug mode |
+| `database_url` | `DATABASE_URL` | PostgreSQL local | Database connection string |
+| `password_salt` | `PASSWORD_SALT` | `Momoyeyu` | Salt for password hashing |
+| `jwt_secret` | `JWT_SECRET` | `Momoyeyu` | Secret key for JWT tokens |
+| `jwt_algorithm` | `JWT_ALGORITHM` | `HS256` | JWT signing algorithm |
+| `jwt_expire_seconds` | `JWT_EXPIRE_SECONDS` | `3600` | JWT token expiration time |
+
+**Usage:**
+
+```python
+from conf.config import settings
+
+if settings.debug:
+    print("Debug mode enabled")
+
+print(f"Database: {settings.database_url}")
+```
 
 ### Logging
 

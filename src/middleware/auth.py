@@ -9,7 +9,7 @@ from fastapi.routing import APIRoute
 from jwt import PyJWT, PyJWTError
 
 from common import erri
-from conf.config import DEBUG, JWT_ALGORITHM, JWT_EXPIRE_SECONDS, JWT_SECRET
+from conf.config import settings
 from user.model import User
 
 
@@ -65,13 +65,13 @@ def _freeze_route_registration(app: FastAPI) -> None:
 
 def create_token(user: User) -> str:
     now = int(time.time())
-    payload = {"sub": user.username, "iat": now, "exp": now + JWT_EXPIRE_SECONDS}
-    return _jwt().encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    payload = {"sub": user.username, "iat": now, "exp": now + settings.jwt_expire_seconds}
+    return _jwt().encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
 
 def verify_token(token: str) -> dict[str, Any]:
     try:
-        decoded: dict[str, Any] = _jwt().decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        decoded: dict[str, Any] = _jwt().decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
         return decoded
     except PyJWTError:
         raise erri.unauthorized("Invalid token") from None
@@ -97,7 +97,7 @@ def setup_jwt_middleware(app: FastAPI) -> None:
     if getattr(app, _SETUP_ATTR, False):
         return
 
-    EXEMPT_PATHS.update(DEBUG_EXEMPT_PATHS if DEBUG else set())
+    EXEMPT_PATHS.update(DEBUG_EXEMPT_PATHS if settings.debug else set())
     EXEMPT_PATHS.update(_build_exempt_paths(app))
     _freeze_route_registration(app)
     setattr(app, _SETUP_ATTR, True)
