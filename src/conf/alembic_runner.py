@@ -5,15 +5,15 @@ from pathlib import Path
 from alembic.command import upgrade
 from alembic.config import Config
 
-from conf.config import DATABASE_URL
+from conf.config import settings
 
 
 def _alembic_config() -> Config:
     conf_dir = Path(__file__).resolve().parent
-    config = Config(str(conf_dir / "alembic.ini"))
-    config.set_main_option("script_location", str(conf_dir / "alembic"))
-    config.set_main_option("sqlalchemy.url", DATABASE_URL)
-    return config
+    alembic_cfg = Config(str(conf_dir / "alembic.ini"))
+    alembic_cfg.set_main_option("script_location", str(conf_dir / "alembic"))
+    alembic_cfg.set_main_option("sqlalchemy.url", settings.database_url)
+    return alembic_cfg
 
 
 def upgrade_head() -> None:

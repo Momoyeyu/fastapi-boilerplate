@@ -6,7 +6,7 @@ from pathlib import Path
 
 from loguru import logger
 
-from conf import config
+from conf.config import settings
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 _LOG_DIR = _PROJECT_ROOT / "logs"
@@ -24,7 +24,7 @@ def must_init() -> None:
     logger.add(
         sys.stderr,
         format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
-        level="DEBUG" if config.DEBUG else "INFO",
+        level="DEBUG" if settings.debug else "INFO",
         colorize=True,
     )
 
@@ -32,7 +32,7 @@ def must_init() -> None:
     logger.add(
         _LOG_DIR / "backend_{time:YYYY-MM-DD}.log",
         format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}",
-        level="DEBUG" if config.DEBUG else "INFO",
+        level="DEBUG" if settings.debug else "INFO",
         rotation="00:00",  # 每日午夜轮转
         retention="7 days",
         compression="zip",
