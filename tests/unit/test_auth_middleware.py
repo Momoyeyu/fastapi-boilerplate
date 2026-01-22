@@ -15,7 +15,7 @@ def test_jwt_middleware_returns_401_when_missing_authorization_header():
     async def protected():
         return {"ok": True}
 
-    auth.setup_jwt_middleware(app)
+    auth.setup_auth_middleware(app)
     client = TestClient(app)
     resp = client.get("/protected")
     assert resp.status_code == 401
@@ -30,7 +30,7 @@ def test_jwt_middleware_returns_401_when_token_invalid():
     async def protected():
         return {"ok": True}
 
-    auth.setup_jwt_middleware(app)
+    auth.setup_auth_middleware(app)
     client = TestClient(app)
     resp = client.get("/protected", headers={"Authorization": "Bearer not-a-jwt"})
     assert resp.status_code == 401
@@ -46,7 +46,7 @@ def test_jwt_middleware_allows_exempt_route_without_authorization_header():
     async def public():
         return {"ok": True}
 
-    auth.setup_jwt_middleware(app)
+    auth.setup_auth_middleware(app)
     client = TestClient(app)
     resp = client.get("/public")
     assert resp.status_code == 200
@@ -65,7 +65,7 @@ def test_jwt_middleware_allows_exempt_route_with_router_prefix():
         return {"pong": True}
 
     app.include_router(router)
-    auth.setup_jwt_middleware(app)
+    auth.setup_auth_middleware(app)
     client = TestClient(app)
     resp = client.get("/user/ping")
     assert resp.status_code == 200
@@ -76,7 +76,7 @@ def test_setup_jwt_middleware_freezes_route_registration():
     auth.EXEMPT_PATHS.clear()
     app = FastAPI()
 
-    auth.setup_jwt_middleware(app)
+    auth.setup_auth_middleware(app)
 
     with pytest.raises(RuntimeError):
 
@@ -89,7 +89,7 @@ def test_user_login_returns_token_in_response(monkeypatch: pytest.MonkeyPatch):
     auth.EXEMPT_PATHS.clear()
     app = FastAPI()
     app.include_router(user_handler.router)
-    auth.setup_jwt_middleware(app)
+    auth.setup_auth_middleware(app)
     client = TestClient(app)
 
     monkeypatch.setattr(
@@ -112,7 +112,7 @@ def test_get_username_returns_username_from_request_state_when_middleware_instal
     async def me(request: Request):
         return {"username": auth.get_username(request)}
 
-    auth.setup_jwt_middleware(app)
+    auth.setup_auth_middleware(app)
     client = TestClient(app)
 
     token, _ = auth.create_token(User(id=1, username="alice", password="x"))
@@ -140,7 +140,7 @@ def test_user_whoami_returns_username_from_token():
     auth.EXEMPT_PATHS.clear()
     app = FastAPI()
     app.include_router(user_handler.router)
-    auth.setup_jwt_middleware(app)
+    auth.setup_auth_middleware(app)
     client = TestClient(app)
 
     token, _ = auth.create_token(User(id=1, username="alice", password="x"))
@@ -153,7 +153,7 @@ def test_user_me_uses_get_username_to_fetch_profile(monkeypatch: pytest.MonkeyPa
     auth.EXEMPT_PATHS.clear()
     app = FastAPI()
     app.include_router(user_handler.router)
-    auth.setup_jwt_middleware(app)
+    auth.setup_auth_middleware(app)
     client = TestClient(app)
 
     captured: dict[str, str] = {}
@@ -184,7 +184,7 @@ def test_user_me_patch_updates_profile(monkeypatch: pytest.MonkeyPatch):
     auth.EXEMPT_PATHS.clear()
     app = FastAPI()
     app.include_router(user_handler.router)
-    auth.setup_jwt_middleware(app)
+    auth.setup_auth_middleware(app)
     client = TestClient(app)
 
     def _update_my_profile(username: str, *, nickname: str | None, email: str | None, avatar_url: str | None) -> User:

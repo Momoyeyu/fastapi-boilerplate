@@ -8,7 +8,7 @@ from loguru import logger
 from conf import logging
 from conf.db import close_db, init_db
 from conf.openapi import setup_openapi
-from middleware.auth import setup_jwt_middleware
+from middleware.auth import setup_auth_middleware
 from user.handler import router as user_router
 from user.service import ensure_admin_user
 
@@ -35,7 +35,7 @@ def init_routers(_app: FastAPI) -> None:
 
 
 def init_middlewares(_app: FastAPI) -> None:
-    setup_jwt_middleware(_app)
+    setup_auth_middleware(_app)
 
 
 def create_app() -> FastAPI:

@@ -100,7 +100,7 @@ def get_username(request: Request) -> str:
     raise erri.unauthorized("Unauthorized")
 
 
-def setup_jwt_middleware(app: FastAPI) -> None:
+def setup_auth_middleware(app: FastAPI) -> None:
     if getattr(app, _SETUP_ATTR, False):
         return
 
