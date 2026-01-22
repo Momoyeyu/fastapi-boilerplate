@@ -100,6 +100,16 @@ fastapi-boilerplate/
     
     > ⚠️ **注意**：生产环境请保持 `DEBUG=false`（默认值），以确保 API 文档需要认证才能访问。
 
+4.  **使用 Swagger UI 测试接口**
+    项目支持 OAuth2 密码模式的 Swagger UI 认证：
+    1. 访问 `http://localhost:8000/docs`
+    2. 点击右上角的 **"Authorize"** 按钮
+    3. 输入管理员账号密码（默认：`admin` / `admin`）
+    4. 点击 **"Authorize"** 登录
+    5. 现在可以直接在 Swagger UI 中测试所有受保护的接口
+    
+    > 管理员账号会在应用启动时根据 `ADMIN_USERNAME` 和 `ADMIN_PASSWORD` 配置自动创建。
+
 ### 使用 Docker 运行
 
 构建并启动整个技术栈 (应用 + 数据库 + 迁移)：
@@ -142,6 +152,8 @@ docker-compose up --build
 | `jwt_secret` | `JWT_SECRET` | `Momoyeyu` | JWT 签名密钥 |
 | `jwt_algorithm` | `JWT_ALGORITHM` | `HS256` | JWT 签名算法 |
 | `jwt_expire_seconds` | `JWT_EXPIRE_SECONDS` | `3600` | JWT 过期时间（秒） |
+| `admin_username` | `ADMIN_USERNAME` | `admin` | 管理员账号（启动时自动创建） |
+| `admin_password` | `ADMIN_PASSWORD` | `admin` | 管理员密码 |
 
 **使用示例：**
 
