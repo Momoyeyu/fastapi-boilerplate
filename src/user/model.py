@@ -18,8 +18,8 @@ class User(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
-def create_user(username: str, password: str) -> User | None:
-    user = User(username=username, password=password, nickname=username)
+def create_user(username: str, password: str, *, role: str = "user") -> User | None:
+    user = User(username=username, password=password, nickname=username, role=role)
     with Session(engine) as session:
         try:
             session.add(user)

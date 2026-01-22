@@ -1,6 +1,6 @@
 import time
 from collections.abc import Awaitable, Callable
-from functools import lru_cache
+from functools import cache
 from typing import Any, NoReturn
 
 from fastapi import FastAPI, HTTPException, Request, Response
@@ -13,7 +13,7 @@ from conf.config import settings
 from user.model import User
 
 
-@lru_cache(maxsize=1)
+@cache
 def _jwt() -> PyJWT:
     return PyJWT()
 

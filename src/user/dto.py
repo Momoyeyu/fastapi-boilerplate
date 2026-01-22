@@ -11,13 +11,9 @@ class UserRegisterResponse(BaseModel):
     username: str
 
 
-class UserLoginRequest(BaseModel):
-    username: str
-    password: str
-
-
 class UserLoginResponse(BaseModel):
-    pass
+    access_token: str
+    token_type: str = "bearer"
 
 
 class UserWhoAmIResponse(BaseModel):
