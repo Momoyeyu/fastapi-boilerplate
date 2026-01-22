@@ -28,12 +28,12 @@ def must_init() -> None:
         colorize=True,
     )
 
-    # 文件输出
+    # 文件输出 (按天命名，每日午夜或达到 10MB 时轮转)
     logger.add(
-        _LOG_DIR / "backend.log",
+        _LOG_DIR / "backend_{time:YYYY-MM-DD}.log",
         format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}",
         level="DEBUG" if config.DEBUG else "INFO",
-        rotation="10 MB",
+        rotation="00:00",  # 每日午夜轮转
         retention="7 days",
         compression="zip",
         encoding="utf-8",

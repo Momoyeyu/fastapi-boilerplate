@@ -16,6 +16,7 @@ A modern, production-ready FastAPI boilerplate designed to kickstart your backen
 -   **ORM & Database**: Uses **SQLModel** (SQLAlchemy + Pydantic) with **PostgreSQL**.
 -   **Auto-Migrations**: Integrated **Alembic** for automatic database schema synchronization on startup.
 -   **Authentication**: JWT-based authentication middleware with secure password hashing.
+-   **Structured Logging**: Powered by **Loguru** with console coloring, file rotation, retention, and compression.
 -   **Package Management**: Powered by **uv** for extremely fast dependency management.
 -   **Docker Ready**: Full **Docker Compose** support for local development and deployment.
 -   **CI/CD Pipeline**: GitHub Actions workflow with lint checks and automated testing.
@@ -44,6 +45,8 @@ fastapi-boilerplate/
 │   ├── unit/               # Unit tests (mocked dependencies)
 │   ├── integration/        # Integration tests (SQLite in-memory)
 │   └── test.yml            # Test configuration (coverage threshold, paths)
+├── logs/                   # Application logs (auto-created)
+│   └── backend_{date}.log  # Daily log files (auto-rotated)
 ├── .env.example            # Environment variables template
 ├── docker-compose.yml      # Docker services (App + DB)
 ├── pyproject.toml          # Project dependencies & tool configs
@@ -118,6 +121,29 @@ This project uses **Alembic** for schema migrations.
     # Apply migration manually (if needed)
     uv run alembic upgrade head
     ```
+
+### Logging
+
+This project uses **Loguru** for structured logging, configured in `src/conf/logging.py`.
+
+**Features:**
+-   **Console Output**: Colored, human-readable logs to stderr
+-   **File Output**: Logs written to `logs/backend_{date}.log` (e.g., `backend_2024-01-22.log`)
+-   **Rotation**: Daily rotation at midnight
+-   **Retention**: Old logs kept for 7 days
+-   **Compression**: Rotated logs are compressed to `.zip`
+-   **Log Level**: `DEBUG` when `DEBUG=true`, otherwise `INFO`
+
+**Usage:**
+
+```python
+from loguru import logger
+
+logger.info("User logged in", user_id=123)
+logger.error("Failed to process request", exc_info=True)
+```
+
+Log files are stored in the `logs/` directory (auto-created on first run).
 
 ### Code Quality
 
