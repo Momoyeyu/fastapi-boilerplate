@@ -20,7 +20,12 @@ def register_user(username: str, password: str) -> User:
     return user
 
 
-def login_user(username: str, password: str) -> str:
+def login_user(username: str, password: str) -> tuple[str, int]:
+    """Authenticate user and create token.
+
+    Returns:
+        A tuple of (access_token, expires_in).
+    """
     user = get_user(username)
     encrypted_password = get_password_hash(password)
     if not user or user.password != encrypted_password or user.id is None:

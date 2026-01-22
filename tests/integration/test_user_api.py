@@ -44,7 +44,7 @@ class TestUserLogin:
     """Tests for POST /user/login endpoint."""
 
     def test_login_success(self, client: TestClient):
-        """Test successful login returns JWT token in response body."""
+        """Test successful login returns OAuth2 compliant token response."""
         # Register user first
         client.post(
             "/user/register",
@@ -58,12 +58,17 @@ class TestUserLogin:
         )
         assert response.status_code == 200
         data = response.json()
+        # OAuth2 required fields (RFC 6749 Section 5.1)
         assert "access_token" in data
         assert data["token_type"] == "bearer"
         assert len(data["access_token"]) > 0
+        # expires_in is RECOMMENDED by RFC 6749
+        assert "expires_in" in data
+        assert isinstance(data["expires_in"], int)
+        assert data["expires_in"] > 0
 
     def test_login_wrong_password(self, client: TestClient):
-        """Test login fails with wrong password."""
+        """Test login fails with wrong password returns OAuth2 error."""
         # Register user first
         client.post(
             "/user/register",
@@ -75,15 +80,23 @@ class TestUserLogin:
             "/user/login",
             data={"username": "wrong_pass_user", "password": "wrong_pass"},
         )
-        assert response.status_code == 401
+        # OAuth2 error response (RFC 6749 Section 5.2)
+        assert response.status_code == 400
+        data = response.json()["detail"]
+        assert data["error"] == "invalid_grant"
+        assert "error_description" in data
 
     def test_login_nonexistent_user(self, client: TestClient):
-        """Test login fails for non-existent user."""
+        """Test login fails for non-existent user returns OAuth2 error."""
         response = client.post(
             "/user/login",
             data={"username": "nonexistent", "password": "anypass"},
         )
-        assert response.status_code == 401
+        # OAuth2 error response (RFC 6749 Section 5.2)
+        assert response.status_code == 400
+        data = response.json()["detail"]
+        assert data["error"] == "invalid_grant"
+        assert "error_description" in data
 
 
 class TestProtectedEndpoints:

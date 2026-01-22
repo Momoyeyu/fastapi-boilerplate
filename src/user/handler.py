@@ -23,10 +23,14 @@ async def register(body: dto.UserRegisterRequest) -> dto.UserRegisterResponse:
 @router.post("/login", response_model=dto.UserLoginResponse)
 async def login(form_data: OAuth2PasswordRequestForm = Depends()) -> dto.UserLoginResponse:
     try:
-        token = service.login_user(form_data.username, form_data.password)
-        return dto.UserLoginResponse(access_token=token)
+        access_token, expires_in = service.login_user(form_data.username, form_data.password)
+        return dto.UserLoginResponse(access_token=access_token, expires_in=expires_in)
     except erri.BusinessError as e:
-        raise HTTPException(status_code=e.status_code, detail=e.detail) from None
+        # OAuth2 standard error format (RFC 6749 Section 5.2)
+        raise HTTPException(
+            status_code=400,
+            detail={"error": "invalid_grant", "error_description": e.detail},
+        ) from None
 
 
 @router.get("/whoami", response_model=dto.UserWhoAmIResponse)
