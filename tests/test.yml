@@ -7,6 +7,6 @@ coverage:
   # Files to include in coverage measurement (glob patterns)
   include:
     - "src/**/service.py"
-    - "src/middleware/auth.py"
+    - "src/middleware/**"
   # Files to exclude from coverage (glob patterns)
   exclude: []

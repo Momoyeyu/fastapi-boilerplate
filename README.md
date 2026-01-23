@@ -1,6 +1,6 @@
 # FastAPI Boilerplate
 
-[![CI](https://github.com/yourusername/fastapi-boilerplate/actions/workflows/ci.yml/badge.svg)](https://github.com/yourusername/fastapi-boilerplate/actions/workflows/ci.yml)
+[![CI](https://github.com/Momoyeyu/fastapi-boilerplate/actions/workflows/ci.yml/badge.svg)](https://github.com/Momoyeyu/fastapi-boilerplate/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.112+-009688.svg?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
@@ -67,7 +67,7 @@ fastapi-boilerplate/
 
 1.  **Clone the repository**
     ```bash
-    git clone https://github.com/yourusername/fastapi-boilerplate.git
+    git clone https://github.com/Momoyeyu/fastapi-boilerplate.git
     cd fastapi-boilerplate
     ```
 
@@ -188,6 +188,30 @@ logger.error("Failed to process request", exc_info=True)
 ```
 
 Log files are stored in the `logs/` directory (auto-created on first run).
+
+### Request Logging Middleware
+
+This project includes a request/response logging middleware (`src/middleware/logging.py`) for debugging and monitoring.
+
+**Features:**
+-   **Automatic Logging**: Logs method, path, status code, and duration for each request
+-   **Detailed Logs**: DEBUG level logs headers, query params, and body
+-   **Sensitive Data Masking**: Automatically masks passwords, tokens, etc. (shown as `***`)
+-   **Path Exclusion**: Skips `/docs`, `/redoc`, and other documentation paths
+
+**Log Output Example:**
+
+```
+INFO  | Request 1769136075426 | POST /user/login
+DEBUG | Request headers: {"content-type": "application/json", "authorization": "***"}
+DEBUG | Request body: {"username": "alice", "password": "***"}
+INFO  | Response 1769136075426 | 200 | 5.23ms
+DEBUG | Response body: {"access_token": "***", "token_type": "bearer"}
+```
+
+**Masked Fields:**
+-   Headers: `authorization`, `cookie`, `x-api-key`
+-   Body/Params: `password`, `access_token`, `api_key`
 
 ### Code Quality
 

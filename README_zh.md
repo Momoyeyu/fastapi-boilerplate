@@ -1,6 +1,6 @@
 # FastAPI Boilerplate (脚手架)
 
-[![CI](https://github.com/yourusername/fastapi-boilerplate/actions/workflows/ci.yml/badge.svg)](https://github.com/yourusername/fastapi-boilerplate/actions/workflows/ci.yml)
+[![CI](https://github.com/Momoyeyu/fastapi-boilerplate/actions/workflows/ci.yml/badge.svg)](https://github.com/Momoyeyu/fastapi-boilerplate/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.112+-009688.svg?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
@@ -67,7 +67,7 @@ fastapi-boilerplate/
 
 1.  **克隆仓库**
     ```bash
-    git clone https://github.com/yourusername/fastapi-boilerplate.git
+    git clone https://github.com/Momoyeyu/fastapi-boilerplate.git
     cd fastapi-boilerplate
     ```
 
@@ -188,6 +188,30 @@ logger.error("Failed to process request", exc_info=True)
 ```
 
 日志文件存储在 `logs/` 目录（首次运行时自动创建）。
+
+### 请求日志中间件
+
+本项目内置请求/响应日志中间件（`src/middleware/logging.py`），用于调试和监控。
+
+**功能特性：**
+-   **自动记录**: 记录每个请求的方法、路径、状态码和耗时
+-   **详细日志**: DEBUG 级别记录 headers、query params 和 body
+-   **敏感信息脱敏**: 自动掩盖密码、token 等敏感字段（显示为 `***`）
+-   **路径排除**: 自动跳过 `/docs`、`/redoc` 等文档路径
+
+**日志输出示例：**
+
+```
+INFO  | Request 1769136075426 | POST /user/login
+DEBUG | Request headers: {"content-type": "application/json", "authorization": "***"}
+DEBUG | Request body: {"username": "alice", "password": "***"}
+INFO  | Response 1769136075426 | 200 | 5.23ms
+DEBUG | Response body: {"access_token": "***", "token_type": "bearer"}
+```
+
+**脱敏字段：**
+-   Headers: `authorization`、`cookie`、`x-api-key`
+-   Body/Params: `password`、`access_token`、`api_key`
 
 ### 代码质量
 
