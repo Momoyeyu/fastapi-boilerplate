@@ -9,8 +9,6 @@ from fastapi import FastAPI
 from loguru import logger
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from conf.config import settings
-
 # Paths to exclude from logging (e.g., health checks, static files)
 _EXCLUDE_PATHS: set[str] = {
     "/docs",
@@ -29,11 +27,8 @@ _SENSITIVE_HEADERS: set[str] = {
 # Fields to mask in request body and query params
 _SENSITIVE_FIELDS: set[str] = {
     "password",
-    "secret",
-    "token",
+    "access_token",
     "api_key",
-    "apikey",
-    "credential",
 }
 
 
@@ -80,14 +75,6 @@ class LoggingMiddleware:
     def __init__(self, app: ASGIApp) -> None:
         self.app = app
 
-    def _prepare_headers(self, headers: dict[str, str]) -> dict[str, str]:
-        """Apply header masking if not in debug mode."""
-        return headers if settings.debug else _mask_headers(headers)
-
-    def _prepare_data(self, data: Any) -> Any:
-        """Apply field masking if not in debug mode."""
-        return data if settings.debug else _mask_fields(data)
-
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
@@ -130,7 +117,7 @@ class LoggingMiddleware:
         logger.debug(
             "Request {request_id} headers: {headers}",
             request_id=request_id,
-            headers=json.dumps(self._prepare_headers(headers_str), ensure_ascii=False),
+            headers=json.dumps(_mask_headers(headers_str), ensure_ascii=False),
         )
 
         # Log query params
@@ -140,7 +127,7 @@ class LoggingMiddleware:
             logger.debug(
                 "Request {request_id} params: {params}",
                 request_id=request_id,
-                params=json.dumps(self._prepare_data(params), ensure_ascii=False),
+                params=json.dumps(_mask_fields(params), ensure_ascii=False),
             )
 
         # Capture response
@@ -166,7 +153,7 @@ class LoggingMiddleware:
             logger.debug(
                 "Request {request_id} body: {body}",
                 request_id=request_id,
-                body=json.dumps(self._prepare_data(parsed_body), ensure_ascii=False),
+                body=json.dumps(_mask_fields(parsed_body), ensure_ascii=False),
             )
 
         # Calculate duration
@@ -189,7 +176,7 @@ class LoggingMiddleware:
             logger.debug(
                 "Response {request_id} body: {body}",
                 request_id=request_id,
-                body=json.dumps(self._prepare_data(parsed_resp), ensure_ascii=False),
+                body=json.dumps(_mask_fields(parsed_resp), ensure_ascii=False),
             )
 
 
