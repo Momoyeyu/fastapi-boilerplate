@@ -1,52 +1,63 @@
 services:
-  gate:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    command: ["bash", "-lc", "bash pipeline/ci.sh"]
-    environment:
-      DATABASE_URL: postgresql+psycopg://postgres:postgres@db/fastapi-boilerplate
-      CI: "true"
-    depends_on:
-      db:
-        condition: service_healthy
-
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: fastapi-boilerplate
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-fastapi-boilerplate}
+    ports:
+      - "6666:${DB_PORT:-5432}"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d fastapi-boilerplate"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-fastapi-boilerplate}"]
       interval: 5s
       timeout: 3s
       retries: 12
 
   migrate:
+    image: ${DOCKER_IMAGE:-fastapi-boilerplate:latest}
     build:
       context: .
       dockerfile: Dockerfile
     command: ["bash", "-lc", "python -c 'from conf.alembic_runner import upgrade_head; upgrade_head()'"]
+    env_file:
+      - path: .env
+        required: false
     environment:
-      DATABASE_URL: postgresql+psycopg://postgres:postgres@db/fastapi-boilerplate
+      DB_HOST: db
+      DB_PORT: ${DB_PORT:-5432}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_NAME: ${DB_NAME:-fastapi-boilerplate}
     depends_on:
       db:
         condition: service_healthy
 
   app:
+    image: ${DOCKER_IMAGE:-fastapi-boilerplate:latest}
     build:
       context: .
       dockerfile: Dockerfile
+    env_file:
+      - path: .env
+        required: false
     environment:
-      DATABASE_URL: postgresql+psycopg://postgres:postgres@db/fastapi-boilerplate
+      DB_HOST: db
+      DB_PORT: ${DB_PORT:-5432}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_NAME: ${DB_NAME:-fastapi-boilerplate}
+      PASSWORD_SALT: ${PASSWORD_SALT:-}
+      JWT_SECRET: ${JWT_SECRET:-}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      JWT_EXPIRE_SECONDS: ${JWT_EXPIRE_SECONDS:-3600}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      DEBUG: ${DEBUG:-false}
     ports:
       - "8000:8000"
     depends_on:
-      gate:
-        condition: service_completed_successfully
       migrate:
         condition: service_completed_successfully
       db:
