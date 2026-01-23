@@ -30,15 +30,20 @@
 fastapi-boilerplate/
 ├── .github/
 │   └── workflows/
-│       └── ci.yml          # GitHub Actions CI 工作流
+│       ├── ci.yml          # GitHub Actions CI 工作流
+│       └── cd.yml          # GitHub Actions CD 工作流
 ├── scripts/
+│   ├── deploy.sh           # 部署脚本
 │   ├── lint.sh             # 本地代码检查脚本
+│   ├── migrate.sh          # 数据库迁移脚本
+│   ├── run.sh              # 本地启动脚本
 │   └── test.sh             # 运行测试并统计覆盖率
 ├── src/                    # 源代码目录
 │   ├── common/             # 通用工具与错误处理
 │   ├── conf/               # 配置与数据库设置
-│   │   ├── alembic/        # 迁移脚本与环境配置
-│   │   └── ...
+│   ├── migration/          # Alembic 迁移脚本
+│   │   ├── alembic/        # 迁移版本与环境配置
+│   │   └── runner.py       # 迁移执行器
 │   ├── middleware/         # 自定义中间件 (Auth 等)
 │   ├── user/               # 用户模块 (领域逻辑)
 │   └── main.py             # 应用入口文件
@@ -50,8 +55,8 @@ fastapi-boilerplate/
 │   └── backend_{date}.log  # 每日日志文件 (自动轮转)
 ├── .env.example            # 环境变量模板
 ├── docker-compose.yml      # Docker 服务编排 (App + DB)
+├── Makefile                # 开发命令
 ├── pyproject.toml          # 项目依赖与工具配置
-├── run.sh                  # 本地启动脚本
 └── README.md               # 项目文档
 ```
 
@@ -85,11 +90,11 @@ fastapi-boilerplate/
     ```
 
 2.  **运行应用**
-    使用提供的脚本启动开发服务器：
+    使用 Makefile 启动开发服务器：
     ```bash
-    bash run.sh
+    make run
     # 或者手动运行:
-    # uv run uvicorn main:app --app-dir src --reload
+    # ./scripts/run.sh
     ```
     API 服务将在 `http://localhost:8000` 启动。
     交互式文档 (Swagger UI): `http://localhost:8000/docs`
@@ -122,15 +127,17 @@ docker-compose up --build
 
 ### 数据库迁移
 
-本项目使用 **Alembic** 进行数据库模式迁移。
-*   **自动模式**: 应用会在启动时通过 `src/conf/alembic_runner.py` 自动执行 `upgrade head`。
-*   **手动模式**: 当修改了模型 (Model) 需要创建新迁移时：
+本项目使用 **Alembic** 进行数据库模式迁移。迁移代码位于 `src/migration/` 目录。
+
+*   **自动模式**: 迁移会在应用启动前自动执行（通过 `scripts/migrate.sh`）。
+*   **手动模式**: 手动运行迁移：
+    ```bash
+    make migrate
+    ```
+*   **创建新迁移**: 当修改了模型 (Model) 后：
     ```bash
     # 生成迁移脚本
-    uv run alembic revision --autogenerate -m "description_of_changes"
-    
-    # 手动应用迁移 (如果需要)
-    uv run alembic upgrade head
+    cd src && uv run alembic -c migration/alembic.ini revision --autogenerate -m "description_of_changes"
     ```
 
 ### 配置管理
@@ -226,7 +233,7 @@ uv sync --all-extras
 运行所有检查：
 
 ```bash
-bash scripts/lint.sh
+make lint
 ```
 
 如果检测到格式问题，脚本会提示你是否自动格式化 (`[y/n]`)。
@@ -258,7 +265,7 @@ uv run ruff format src tests
 #### 运行测试并查看统计：
 
 ```bash
-bash scripts/test.sh
+make test
 ```
 
 输出内容包括：
@@ -289,12 +296,29 @@ uv run pytest tests -v
 
 ### CI/CD
 
-本项目包含 GitHub Actions 工作流 (`.github/workflows/ci.yml`)，执行以下步骤：
+本项目包含 GitHub Actions 工作流：
 
+**CI (`.github/workflows/ci.yml`)**:
 1. **Lint Job**: ruff check、ruff format、mypy 类型检查
 2. **Test Job**: 单元测试 + 集成测试，覆盖率阈值 80%
 
-工作流在 `master` 分支的 push/PR 时触发。
+在 `master` 分支的 push/PR 时触发。
+
+**CD (`.github/workflows/cd.yml`)**:
+1. **Build Job**: 构建并推送 Docker 镜像到 Docker Hub
+2. **Deploy Job**: 通过 SSH 部署到服务器
+
+在 `master` 分支 push 或手动触发时执行。
+
+**可用的 Make 命令：**
+```bash
+make           # 显示帮助
+make run       # 启动开发服务器
+make migrate   # 运行数据库迁移
+make lint      # 运行代码检查
+make test      # 运行所有测试
+make deploy    # 部署应用
+```
 
 ## 📄 许可证
 

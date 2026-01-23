@@ -30,15 +30,20 @@ A modern, production-ready FastAPI boilerplate designed to kickstart your backen
 fastapi-boilerplate/
 ├── .github/
 │   └── workflows/
-│       └── ci.yml          # GitHub Actions CI workflow
+│       ├── ci.yml          # GitHub Actions CI workflow
+│       └── cd.yml          # GitHub Actions CD workflow
 ├── scripts/
+│   ├── deploy.sh           # Deployment script
 │   ├── lint.sh             # Local linting script
+│   ├── migrate.sh          # Database migration script
+│   ├── run.sh              # Local startup script
 │   └── test.sh             # Run tests with coverage stats
 ├── src/                    # Source code
 │   ├── common/             # Shared utilities & error handling
 │   ├── conf/               # Configuration & Database setup
-│   │   ├── alembic/        # Migration scripts & env
-│   │   └── ...
+│   ├── migration/          # Alembic migration scripts
+│   │   ├── alembic/        # Migration versions & env
+│   │   └── runner.py       # Migration runner
 │   ├── middleware/         # Custom middlewares (Auth, etc.)
 │   ├── user/               # User module (Domain logic)
 │   └── main.py             # App entry point
@@ -50,8 +55,8 @@ fastapi-boilerplate/
 │   └── backend_{date}.log  # Daily log files (auto-rotated)
 ├── .env.example            # Environment variables template
 ├── docker-compose.yml      # Docker services (App + DB)
+├── Makefile                # Development commands
 ├── pyproject.toml          # Project dependencies & tool configs
-├── run.sh                  # Local startup script
 └── README.md               # Documentation
 ```
 
@@ -85,11 +90,11 @@ fastapi-boilerplate/
     ```
 
 2.  **Run the Application**
-    Use the provided script to start the dev server:
+    Use Makefile to start the dev server:
     ```bash
-    bash run.sh
+    make run
     # OR manually:
-    # uv run uvicorn main:app --app-dir src --reload
+    # ./scripts/run.sh
     ```
     The API will be available at `http://localhost:8000`.
     Interactive docs (Swagger UI): `http://localhost:8000/docs`
@@ -122,15 +127,17 @@ docker-compose up --build
 
 ### Database Migrations
 
-This project uses **Alembic** for schema migrations.
-*   **Automatic**: The app automatically runs `upgrade head` on startup via `src/conf/alembic_runner.py`.
-*   **Manual**: To create a new migration after modifying models:
+This project uses **Alembic** for schema migrations. Migration code is located in `src/migration/`.
+
+*   **Automatic**: Migrations run automatically before the app starts (via `scripts/migrate.sh`).
+*   **Manual**: To run migrations manually:
+    ```bash
+    make migrate
+    ```
+*   **Create new migration**: After modifying models:
     ```bash
     # Generate migration script
-    uv run alembic revision --autogenerate -m "description_of_changes"
-    
-    # Apply migration manually (if needed)
-    uv run alembic upgrade head
+    cd src && uv run alembic -c migration/alembic.ini revision --autogenerate -m "description_of_changes"
     ```
 
 ### Configuration
@@ -226,7 +233,7 @@ uv sync --all-extras
 Run all lint checks:
 
 ```bash
-bash scripts/lint.sh
+make lint
 ```
 
 The script will prompt you to auto-format if any formatting issues are detected (`[y/n]`).
@@ -258,7 +265,7 @@ This project includes both **unit tests** and **integration tests**.
 #### Run all tests with statistics:
 
 ```bash
-bash scripts/test.sh
+make test
 ```
 
 This will output:
@@ -289,12 +296,29 @@ Coverage reports are generated in the `output/` directory:
 
 ### CI/CD
 
-This project includes GitHub Actions workflow (`.github/workflows/ci.yml`) that runs:
+This project includes GitHub Actions workflows:
 
+**CI (`.github/workflows/ci.yml`)**:
 1. **Lint Job**: ruff check, ruff format, mypy
 2. **Test Job**: Unit tests + Integration tests with coverage threshold (80%)
 
-The workflow triggers on push/PR to `master` branch.
+Triggers on push/PR to `master` branch.
+
+**CD (`.github/workflows/cd.yml`)**:
+1. **Build Job**: Build and push Docker image to Docker Hub
+2. **Deploy Job**: Deploy to server via SSH
+
+Triggers on push to `master` branch or manual dispatch.
+
+**Available Make Commands:**
+```bash
+make           # Show help
+make run       # Start development server
+make migrate   # Run database migrations
+make lint      # Run linting checks
+make test      # Run all tests
+make deploy    # Deploy application
+```
 
 ## 📄 License
 
