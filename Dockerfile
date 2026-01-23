@@ -30,8 +30,11 @@ RUN python -m pip install -i "$PIP_INDEX_URL" --trusted-host "$PIP_TRUSTED_HOST"
     uv sync --frozen --no-dev
 
 COPY src ./src
+COPY migration ./migration
 COPY scripts/migrate.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/migrate.sh
+
+ENV PYTHONPATH=/app/src:/app
 
 EXPOSE 8000
 

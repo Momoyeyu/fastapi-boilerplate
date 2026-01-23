@@ -41,12 +41,12 @@ fastapi-boilerplate/
 ├── src/                    # Source code
 │   ├── common/             # Shared utilities & error handling
 │   ├── conf/               # Configuration & Database setup
-│   ├── migration/          # Alembic migration scripts
-│   │   ├── alembic/        # Migration versions & env
-│   │   └── runner.py       # Migration runner
 │   ├── middleware/         # Custom middlewares (Auth, etc.)
 │   ├── user/               # User module (Domain logic)
 │   └── main.py             # App entry point
+├── migration/              # Alembic migration scripts
+│   ├── alembic/            # Migration versions & env
+│   └── runner.py           # Migration runner
 ├── tests/                  # Unit & Integration tests
 │   ├── unit/               # Unit tests (mocked dependencies)
 │   ├── integration/        # Integration tests (SQLite in-memory)
@@ -127,7 +127,7 @@ docker-compose up --build
 
 ### Database Migrations
 
-This project uses **Alembic** for schema migrations. Migration code is located in `src/migration/`.
+This project uses **Alembic** for schema migrations. Migration code is located in `migration/` (project root).
 
 *   **Automatic**: Migrations run automatically before the app starts (via `scripts/migrate.sh`).
 *   **Manual**: To run migrations manually:
@@ -137,7 +137,7 @@ This project uses **Alembic** for schema migrations. Migration code is located i
 *   **Create new migration**: After modifying models:
     ```bash
     # Generate migration script
-    cd src && uv run alembic -c migration/alembic.ini revision --autogenerate -m "description_of_changes"
+    PYTHONPATH="src:." uv run alembic -c migration/alembic.ini revision --autogenerate -m "description_of_changes"
     ```
 
 ### Configuration

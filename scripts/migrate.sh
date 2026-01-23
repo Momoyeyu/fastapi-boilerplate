@@ -5,11 +5,12 @@ cd "$(dirname "$0")/.."
 
 echo "Running database migrations..."
 
-# Use uv run locally, direct python in Docker (where PYTHONPATH is already set)
+# Docker: PYTHONPATH is pre-configured
+# Local: need to set PYTHONPATH to include src and project root
 if [ -n "$PYTHONPATH" ]; then
     python -c "from migration.runner import upgrade_head; upgrade_head()"
 else
-    uv run python -c "import sys; sys.path.insert(0, 'src'); from migration.runner import upgrade_head; upgrade_head()"
+    PYTHONPATH="src:." uv run python -c "from migration.runner import upgrade_head; upgrade_head()"
 fi
 
 echo "Database migrations completed."

@@ -41,12 +41,12 @@ fastapi-boilerplate/
 ├── src/                    # 源代码目录
 │   ├── common/             # 通用工具与错误处理
 │   ├── conf/               # 配置与数据库设置
-│   ├── migration/          # Alembic 迁移脚本
-│   │   ├── alembic/        # 迁移版本与环境配置
-│   │   └── runner.py       # 迁移执行器
 │   ├── middleware/         # 自定义中间件 (Auth 等)
 │   ├── user/               # 用户模块 (领域逻辑)
 │   └── main.py             # 应用入口文件
+├── migration/              # Alembic 迁移脚本
+│   ├── alembic/            # 迁移版本与环境配置
+│   └── runner.py           # 迁移执行器
 ├── tests/                  # 单元测试与集成测试
 │   ├── unit/               # 单元测试 (mock 依赖)
 │   ├── integration/        # 集成测试 (SQLite 内存数据库)
@@ -127,7 +127,7 @@ docker-compose up --build
 
 ### 数据库迁移
 
-本项目使用 **Alembic** 进行数据库模式迁移。迁移代码位于 `src/migration/` 目录。
+本项目使用 **Alembic** 进行数据库模式迁移。迁移代码位于项目根目录的 `migration/`。
 
 *   **自动模式**: 迁移会在应用启动前自动执行（通过 `scripts/migrate.sh`）。
 *   **手动模式**: 手动运行迁移：
@@ -137,7 +137,7 @@ docker-compose up --build
 *   **创建新迁移**: 当修改了模型 (Model) 后：
     ```bash
     # 生成迁移脚本
-    cd src && uv run alembic -c migration/alembic.ini revision --autogenerate -m "description_of_changes"
+    PYTHONPATH="src:." uv run alembic -c migration/alembic.ini revision --autogenerate -m "description_of_changes"
     ```
 
 ### 配置管理
