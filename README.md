@@ -197,7 +197,6 @@ This project includes a request/response logging middleware (`src/middleware/log
 -   **Automatic Logging**: Logs method, path, status code, and duration for each request
 -   **Detailed Logs**: DEBUG level logs headers, query params, and body
 -   **Sensitive Data Masking**: Automatically masks passwords, tokens, etc. (shown as `***`)
--   **Debug Mode**: Masking is disabled when `DEBUG=true` for easier development
 -   **Path Exclusion**: Skips `/docs`, `/redoc`, and other documentation paths
 
 **Log Output Example:**
@@ -212,7 +211,7 @@ DEBUG | Response body: {"access_token": "***", "token_type": "bearer"}
 
 **Masked Fields:**
 -   Headers: `authorization`, `cookie`, `x-api-key`
--   Body/Params: `password`, `secret`, `token`, `api_key`, `credential`
+-   Body/Params: `password`, `access_token`, `api_key`
 
 ### Code Quality
 

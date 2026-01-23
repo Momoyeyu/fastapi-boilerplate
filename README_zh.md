@@ -197,7 +197,6 @@ logger.error("Failed to process request", exc_info=True)
 -   **自动记录**: 记录每个请求的方法、路径、状态码和耗时
 -   **详细日志**: DEBUG 级别记录 headers、query params 和 body
 -   **敏感信息脱敏**: 自动掩盖密码、token 等敏感字段（显示为 `***`）
--   **调试模式**: `DEBUG=true` 时关闭脱敏，显示完整信息便于开发调试
 -   **路径排除**: 自动跳过 `/docs`、`/redoc` 等文档路径
 
 **日志输出示例：**
@@ -212,7 +211,7 @@ DEBUG | Response body: {"access_token": "***", "token_type": "bearer"}
 
 **脱敏字段：**
 -   Headers: `authorization`、`cookie`、`x-api-key`
--   Body/Params: `password`、`secret`、`token`、`api_key`、`credential`
+-   Body/Params: `password`、`access_token`、`api_key`
 
 ### 代码质量
 

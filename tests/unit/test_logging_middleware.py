@@ -1,10 +1,7 @@
-from unittest.mock import patch
-
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from middleware.logging import (
-    LoggingMiddleware,
     _flatten_qs,
     _mask_fields,
     _mask_headers,
@@ -60,16 +57,19 @@ class TestMaskFields:
         assert result[0]["password"] == "***"
         assert result[1]["password"] == "***"
 
-    def test_masks_multiple_sensitive_fields(self):
-        data = {"password": "pw", "token": "tk", "secret": "sc", "api_key": "ak"}
+    def test_masks_sensitive_fields(self):
+        data = {"password": "pw", "access_token": "tk", "api_key": "ak", "username": "alice"}
         result = _mask_fields(data)
-        assert all(v == "***" for v in result.values())
+        assert result["password"] == "***"
+        assert result["access_token"] == "***"
+        assert result["api_key"] == "***"
+        assert result["username"] == "alice"
 
     def test_case_insensitive_field_masking(self):
-        data = {"PASSWORD": "pw", "Token": "tk"}
+        data = {"PASSWORD": "pw", "Access_Token": "tk"}
         result = _mask_fields(data)
         assert result["PASSWORD"] == "***"
-        assert result["Token"] == "***"
+        assert result["Access_Token"] == "***"
 
     def test_returns_primitive_unchanged(self):
         assert _mask_fields("string") == "string"
@@ -190,48 +190,6 @@ class TestLoggingMiddleware:
         resp = client.get("/docs")
         # Swagger UI returns HTML or redirect
         assert resp.status_code in (200, 307)
-
-    def test_prepare_headers_masks_in_production(self):
-        app = FastAPI()
-        middleware = LoggingMiddleware(app)
-        headers = {"Authorization": "Bearer token", "Content-Type": "application/json"}
-
-        with patch("middleware.logging.settings") as mock_settings:
-            mock_settings.debug = False
-            result = middleware._prepare_headers(headers)
-            assert result["Authorization"] == "***"
-            assert result["Content-Type"] == "application/json"
-
-    def test_prepare_headers_skips_mask_in_debug(self):
-        app = FastAPI()
-        middleware = LoggingMiddleware(app)
-        headers = {"Authorization": "Bearer token"}
-
-        with patch("middleware.logging.settings") as mock_settings:
-            mock_settings.debug = True
-            result = middleware._prepare_headers(headers)
-            assert result["Authorization"] == "Bearer token"
-
-    def test_prepare_data_masks_in_production(self):
-        app = FastAPI()
-        middleware = LoggingMiddleware(app)
-        data = {"username": "alice", "password": "secret"}
-
-        with patch("middleware.logging.settings") as mock_settings:
-            mock_settings.debug = False
-            result = middleware._prepare_data(data)
-            assert result["username"] == "alice"
-            assert result["password"] == "***"
-
-    def test_prepare_data_skips_mask_in_debug(self):
-        app = FastAPI()
-        middleware = LoggingMiddleware(app)
-        data = {"username": "alice", "password": "secret"}
-
-        with patch("middleware.logging.settings") as mock_settings:
-            mock_settings.debug = True
-            result = middleware._prepare_data(data)
-            assert result["password"] == "secret"
 
     def test_handles_form_data_request(self):
         from fastapi import Form
