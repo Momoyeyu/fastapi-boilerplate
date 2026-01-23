@@ -46,9 +46,6 @@ def client(test_engine, monkeypatch) -> Generator[TestClient, None, None]:
     monkeypatch.setattr(db_module, "engine", test_engine)
     monkeypatch.setattr(user_model, "engine", test_engine)
 
-    # Patch upgrade_head to do nothing (tables are already created)
-    monkeypatch.setattr(db_module, "upgrade_head", lambda: None)
-
     # Import create_app after patching to ensure patches are in effect
     from main import create_app
 

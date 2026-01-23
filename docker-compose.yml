@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
       POSTGRES_DB: ${DB_NAME:-fastapi-boilerplate}
     ports:
-      - "6666:${DB_PORT:-5432}"
+      - "5432:${DB_PORT:-5432}"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -14,25 +14,6 @@ services:
       interval: 5s
       timeout: 3s
       retries: 12
-
-  migrate:
-    image: ${DOCKER_IMAGE:-fastapi-boilerplate:latest}
-    build:
-      context: .
-      dockerfile: Dockerfile
-    command: ["bash", "-lc", "python -c 'from conf.alembic_runner import upgrade_head; upgrade_head()'"]
-    env_file:
-      - path: .env
-        required: false
-    environment:
-      DB_HOST: db
-      DB_PORT: ${DB_PORT:-5432}
-      DB_USER: ${DB_USER:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-postgres}
-      DB_NAME: ${DB_NAME:-fastapi-boilerplate}
-    depends_on:
-      db:
-        condition: service_healthy
 
   app:
     image: ${DOCKER_IMAGE:-fastapi-boilerplate:latest}
@@ -58,8 +39,6 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      migrate:
-        condition: service_completed_successfully
       db:
         condition: service_healthy
     healthcheck:

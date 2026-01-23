@@ -98,14 +98,15 @@ jobs:
 
       - name: Copy deploy script to server
         run: |
-          scp -i ~/.ssh/deploy_key scripts/deploy.sh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:~/fastapi-boilerplate/
+          ssh -i ~/.ssh/deploy_key ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "mkdir -p ~/fastapi-boilerplate/scripts"
+          scp -i ~/.ssh/deploy_key scripts/deploy.sh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:~/fastapi-boilerplate/scripts/
 
       - name: Deploy application
         run: |
           ssh -i ~/.ssh/deploy_key ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'DEPLOYSSH'
           cd ~/fastapi-boilerplate
-          chmod +x deploy.sh
-          ./deploy.sh
+          chmod +x scripts/deploy.sh
+          ./scripts/deploy.sh
           DEPLOYSSH
 
       - name: Cleanup SSH key

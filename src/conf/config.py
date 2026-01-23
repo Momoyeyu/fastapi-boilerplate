@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     db_password: str = "postgres"
     db_name: str = "fastapi-boilerplate"
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def database_url(self) -> str:
         return f"postgresql+psycopg://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"

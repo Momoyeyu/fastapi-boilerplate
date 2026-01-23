@@ -12,7 +12,8 @@ set -euo pipefail
 # 5. Rollback on failure
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$PROJECT_DIR"
 
 # Configuration
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}"
@@ -88,8 +89,12 @@ health_check() {
     local elapsed=0
     
     while [[ $elapsed -lt $HEALTH_CHECK_TIMEOUT ]]; do
-        if curl -fsS "$HEALTH_CHECK_URL" > /dev/null 2>&1; then
-            log_info "Health check passed!"
+        # Get HTTP status code, any 2xx/4xx response means service is running
+        local http_code
+        http_code=$(curl -sS -o /dev/null -w "%{http_code}" "$HEALTH_CHECK_URL" 2>/dev/null || echo "000")
+        
+        if [[ "$http_code" =~ ^[2-4][0-9][0-9]$ ]]; then
+            log_info "Health check passed! (HTTP $http_code)"
             return 0
         fi
         
