@@ -6,7 +6,7 @@ from fastapi import APIRouter, FastAPI
 from loguru import logger
 
 from conf import logging
-from conf.db import close_db, init_db
+from conf.db import close_db
 from conf.openapi import setup_openapi
 from middleware.auth import setup_auth_middleware
 from middleware.logging import setup_logging_middleware
@@ -16,7 +16,6 @@ from user.service import ensure_admin_user
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
-    init_db()
     ensure_admin_user()
     logger.info("Application started")
     yield
