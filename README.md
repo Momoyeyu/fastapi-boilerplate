@@ -31,7 +31,7 @@ fastapi-boilerplate/
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml          # GitHub Actions CI workflow
-│       └── cd.yml          # GitHub Actions CD workflow
+│       └── cd.yml.example  # GitHub Actions CD workflow template
 ├── scripts/
 │   ├── deploy.sh           # Deployment script
 │   ├── lint.sh             # Local linting script
@@ -304,11 +304,17 @@ This project includes GitHub Actions workflows:
 
 Triggers on push/PR to `master` branch.
 
-**CD (`.github/workflows/cd.yml`)**:
+**CD (`.github/workflows/cd.yml.example`)**:
+
+This is a template file for continuous deployment. To enable CD:
+1. Copy `cd.yml.example` to `cd.yml`
+2. Configure the required secrets in your GitHub repository settings
+
+The workflow includes:
 1. **Build Job**: Build and push Docker image to Docker Hub
 2. **Deploy Job**: Deploy to server via SSH
 
-Triggers on push to `master` branch or manual dispatch.
+Triggers on push to `master` branch or manual dispatch when enabled.
 
 **Available Make Commands:**
 ```bash
