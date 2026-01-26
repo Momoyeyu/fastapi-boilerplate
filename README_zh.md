@@ -31,7 +31,7 @@ fastapi-boilerplate/
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml          # GitHub Actions CI 工作流
-│       └── cd.yml          # GitHub Actions CD 工作流
+│       └── cd.yml.example  # GitHub Actions CD 工作流模板
 ├── scripts/
 │   ├── deploy.sh           # 部署脚本
 │   ├── lint.sh             # 本地代码检查脚本
@@ -304,11 +304,17 @@ uv run pytest tests -v
 
 在 `master` 分支的 push/PR 时触发。
 
-**CD (`.github/workflows/cd.yml`)**:
+**CD (`.github/workflows/cd.yml.example`)**:
+
+这是一个持续部署的模板文件。要启用 CD：
+1. 将 `cd.yml.example` 复制为 `cd.yml`
+2. 在 GitHub 仓库设置中配置所需的 secrets
+
+工作流包含：
 1. **Build Job**: 构建并推送 Docker 镜像到 Docker Hub
 2. **Deploy Job**: 通过 SSH 部署到服务器
 
-在 `master` 分支 push 或手动触发时执行。
+启用后，在 `master` 分支 push 或手动触发时执行。
 
 **可用的 Make 命令：**
 ```bash
