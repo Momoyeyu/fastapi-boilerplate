@@ -20,11 +20,11 @@ def register_user(username: str, password: str) -> User:
     return user
 
 
-def login_user(username: str, password: str) -> tuple[str, int]:
-    """Authenticate user and create token.
+def login_user(username: str, password: str) -> auth.TokenPair:
+    """Authenticate user and create tokens.
 
     Returns:
-        A tuple of (access_token, expires_in).
+        A TokenPair containing access_token, refresh_token, and expiration info.
     """
     user = get_user(username)
     encrypted_password = get_password_hash(password)

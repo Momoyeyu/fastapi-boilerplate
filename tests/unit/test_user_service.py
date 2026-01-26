@@ -96,17 +96,26 @@ def test_login_user_user_without_id(monkeypatch: pytest.MonkeyPatch, mock_settin
 
 
 def test_login_user_success_creates_token(monkeypatch: pytest.MonkeyPatch, mock_settings: MagicMock):
+    from middleware.auth import TokenPair
+
     user = User(id=7, username="alice", password=service.get_password_hash("pw"))
     monkeypatch.setattr(service, "get_user", lambda username: user, raising=True)
 
     captured: dict[str, object] = {}
+    mock_token_pair = TokenPair(
+        access_token="token-123",
+        refresh_token="refresh-456",
+        expires_in=3600,
+        refresh_token_expires_in=604800,
+    )
 
     def _create_token(passed_user: object):
         captured["user"] = passed_user
-        return "token-123"
+        return mock_token_pair
 
     monkeypatch.setattr(service.auth, "create_token", _create_token, raising=True)
 
-    token = service.login_user("alice", "pw")
-    assert token == "token-123"
+    token_pair = service.login_user("alice", "pw")
+    assert token_pair.access_token == "token-123"
+    assert token_pair.refresh_token == "refresh-456"
     assert captured["user"] is user

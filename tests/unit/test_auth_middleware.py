@@ -92,19 +92,25 @@ def test_user_login_returns_token_in_response(monkeypatch: pytest.MonkeyPatch):
     auth.setup_auth_middleware(app)
     client = TestClient(app)
 
-    monkeypatch.setattr(
-        user_handler.service, "login_user", lambda username, password: ("token-123", 3600), raising=True
+    mock_token_pair = auth.TokenPair(
+        access_token="token-123",
+        refresh_token="refresh-456",
+        expires_in=3600,
+        refresh_token_expires_in=604800,
     )
+    monkeypatch.setattr(user_handler.service, "login_user", lambda username, password: mock_token_pair, raising=True)
 
     resp = client.post("/user/login", data={"username": "alice", "password": "pw"})
     assert resp.status_code == 200
     data = resp.json()
     assert data["access_token"] == "token-123"
+    assert data["refresh_token"] == "refresh-456"
     assert data["token_type"] == "bearer"
     assert data["expires_in"] == 3600
+    assert data["refresh_token_expires_in"] == 604800
 
 
-def test_get_username_returns_username_from_request_state_when_middleware_installed():
+def test_get_username_returns_username_from_request_state_when_middleware_installed(monkeypatch: pytest.MonkeyPatch):
     auth.EXEMPT_PATHS.clear()
     app = FastAPI()
 
@@ -115,13 +121,23 @@ def test_get_username_returns_username_from_request_state_when_middleware_instal
     auth.setup_auth_middleware(app)
     client = TestClient(app)
 
-    token, _ = auth.create_token(User(id=1, username="alice", password="x"))
-    resp = client.get("/me", headers={"Authorization": f"Bearer {token}"})
+    # Mock refresh token creation to avoid database dependency
+    from user import model as user_model
+
+    monkeypatch.setattr(
+        user_model,
+        "create_refresh_token",
+        lambda user_id, username: type("MockToken", (), {"token": "mock-refresh"})(),
+        raising=True,
+    )
+
+    token_pair = auth.create_token(User(id=1, username="alice", password="x"))
+    resp = client.get("/me", headers={"Authorization": f"Bearer {token_pair.access_token}"})
     assert resp.status_code == 200
     assert resp.json() == {"username": "alice"}
 
 
-def test_get_username_can_parse_username_from_authorization_header_without_middleware():
+def test_get_username_can_parse_username_from_authorization_header_without_middleware(monkeypatch: pytest.MonkeyPatch):
     app = FastAPI()
 
     @app.get("/me")
@@ -130,21 +146,41 @@ def test_get_username_can_parse_username_from_authorization_header_without_middl
 
     client = TestClient(app)
 
-    token, _ = auth.create_token(User(id=2, username="bob", password="x"))
-    resp = client.get("/me", headers={"Authorization": f"Bearer {token}"})
+    # Mock refresh token creation to avoid database dependency
+    from user import model as user_model
+
+    monkeypatch.setattr(
+        user_model,
+        "create_refresh_token",
+        lambda user_id, username: type("MockToken", (), {"token": "mock-refresh"})(),
+        raising=True,
+    )
+
+    token_pair = auth.create_token(User(id=2, username="bob", password="x"))
+    resp = client.get("/me", headers={"Authorization": f"Bearer {token_pair.access_token}"})
     assert resp.status_code == 200
     assert resp.json() == {"username": "bob"}
 
 
-def test_user_whoami_returns_username_from_token():
+def test_user_whoami_returns_username_from_token(monkeypatch: pytest.MonkeyPatch):
     auth.EXEMPT_PATHS.clear()
     app = FastAPI()
     app.include_router(user_handler.router)
     auth.setup_auth_middleware(app)
     client = TestClient(app)
 
-    token, _ = auth.create_token(User(id=1, username="alice", password="x"))
-    resp = client.get("/user/whoami", headers={"Authorization": f"Bearer {token}"})
+    # Mock refresh token creation to avoid database dependency
+    from user import model as user_model
+
+    monkeypatch.setattr(
+        user_model,
+        "create_refresh_token",
+        lambda user_id, username: type("MockToken", (), {"token": "mock-refresh"})(),
+        raising=True,
+    )
+
+    token_pair = auth.create_token(User(id=1, username="alice", password="x"))
+    resp = client.get("/user/whoami", headers={"Authorization": f"Bearer {token_pair.access_token}"})
     assert resp.status_code == 200
     assert resp.json() == {"username": "alice"}
 
@@ -173,8 +209,18 @@ def test_user_me_uses_get_username_to_fetch_profile(monkeypatch: pytest.MonkeyPa
 
     monkeypatch.setattr(user_handler.service, "get_user_profile", _get_user_profile, raising=True)
 
-    token, _ = auth.create_token(User(id=1, username="alice", password="x"))
-    resp = client.get("/user/me", headers={"Authorization": f"Bearer {token}"})
+    # Mock refresh token creation to avoid database dependency
+    from user import model as user_model
+
+    monkeypatch.setattr(
+        user_model,
+        "create_refresh_token",
+        lambda user_id, username: type("MockToken", (), {"token": "mock-refresh"})(),
+        raising=True,
+    )
+
+    token_pair = auth.create_token(User(id=1, username="alice", password="x"))
+    resp = client.get("/user/me", headers={"Authorization": f"Bearer {token_pair.access_token}"})
     assert resp.status_code == 200
     assert captured["username"] == "alice"
     assert resp.json()["username"] == "alice"
@@ -201,10 +247,20 @@ def test_user_me_patch_updates_profile(monkeypatch: pytest.MonkeyPatch):
 
     monkeypatch.setattr(user_handler.service, "update_my_profile", _update_my_profile, raising=True)
 
-    token, _ = auth.create_token(User(id=1, username="alice", password="x"))
+    # Mock refresh token creation to avoid database dependency
+    from user import model as user_model
+
+    monkeypatch.setattr(
+        user_model,
+        "create_refresh_token",
+        lambda user_id, username: type("MockToken", (), {"token": "mock-refresh"})(),
+        raising=True,
+    )
+
+    token_pair = auth.create_token(User(id=1, username="alice", password="x"))
     resp = client.patch(
         "/user/me",
-        headers={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {token_pair.access_token}"},
         json={"nickname": "NewName"},
     )
     assert resp.status_code == 200
