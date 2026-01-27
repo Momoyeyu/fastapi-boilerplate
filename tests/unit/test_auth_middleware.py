@@ -98,10 +98,8 @@ def test_get_username_returns_username_from_request_state_when_middleware_instal
     client = TestClient(app)
 
     # Mock refresh token creation to avoid database dependency
-    from auth import model as auth_model
-
     monkeypatch.setattr(
-        auth_model,
+        auth_service,
         "create_refresh_token",
         lambda user_id, username: type("MockToken", (), {"token": "mock-refresh"})(),
         raising=True,
@@ -123,10 +121,8 @@ def test_get_username_can_parse_username_from_authorization_header_without_middl
     client = TestClient(app)
 
     # Mock refresh token creation to avoid database dependency
-    from auth import model as auth_model
-
     monkeypatch.setattr(
-        auth_model,
+        auth_service,
         "create_refresh_token",
         lambda user_id, username: type("MockToken", (), {"token": "mock-refresh"})(),
         raising=True,
@@ -146,10 +142,8 @@ def test_user_whoami_returns_username_from_token(monkeypatch: pytest.MonkeyPatch
     client = TestClient(app)
 
     # Mock refresh token creation to avoid database dependency
-    from auth import model as auth_model
-
     monkeypatch.setattr(
-        auth_model,
+        auth_service,
         "create_refresh_token",
         lambda user_id, username: type("MockToken", (), {"token": "mock-refresh"})(),
         raising=True,
@@ -186,10 +180,8 @@ def test_user_me_uses_get_username_to_fetch_profile(monkeypatch: pytest.MonkeyPa
     monkeypatch.setattr(user_handler.service, "get_user_profile", _get_user_profile, raising=True)
 
     # Mock refresh token creation to avoid database dependency
-    from auth import model as auth_model
-
     monkeypatch.setattr(
-        auth_model,
+        auth_service,
         "create_refresh_token",
         lambda user_id, username: type("MockToken", (), {"token": "mock-refresh"})(),
         raising=True,
@@ -224,10 +216,8 @@ def test_user_me_patch_updates_profile(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(user_handler.service, "update_my_profile", _update_my_profile, raising=True)
 
     # Mock refresh token creation to avoid database dependency
-    from auth import model as auth_model
-
     monkeypatch.setattr(
-        auth_model,
+        auth_service,
         "create_refresh_token",
         lambda user_id, username: type("MockToken", (), {"token": "mock-refresh"})(),
         raising=True,
