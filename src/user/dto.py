@@ -11,14 +11,6 @@ class UserRegisterResponse(BaseModel):
     username: str
 
 
-class UserLoginResponse(BaseModel):
-    access_token: str
-    refresh_token: str
-    token_type: str = "bearer"
-    expires_in: int
-    refresh_token_expires_in: int
-
-
 class UserWhoAmIResponse(BaseModel):
     username: str
 
@@ -36,19 +28,3 @@ class UserProfileUpdateRequest(BaseModel):
     nickname: str | None = None
     email: str | None = None
     avatar_url: str | None = None
-
-
-class RefreshTokenRequest(BaseModel):
-    refresh_token: str
-
-
-class RefreshTokenResponse(BaseModel):
-    access_token: str
-    refresh_token: str
-    token_type: str = "bearer"
-    expires_in: int
-    refresh_token_expires_in: int
-
-
-class LogoutResponse(BaseModel):
-    message: str = "Successfully logged out"

@@ -1,13 +1,7 @@
-import hashlib
-
+from auth.service import get_password_hash
 from common import erri
 from conf.config import settings
-from middleware import auth
 from user.model import User, create_user, get_user, update_user_profile
-
-
-def get_password_hash(password: str) -> str:
-    return hashlib.sha512((password + settings.password_salt).encode("utf-8")).hexdigest()
 
 
 def register_user(username: str, password: str) -> User:
@@ -18,19 +12,6 @@ def register_user(username: str, password: str) -> User:
     if not user or user.id is None:
         raise erri.internal("Create user failed")
     return user
-
-
-def login_user(username: str, password: str) -> auth.TokenPair:
-    """Authenticate user and create tokens.
-
-    Returns:
-        A TokenPair containing access_token, refresh_token, and expiration info.
-    """
-    user = get_user(username)
-    encrypted_password = get_password_hash(password)
-    if not user or user.password != encrypted_password or user.id is None:
-        raise erri.unauthorized("Invalid credentials")
-    return auth.create_token(user)
 
 
 def get_user_profile(username: str) -> User:

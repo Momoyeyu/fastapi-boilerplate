@@ -209,7 +209,7 @@ This project includes a request/response logging middleware (`src/middleware/log
 **Log Output Example:**
 
 ```
-INFO  | Request 1769136075426 | POST /user/login
+INFO  | Request 1769136075426 | POST /auth/login
 DEBUG | Request headers: {"content-type": "application/json", "authorization": "***"}
 DEBUG | Request body: {"username": "alice", "password": "***"}
 INFO  | Response 1769136075426 | 200 | 5.23ms

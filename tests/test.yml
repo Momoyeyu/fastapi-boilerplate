@@ -9,4 +9,5 @@ coverage:
     - "src/**/service.py"
     - "src/middleware/**"
   # Files to exclude from coverage (glob patterns)
-  exclude: []
+  exclude:
+    - "src/**/__init__.py"

@@ -209,7 +209,7 @@ logger.error("Failed to process request", exc_info=True)
 **日志输出示例：**
 
 ```
-INFO  | Request 1769136075426 | POST /user/login
+INFO  | Request 1769136075426 | POST /auth/login
 DEBUG | Request headers: {"content-type": "application/json", "authorization": "***"}
 DEBUG | Request body: {"username": "alice", "password": "***"}
 INFO  | Response 1769136075426 | 200 | 5.23ms
