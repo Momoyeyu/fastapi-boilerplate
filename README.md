@@ -15,7 +15,7 @@ A modern, production-ready FastAPI boilerplate designed to kickstart your backen
 -   **Modern Stack**: Built with **FastAPI** (Python 3.12+) for high performance.
 -   **ORM & Database**: Uses **SQLModel** (SQLAlchemy + Pydantic) with **PostgreSQL**.
 -   **Auto-Migrations**: Integrated **Alembic** for automatic database schema synchronization on startup.
--   **Authentication**: JWT-based authentication middleware with secure password hashing.
+-   **Authentication**: JWT-based authentication with Access Token + Refresh Token, Token Rotation, and secure password hashing.
 -   **Configuration**: Type-safe settings management with **pydantic-settings**, auto-loading from `.env` files.
 -   **Structured Logging**: Powered by **Loguru** with console coloring, file rotation, retention, and compression.
 -   **Package Management**: Powered by **uv** for extremely fast dependency management.
@@ -39,9 +39,10 @@ fastapi-boilerplate/
 │   ├── run.sh              # Local startup script
 │   └── test.sh             # Run tests with coverage stats
 ├── src/                    # Source code
+│   ├── auth/               # Authentication module (JWT, Refresh Token)
 │   ├── common/             # Shared utilities & error handling
 │   ├── conf/               # Configuration & Database setup
-│   ├── middleware/         # Custom middlewares (Auth, etc.)
+│   ├── middleware/         # Custom middlewares (Auth, Logging)
 │   ├── user/               # User module (Domain logic)
 │   └── main.py             # App entry point
 ├── migration/              # Alembic migration scripts
@@ -158,7 +159,8 @@ This project uses **pydantic-settings** for type-safe configuration management, 
 | `password_salt` | `PASSWORD_SALT` | `Momoyeyu` | Salt for password hashing |
 | `jwt_secret` | `JWT_SECRET` | `Momoyeyu` | Secret key for JWT tokens |
 | `jwt_algorithm` | `JWT_ALGORITHM` | `HS256` | JWT signing algorithm |
-| `jwt_expire_seconds` | `JWT_EXPIRE_SECONDS` | `3600` | JWT token expiration time |
+| `jwt_expire_seconds` | `JWT_EXPIRE_SECONDS` | `3600` | Access Token expiration time (seconds) |
+| `refresh_token_expire_seconds` | `REFRESH_TOKEN_EXPIRE_SECONDS` | `604800` | Refresh Token expiration time (seconds, default 7 days) |
 | `admin_username` | `ADMIN_USERNAME` | `admin` | Admin account username (auto-created on startup) |
 | `admin_password` | `ADMIN_PASSWORD` | `admin` | Admin account password |
 
@@ -218,7 +220,61 @@ DEBUG | Response body: {"access_token": "***", "token_type": "bearer"}
 
 **Masked Fields:**
 -   Headers: `authorization`, `cookie`, `x-api-key`
--   Body/Params: `password`, `access_token`, `api_key`
+-   Body/Params: `password`, `access_token`, `refresh_token`, `api_key`
+
+### Authentication System
+
+This project implements a complete JWT authentication system with Access Token + Refresh Token, located in `src/auth/` module.
+
+**Features:**
+-   **Dual Token Mechanism**: Access Token (short-lived, default 1 hour) for API authentication, Refresh Token (long-lived, default 7 days) for refreshing Access Token
+-   **Token Rotation**: Each refresh revokes the old Refresh Token and generates a new one for enhanced security
+-   **Database Storage**: Refresh Tokens are stored in the database, enabling revocation and auditing
+-   **Secure Design**: Refresh Tokens are generated using cryptographically secure random strings
+
+**API Endpoints:**
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/auth/login` | POST | User login, returns Access Token and Refresh Token |
+| `/auth/refresh` | POST | Use Refresh Token to get a new token pair |
+| `/auth/logout` | POST | Revoke Refresh Token |
+
+**Authentication Flow:**
+
+```
+1. User login -> Get Access Token + Refresh Token
+2. Use Access Token to access APIs
+3. When Access Token expires, use Refresh Token to refresh
+4. On refresh, old Refresh Token is revoked, new token pair is returned
+5. On logout, Refresh Token is revoked
+```
+
+**Usage Example:**
+
+```http
+# Login
+POST /auth/login
+Content-Type: application/x-www-form-urlencoded
+username=admin&password=admin
+
+# Response
+{
+    "access_token": "eyJhbG...",
+    "refresh_token": "abc123...",
+    "token_type": "bearer"
+}
+
+# Refresh Token
+POST /auth/refresh
+Content-Type: application/json
+{"refresh_token": "abc123..."}
+
+# Logout
+POST /auth/logout
+Content-Type: application/json
+{"refresh_token": "abc123..."}
+```
 
 ### Code Quality
 
