@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 
-./migrate.sh
+./scripts/migrate.sh
 
 uv run uvicorn main:app --app-dir src --reload
