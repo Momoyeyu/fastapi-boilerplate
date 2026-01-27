@@ -1,8 +1,8 @@
-import hashlib
 from unittest.mock import MagicMock
 
 import pytest
 
+from auth import service as auth_service
 from common import erri
 from user import service
 from user.model import User
@@ -13,14 +13,8 @@ def mock_settings(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     """Create a mock settings object with default test values."""
     mock = MagicMock()
     mock.password_salt = "salt"
-    monkeypatch.setattr(service, "settings", mock)
+    monkeypatch.setattr(auth_service, "settings", mock)
     return mock
-
-
-def test_get_password_hash_uses_salt(mock_settings: MagicMock):
-    password = "pw"
-    expected = hashlib.sha512((password + "salt").encode("utf-8")).hexdigest()
-    assert service.get_password_hash(password) == expected
 
 
 def test_register_user_when_user_exists(monkeypatch: pytest.MonkeyPatch):
@@ -48,7 +42,7 @@ def test_register_user_success_hashes_password_and_calls_create(
     assert user.id == 123
     assert user.username == "alice"
     assert captured["username"] == "alice"
-    assert captured["password"] == service.get_password_hash("pw")
+    assert captured["password"] == auth_service.get_password_hash("pw")
 
 
 def test_register_user_create_failed_returns_none(monkeypatch: pytest.MonkeyPatch):
@@ -70,43 +64,3 @@ def test_register_user_create_failed_returns_user_without_id(monkeypatch: pytest
     with pytest.raises(erri.BusinessError) as exc:
         service.register_user("alice", "pw")
     assert exc.value.status_code == 500
-
-
-def test_login_user_user_not_found(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(service, "get_user", lambda username: None, raising=True)
-    with pytest.raises(erri.BusinessError) as exc:
-        service.login_user("alice", "pw")
-    assert exc.value.status_code == 401
-
-
-def test_login_user_password_mismatch(monkeypatch: pytest.MonkeyPatch, mock_settings: MagicMock):
-    user = User(id=1, username="alice", password=service.get_password_hash("correct"))
-    monkeypatch.setattr(service, "get_user", lambda username: user, raising=True)
-    with pytest.raises(erri.BusinessError) as exc:
-        service.login_user("alice", "wrong")
-    assert exc.value.status_code == 401
-
-
-def test_login_user_user_without_id(monkeypatch: pytest.MonkeyPatch, mock_settings: MagicMock):
-    user = User(id=None, username="alice", password=service.get_password_hash("pw"))
-    monkeypatch.setattr(service, "get_user", lambda username: user, raising=True)
-    with pytest.raises(erri.BusinessError) as exc:
-        service.login_user("alice", "pw")
-    assert exc.value.status_code == 401
-
-
-def test_login_user_success_creates_token(monkeypatch: pytest.MonkeyPatch, mock_settings: MagicMock):
-    user = User(id=7, username="alice", password=service.get_password_hash("pw"))
-    monkeypatch.setattr(service, "get_user", lambda username: user, raising=True)
-
-    captured: dict[str, object] = {}
-
-    def _create_token(passed_user: object):
-        captured["user"] = passed_user
-        return "token-123"
-
-    monkeypatch.setattr(service.auth, "create_token", _create_token, raising=True)
-
-    token = service.login_user("alice", "pw")
-    assert token == "token-123"
-    assert captured["user"] is user

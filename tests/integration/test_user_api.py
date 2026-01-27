@@ -40,65 +40,6 @@ class TestUserRegister:
         assert "already exists" in response2.json()["detail"].lower()
 
 
-class TestUserLogin:
-    """Tests for POST /user/login endpoint."""
-
-    def test_login_success(self, client: TestClient):
-        """Test successful login returns OAuth2 compliant token response."""
-        # Register user first
-        client.post(
-            "/user/register",
-            json={"username": "login_user", "password": "secret123"},
-        )
-
-        # Login (OAuth2 form-data format)
-        response = client.post(
-            "/user/login",
-            data={"username": "login_user", "password": "secret123"},
-        )
-        assert response.status_code == 200
-        data = response.json()
-        # OAuth2 required fields (RFC 6749 Section 5.1)
-        assert "access_token" in data
-        assert data["token_type"] == "bearer"
-        assert len(data["access_token"]) > 0
-        # expires_in is RECOMMENDED by RFC 6749
-        assert "expires_in" in data
-        assert isinstance(data["expires_in"], int)
-        assert data["expires_in"] > 0
-
-    def test_login_wrong_password(self, client: TestClient):
-        """Test login fails with wrong password returns OAuth2 error."""
-        # Register user first
-        client.post(
-            "/user/register",
-            json={"username": "wrong_pass_user", "password": "correct_pass"},
-        )
-
-        # Try login with wrong password (OAuth2 form-data format)
-        response = client.post(
-            "/user/login",
-            data={"username": "wrong_pass_user", "password": "wrong_pass"},
-        )
-        # OAuth2 error response (RFC 6749 Section 5.2)
-        assert response.status_code == 400
-        data = response.json()["detail"]
-        assert data["error"] == "invalid_grant"
-        assert "error_description" in data
-
-    def test_login_nonexistent_user(self, client: TestClient):
-        """Test login fails for non-existent user returns OAuth2 error."""
-        response = client.post(
-            "/user/login",
-            data={"username": "nonexistent", "password": "anypass"},
-        )
-        # OAuth2 error response (RFC 6749 Section 5.2)
-        assert response.status_code == 400
-        data = response.json()["detail"]
-        assert data["error"] == "invalid_grant"
-        assert "error_description" in data
-
-
 class TestProtectedEndpoints:
     """Tests for protected endpoints requiring authentication."""
 
@@ -115,7 +56,7 @@ class TestProtectedEndpoints:
             json={"username": "auth_user", "password": "authpass"},
         )
         login_response = client.post(
-            "/user/login",
+            "/auth/login",
             data={"username": "auth_user", "password": "authpass"},
         )
         token = login_response.json()["access_token"]

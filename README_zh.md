@@ -15,7 +15,7 @@
 -   **现代技术栈**: 基于 **FastAPI** (Python 3.12+) 构建，提供高性能 API 服务。
 -   **ORM 与数据库**: 使用 **SQLModel** (SQLAlchemy + Pydantic) 配合 **PostgreSQL**。
 -   **自动迁移**: 集成 **Alembic**，支持服务启动时自动同步数据库表结构。
--   **身份验证**: 基于 JWT 的身份验证中间件，包含安全的密码哈希处理。
+-   **身份验证**: 基于 JWT 的身份验证系统，支持 Access Token + Refresh Token 双令牌机制、Token 轮转和安全的密码哈希处理。
 -   **配置管理**: 使用 **pydantic-settings** 进行类型安全的配置管理，自动从 `.env` 文件加载。
 -   **结构化日志**: 使用 **Loguru** 实现，支持控制台彩色输出、文件轮转、自动保留与压缩。
 -   **依赖管理**: 使用 **uv** 进行极速的 Python 包管理。
@@ -39,9 +39,10 @@ fastapi-boilerplate/
 │   ├── run.sh              # 本地启动脚本
 │   └── test.sh             # 运行测试并统计覆盖率
 ├── src/                    # 源代码目录
+│   ├── auth/               # 认证模块 (JWT, Refresh Token)
 │   ├── common/             # 通用工具与错误处理
 │   ├── conf/               # 配置与数据库设置
-│   ├── middleware/         # 自定义中间件 (Auth 等)
+│   ├── middleware/         # 自定义中间件 (Auth, Logging)
 │   ├── user/               # 用户模块 (领域逻辑)
 │   └── main.py             # 应用入口文件
 ├── migration/              # Alembic 迁移脚本
@@ -158,7 +159,8 @@ docker-compose up --build
 | `password_salt` | `PASSWORD_SALT` | `Momoyeyu` | 密码哈希盐值 |
 | `jwt_secret` | `JWT_SECRET` | `Momoyeyu` | JWT 签名密钥 |
 | `jwt_algorithm` | `JWT_ALGORITHM` | `HS256` | JWT 签名算法 |
-| `jwt_expire_seconds` | `JWT_EXPIRE_SECONDS` | `3600` | JWT 过期时间（秒） |
+| `jwt_expire_seconds` | `JWT_EXPIRE_SECONDS` | `3600` | Access Token 过期时间（秒） |
+| `refresh_token_expire_seconds` | `REFRESH_TOKEN_EXPIRE_SECONDS` | `604800` | Refresh Token 过期时间（秒，默认 7 天） |
 | `admin_username` | `ADMIN_USERNAME` | `admin` | 管理员账号（启动时自动创建） |
 | `admin_password` | `ADMIN_PASSWORD` | `admin` | 管理员密码 |
 
@@ -209,7 +211,7 @@ logger.error("Failed to process request", exc_info=True)
 **日志输出示例：**
 
 ```
-INFO  | Request 1769136075426 | POST /user/login
+INFO  | Request 1769136075426 | POST /auth/login
 DEBUG | Request headers: {"content-type": "application/json", "authorization": "***"}
 DEBUG | Request body: {"username": "alice", "password": "***"}
 INFO  | Response 1769136075426 | 200 | 5.23ms
@@ -218,7 +220,61 @@ DEBUG | Response body: {"access_token": "***", "token_type": "bearer"}
 
 **脱敏字段：**
 -   Headers: `authorization`、`cookie`、`x-api-key`
--   Body/Params: `password`、`access_token`、`api_key`
+-   Body/Params: `password`、`access_token`、`refresh_token`、`api_key`
+
+### 认证系统
+
+本项目实现了完整的 JWT 认证系统，支持 Access Token + Refresh Token 双令牌机制，代码位于 `src/auth/` 模块。
+
+**功能特性：**
+-   **双令牌机制**: Access Token（短期，默认 1 小时）用于 API 认证，Refresh Token（长期，默认 7 天）用于刷新 Access Token
+-   **Token 轮转**: 每次使用 Refresh Token 刷新时，旧 Token 会被撤销并生成新 Token，增强安全性
+-   **数据库存储**: Refresh Token 存储在数据库中，支持主动撤销和审计
+-   **安全设计**: Refresh Token 使用加密安全的随机字符串生成
+
+**API 端点：**
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/auth/login` | POST | 用户登录，返回 Access Token 和 Refresh Token |
+| `/auth/refresh` | POST | 使用 Refresh Token 获取新的令牌对 |
+| `/auth/logout` | POST | 撤销 Refresh Token |
+
+**认证流程：**
+
+```
+1. 用户登录 -> 获取 Access Token + Refresh Token
+2. 使用 Access Token 访问 API
+3. Access Token 过期后，使用 Refresh Token 刷新
+4. 刷新时旧 Refresh Token 被撤销，返回新的令牌对
+5. 用户登出时撤销 Refresh Token
+```
+
+**使用示例：**
+
+```http
+# 登录
+POST /auth/login
+Content-Type: application/x-www-form-urlencoded
+username=admin&password=admin
+
+# 响应
+{
+    "access_token": "eyJhbG...",
+    "refresh_token": "abc123...",
+    "token_type": "bearer"
+}
+
+# 刷新 Token
+POST /auth/refresh
+Content-Type: application/json
+{"refresh_token": "abc123..."}
+
+# 登出
+POST /auth/logout
+Content-Type: application/json
+{"refresh_token": "abc123..."}
+```
 
 ### 代码质量
 

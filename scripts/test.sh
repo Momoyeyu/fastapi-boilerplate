@@ -145,7 +145,7 @@ echo "Running Unit Tests"
 echo "========================================"
 
 set +e
-UNIT_OUTPUT="$(uv run pytest tests/unit -q \
+UNIT_OUTPUT="$(uv run --extra dev pytest tests/unit -q \
     "${SERVICE_COV_ARGS[@]}" \
     --cov-report=term-missing \
     --cov-report=xml:$OUTPUT_DIR/coverage.xml \
@@ -164,7 +164,7 @@ echo "Running Integration Tests"
 echo "========================================"
 
 set +e
-INT_OUTPUT="$(uv run pytest tests/integration -q \
+INT_OUTPUT="$(uv run --extra dev pytest tests/integration -q \
     --junitxml=$OUTPUT_DIR/junit-integration.xml 2>&1)"
 INT_STATUS=$?
 set -e

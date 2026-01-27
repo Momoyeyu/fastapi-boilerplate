@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     jwt_secret: str = "Momoyeyu"
     jwt_algorithm: str = "HS256"
     jwt_expire_seconds: int = 3600
+    refresh_token_expire_seconds: int = 604800  # 7 days
 
     # Admin account
     admin_username: str = "admin"

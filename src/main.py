@@ -5,6 +5,7 @@ from typing import Any
 from fastapi import APIRouter, FastAPI
 from loguru import logger
 
+from auth.handler import router as auth_router
 from conf import logging
 from conf.db import close_db
 from conf.openapi import setup_openapi
@@ -31,6 +32,7 @@ def init_routers(_app: FastAPI) -> None:
         return {"message": "Hello FastAPI + UV!"}
 
     _app.include_router(root_router)
+    _app.include_router(auth_router)
     _app.include_router(user_router)
 
 

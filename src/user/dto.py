@@ -11,12 +11,6 @@ class UserRegisterResponse(BaseModel):
     username: str
 
 
-class UserLoginResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-    expires_in: int
-
-
 class UserWhoAmIResponse(BaseModel):
     username: str
 

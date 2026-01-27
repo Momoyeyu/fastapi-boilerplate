@@ -1,4 +1,3 @@
-import time
 from collections.abc import Awaitable, Callable
 from functools import cache
 from typing import Any, NoReturn
@@ -10,7 +9,6 @@ from jwt import PyJWT, PyJWTError
 
 from common import erri
 from conf.config import settings
-from user.model import User
 
 
 @cache
@@ -63,20 +61,8 @@ def _freeze_route_registration(app: FastAPI) -> None:
     app.router.add_api_route = _blocked
 
 
-def create_token(user: User) -> tuple[str, int]:
-    """Create a JWT token for the user.
-
-    Returns:
-        A tuple of (access_token, expires_in).
-    """
-    now = int(time.time())
-    expires_in = settings.jwt_expire_seconds
-    payload = {"sub": user.username, "iat": now, "exp": now + expires_in}
-    token = _jwt().encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
-    return token, expires_in
-
-
 def verify_token(token: str) -> dict[str, Any]:
+    """Verify a JWT token and return the payload."""
     try:
         decoded: dict[str, Any] = _jwt().decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
         return decoded
@@ -85,6 +71,7 @@ def verify_token(token: str) -> dict[str, Any]:
 
 
 def get_username(request: Request) -> str:
+    """Get the username from the request state or Authorization header."""
     state_user = getattr(request.state, "user", None)
     if isinstance(state_user, str) and state_user:
         return state_user
@@ -101,6 +88,7 @@ def get_username(request: Request) -> str:
 
 
 def setup_auth_middleware(app: FastAPI) -> None:
+    """Setup JWT authentication middleware."""
     if getattr(app, _SETUP_ATTR, False):
         return
 

@@ -12,6 +12,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine
 
+from auth import model as auth_model
 from conf import db as db_module
 from user import model as user_model
 
@@ -42,9 +43,10 @@ def client(test_engine, monkeypatch) -> Generator[TestClient, None, None]:
 
     Patches the engine in both db and model modules.
     """
-    # Patch the engine in both modules that use it
+    # Patch the engine in all modules that use it
     monkeypatch.setattr(db_module, "engine", test_engine)
     monkeypatch.setattr(user_model, "engine", test_engine)
+    monkeypatch.setattr(auth_model, "engine", test_engine)
 
     # Import create_app after patching to ensure patches are in effect
     from main import create_app
