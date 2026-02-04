@@ -65,7 +65,7 @@ jobs:
 
       - name: Run unit tests
         run: |
-          # Parse tests/test.yml and run pytest with coverage config
+          # Parse tests/cfg.yml and run pytest with coverage config
           uv run python -c "
           import yaml
           import glob
@@ -73,7 +73,7 @@ jobs:
           import subprocess
           import sys
 
-          with open('tests/test.yml', 'r') as f:
+          with open('tests/cfg.yml', 'r') as f:
               cfg = yaml.safe_load(f) or {}
 
           cov_cfg = cfg.get('coverage') or {}
@@ -97,18 +97,15 @@ jobs:
           exclude_files = expand(exclude_patterns)
           selected = sorted(include_files - exclude_files)
 
-          modules = []
-          for f in selected:
-              if f.startswith('src/'):
-                  mod = f[4:-3].replace('/', '.')
-                  modules.append(mod)
+          # Use file paths instead of module names to ensure all files are counted
+          # even if not imported by tests
+          if not selected:
+              selected = ['src']
 
           # Build pytest command
           cmd = ['uv', 'run', 'pytest', 'tests/unit', '-q']
-          for m in modules:
-              cmd.append(f'--cov={m}')
-          if not modules:
-              cmd.append('--cov=src')
+          for f in selected:
+              cmd.append(f'--cov={f}')
           cmd.extend([
               '--cov-report=term-missing',
               '--cov-report=xml:output/coverage.xml',
@@ -130,7 +127,7 @@ jobs:
           import xml.etree.ElementTree as ET
           import yaml
 
-          with open('tests/test.yml', 'r') as f:
+          with open('tests/cfg.yml', 'r') as f:
               cfg = yaml.safe_load(f) or {}
           threshold = float(cfg.get('coverage', {}).get('threshold', 80))
 

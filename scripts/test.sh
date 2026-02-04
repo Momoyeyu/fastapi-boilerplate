@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Run all tests (unit + integration) with coverage and success rate statistics
-# Configuration is read from tests/test.yml
+# Configuration is read from tests/cfg.yml
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -14,9 +14,9 @@ mkdir -p "$OUTPUT_DIR"
 
 export COVERAGE_FILE="$OUTPUT_DIR/.coverage"
 
-TEST_CONFIG_PATH="${TEST_CONFIG_PATH:-$ROOT_DIR/tests/test.yml}"
+TEST_CONFIG_PATH="${TEST_CONFIG_PATH:-$ROOT_DIR/tests/cfg.yml}"
 
-# Parse test.yml configuration
+# Parse cfg.yml configuration
 _CONFIG_OUTPUT="$(uv run python - <<'PY'
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ except Exception as e:
     raise SystemExit(f"missing yaml parser (PyYAML). import yaml failed: {e}")
 
 root_dir = os.environ["ROOT_DIR"]
-config_path = os.environ.get("TEST_CONFIG_PATH", os.path.join(root_dir, "tests", "test.yml"))
+config_path = os.environ.get("TEST_CONFIG_PATH", os.path.join(root_dir, "tests", "cfg.yml"))
 
 if not os.path.exists(config_path):
     # Default values if config not found
@@ -73,20 +73,21 @@ include_files = expand(include_patterns)
 exclude_files = expand(exclude_patterns)
 selected_files = sorted(include_files - exclude_files)
 
-src_dir = os.path.join(root_dir, "src") + os.sep
-modules: list[str] = []
-for file_path in selected_files:
-    if not file_path.startswith(src_dir):
-        continue
-    rel = file_path[len(src_dir):]
-    modules.append(rel[:-3].replace(os.sep, "."))
+# Convert to relative paths (coverage requires relative paths, not absolute)
+# This ensures coverage includes all specified files, even if not imported by tests
+rel_files: list[str] = []
+for f in selected_files:
+    if f.startswith(root_dir + os.sep):
+        rel_files.append(f[len(root_dir) + 1:])
+    else:
+        rel_files.append(f)
 
-if not modules:
-    modules = ["src"]
+if not rel_files:
+    rel_files = ["src"]
 
 print(threshold)
-for mod in modules:
-    print(mod)
+for rel_path in rel_files:
+    print(rel_path)
 PY
 )"
 
