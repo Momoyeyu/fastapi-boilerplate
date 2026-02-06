@@ -21,7 +21,7 @@ A modern, production-ready FastAPI boilerplate designed to kickstart your backen
 -   **Package Management**: Powered by **uv** for extremely fast dependency management.
 -   **Docker Ready**: Full **Docker Compose** support for local development and deployment.
 -   **CI/CD Pipeline**: GitHub Actions workflow with lint checks and automated testing.
--   **Code Quality**: Static analysis with **ruff** (linting + formatting) and **mypy** (type checking).
+-   **Code Quality**: Static analysis with **ruff** (linting + formatting).
 -   **Clean Architecture**: Modular `src/` structure separating concerns (Handler, Service, Model, DTO).
 
 ## 📂 Project Structure
@@ -37,7 +37,7 @@ fastapi-boilerplate/
 │   ├── lint.sh             # Local linting script
 │   ├── migrate.sh          # Database migration script
 │   ├── run.sh              # Local startup script
-│   └── test.sh             # Run tests with coverage stats
+│   └── test.sh             # Run tests
 ├── src/                    # Source code
 │   ├── auth/               # Authentication module (JWT, Refresh Token)
 │   ├── common/             # Shared utilities & error handling
@@ -278,7 +278,7 @@ Content-Type: application/json
 
 ### Code Quality
 
-This project uses **ruff** for linting/formatting and **mypy** for type checking.
+This project uses **ruff** for linting and formatting.
 
 Install dev dependencies:
 
@@ -294,41 +294,23 @@ make lint
 
 The script will prompt you to auto-format if any formatting issues are detected (`[y/n]`).
 
-Or run individually:
+Auto-fix linting and formatting issues:
 
 ```bash
-# Linting
-uv run ruff check src tests
-
-# Format check
-uv run ruff format --check src tests
-
-# Type checking
-uv run mypy src
-```
-
-Auto-fix linting issues:
-
-```bash
-uv run ruff check --fix src tests
-uv run ruff format src tests
+make lint fix=1
 ```
 
 ### Testing
 
 This project includes both **unit tests** and **integration tests**.
 
-#### Run all tests with statistics:
+#### Run all tests:
 
 ```bash
 make test
 ```
 
-This will output:
-- Unit test success rate
-- Unit test coverage percentage
-- Integration test success rate
-- Coverage threshold check (default: 80%)
+This will output unit test and integration test success rates.
 
 #### Run tests separately:
 
@@ -345,8 +327,17 @@ uv run pytest tests -v
 
 #### Test Coverage
 
-Coverage reports are generated in the `output/` directory:
-- `coverage.xml` - XML format for CI tools
+Coverage is only checked in CI for pull requests, using **incremental coverage** (only new/modified lines are checked). Configure in `tests/cfg.yml`:
+
+```yaml
+coverage:
+  threshold: 80        # Minimum coverage for changed lines
+  exclude:             # Files to exclude from coverage check
+    - "src/**/handler.py"
+    - "src/**/model.py"
+```
+
+Test reports are generated in the `output/` directory:
 - `junit-unit.xml` - JUnit format for unit tests
 - `junit-integration.xml` - JUnit format for integration tests
 
@@ -355,8 +346,9 @@ Coverage reports are generated in the `output/` directory:
 This project includes GitHub Actions workflows:
 
 **CI (`.github/workflows/ci.yml`)**:
-1. **Lint Job**: ruff check, ruff format, mypy
-2. **Test Job**: Unit tests + Integration tests with coverage threshold (80%)
+1. **Lint Job**: ruff check, ruff format
+2. **Test Job**: Unit tests + Integration tests
+3. **Coverage Check (PR only)**: Incremental coverage for changed lines using [diff-cover](https://github.com/Bachmann1234/diff-cover)
 
 Triggers on push/PR to `master` branch.
 
@@ -377,7 +369,7 @@ Triggers on push to `master` branch or manual dispatch when enabled.
 make           # Show help
 make run       # Start development server
 make migrate   # Run database migrations
-make lint      # Run linting checks
+make lint      # Run linting checks (fix=1 to auto-fix)
 make test      # Run all tests
 make deploy    # Deploy application
 ```

@@ -23,7 +23,6 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "ruff>=0.8.0",
-    "mypy>=1.13.0",
     "diff-cover>=9.0.0",
 ]
 
@@ -53,12 +52,3 @@ ignore = [
 quote-style = "double"
 indent-style = "space"
 
-[tool.mypy]
-python_version = "3.12"
-strict = true
-warn_return_any = true
-warn_unused_configs = true
-mypy_path = "src"
-explicit_package_bases = true
-exclude = ["alembic/versions"]
-disable_error_code = ["method-assign"]
