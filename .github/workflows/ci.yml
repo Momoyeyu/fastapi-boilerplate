@@ -46,6 +46,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -63,84 +65,45 @@ jobs:
       - name: Create output directory
         run: mkdir -p output
 
-      - name: Run unit tests
+      - name: Run unit tests with coverage
         run: |
-          # Parse tests/cfg.yml and run pytest with coverage config
-          uv run python -c "
-          import yaml
-          import glob
-          import os
-          import subprocess
-          import sys
-
-          with open('tests/cfg.yml', 'r') as f:
-              cfg = yaml.safe_load(f) or {}
-
-          cov_cfg = cfg.get('coverage') or {}
-          include_patterns = cov_cfg.get('include') or ['src/**/service.py']
-          exclude_patterns = cov_cfg.get('exclude') or []
-
-          if isinstance(include_patterns, str):
-              include_patterns = [include_patterns]
-          if isinstance(exclude_patterns, str):
-              exclude_patterns = [exclude_patterns]
-
-          def expand(patterns):
-              files = set()
-              for pattern in patterns:
-                  for path in glob.glob(pattern, recursive=True):
-                      if os.path.isfile(path) and path.endswith('.py'):
-                          files.add(os.path.normpath(path))
-              return files
-
-          include_files = expand(include_patterns)
-          exclude_files = expand(exclude_patterns)
-          selected = sorted(include_files - exclude_files)
-
-          # Use file paths instead of module names to ensure all files are counted
-          # even if not imported by tests
-          if not selected:
-              selected = ['src']
-
-          # Build pytest command
-          cmd = ['uv', 'run', 'pytest', 'tests/unit', '-q']
-          for f in selected:
-              cmd.append(f'--cov={f}')
-          cmd.extend([
-              '--cov-report=term-missing',
-              '--cov-report=xml:output/coverage.xml',
-              '--junitxml=output/junit-unit.xml'
-          ])
-
-          result = subprocess.run(cmd)
-          sys.exit(result.returncode)
-          "
+          uv run pytest tests/unit -q \
+            --cov=src \
+            --cov-report=xml:output/coverage.xml \
+            --junitxml=output/junit-unit.xml
 
       - name: Run integration tests
         run: |
           uv run pytest tests/integration -q \
             --junitxml=output/junit-integration.xml
 
-      - name: Check coverage threshold
+      - name: Check incremental coverage (PR only)
+        if: github.event_name == 'pull_request'
         run: |
           uv run python -c "
-          import xml.etree.ElementTree as ET
+          import subprocess
+          import sys
           import yaml
 
           with open('tests/cfg.yml', 'r') as f:
               cfg = yaml.safe_load(f) or {}
-          threshold = float(cfg.get('coverage', {}).get('threshold', 80))
 
-          tree = ET.parse('output/coverage.xml')
-          root = tree.getroot()
-          line_rate = float(root.attrib.get('line-rate', 0))
-          coverage = line_rate * 100
+          cov_cfg = cfg.get('coverage', {})
+          threshold = cov_cfg.get('threshold', 80)
+          exclude_patterns = cov_cfg.get('exclude', [])
+          if isinstance(exclude_patterns, str):
+              exclude_patterns = [exclude_patterns]
 
-          print(f'Coverage: {coverage:.2f}%')
-          print(f'Threshold: {threshold:.2f}%')
-          if coverage < threshold:
-              raise SystemExit(f'Coverage {coverage:.2f}% is below {threshold:.2f}% threshold')
-          print('Coverage gate PASSED')
+          cmd = [
+              'diff-cover', 'output/coverage.xml',
+              '--compare-branch=origin/${{ github.base_ref }}',
+              f'--fail-under={threshold}',
+          ]
+          for pattern in exclude_patterns:
+              cmd.append(f'--exclude={pattern}')
+
+          result = subprocess.run(cmd)
+          sys.exit(result.returncode)
           "
 
       - name: Upload test reports
