@@ -24,6 +24,7 @@ dependencies = [
 dev = [
     "ruff>=0.8.0",
     "mypy>=1.13.0",
+    "diff-cover>=9.0.0",
 ]
 
 [tool.pytest.ini_options]

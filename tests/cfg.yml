@@ -1,0 +1,6 @@
+coverage:
+  threshold: 80
+  exclude:
+    - "src/**/handler.py"
+    - "src/**/model.py"
+    - "src/**/__init__.py"

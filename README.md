@@ -51,7 +51,7 @@ fastapi-boilerplate/
 ├── tests/                  # Unit & Integration tests
 │   ├── unit/               # Unit tests (mocked dependencies)
 │   ├── integration/        # Integration tests (SQLite in-memory)
-│   └── test.yml            # Test configuration (coverage threshold, paths)
+│   └── cfg.yml             # Test configuration (coverage threshold, paths)
 ├── logs/                   # Application logs (auto-created)
 │   └── backend_{date}.log  # Daily log files (auto-rotated)
 ├── .env.example            # Environment variables template

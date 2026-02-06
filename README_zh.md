@@ -51,7 +51,7 @@ fastapi-boilerplate/
 ├── tests/                  # 单元测试与集成测试
 │   ├── unit/               # 单元测试 (mock 依赖)
 │   ├── integration/        # 集成测试 (SQLite 内存数据库)
-│   └── test.yml            # 测试配置（覆盖率阈值、路径）
+│   └── cfg.yml             # 测试配置（覆盖率阈值、路径）
 ├── logs/                   # 应用日志目录 (自动创建)
 │   └── backend_{date}.log  # 每日日志文件 (自动轮转)
 ├── .env.example            # 环境变量模板
