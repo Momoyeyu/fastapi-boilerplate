@@ -292,13 +292,7 @@ uv sync --all-extras
 make lint
 ```
 
-如果检测到格式问题，脚本会提示你是否自动格式化 (`[y/n]`)。
-
-自动修复代码检查与格式问题：
-
-```bash
-make lint fix=1
-```
+如果检测到代码检查或格式问题，脚本会提示你是否自动修复 (`[y/n]`)。
 
 ### 测试
 
@@ -369,7 +363,7 @@ coverage:
 make           # 显示帮助
 make run       # 启动开发服务器
 make migrate   # 运行数据库迁移
-make lint      # 运行代码检查 (fix=1 自动修复)
+make lint      # 运行代码检查
 make test      # 运行所有测试
 make deploy    # 部署应用
 ```

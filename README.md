@@ -292,13 +292,7 @@ Run all lint checks:
 make lint
 ```
 
-The script will prompt you to auto-format if any formatting issues are detected (`[y/n]`).
-
-Auto-fix linting and formatting issues:
-
-```bash
-make lint fix=1
-```
+If any linting or formatting issues are detected, the script will prompt you to auto-fix (`[y/n]`).
 
 ### Testing
 
@@ -369,7 +363,7 @@ Triggers on push to `master` branch or manual dispatch when enabled.
 make           # Show help
 make run       # Start development server
 make migrate   # Run database migrations
-make lint      # Run linting checks (fix=1 to auto-fix)
+make lint      # Run linting checks
 make test      # Run all tests
 make deploy    # Deploy application
 ```
