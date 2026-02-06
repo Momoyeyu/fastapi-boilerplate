@@ -21,7 +21,7 @@
 -   **依赖管理**: 使用 **uv** 进行极速的 Python 包管理。
 -   **Docker 支持**: 提供完整的 **Docker Compose** 配置，支持本地开发和容器化部署。
 -   **CI/CD 流水线**: GitHub Actions 工作流，包含静态检查和自动化测试。
--   **代码质量**: 使用 **ruff** 进行代码检查与格式化，**mypy** 进行类型检查。
+-   **代码质量**: 使用 **ruff** 进行代码检查与格式化。
 -   **清晰架构**: 模块化的 `src/` 目录结构，分离关注点 (Handler, Service, Model, DTO)。
 
 ## 📂 项目结构
@@ -37,7 +37,7 @@ fastapi-boilerplate/
 │   ├── lint.sh             # 本地代码检查脚本
 │   ├── migrate.sh          # 数据库迁移脚本
 │   ├── run.sh              # 本地启动脚本
-│   └── test.sh             # 运行测试并统计覆盖率
+│   └── test.sh             # 运行测试
 ├── src/                    # 源代码目录
 │   ├── auth/               # 认证模块 (JWT, Refresh Token)
 │   ├── common/             # 通用工具与错误处理
@@ -278,7 +278,7 @@ Content-Type: application/json
 
 ### 代码质量
 
-本项目使用 **ruff** 进行代码检查与格式化，**mypy** 进行类型检查。
+本项目使用 **ruff** 进行代码检查与格式化。
 
 安装开发依赖：
 
@@ -292,43 +292,19 @@ uv sync --all-extras
 make lint
 ```
 
-如果检测到格式问题，脚本会提示你是否自动格式化 (`[y/n]`)。
-
-或者单独运行：
-
-```bash
-# 代码检查
-uv run ruff check src tests
-
-# 格式检查
-uv run ruff format --check src tests
-
-# 类型检查
-uv run mypy src
-```
-
-自动修复问题：
-
-```bash
-uv run ruff check --fix src tests
-uv run ruff format src tests
-```
+如果检测到代码检查或格式问题，脚本会提示你是否自动修复 (`[y/n]`)。
 
 ### 测试
 
 本项目包含**单元测试**和**集成测试**。
 
-#### 运行测试并查看统计：
+#### 运行测试：
 
 ```bash
 make test
 ```
 
-输出内容包括：
-- 单元测试成功率
-- 单元测试覆盖率
-- 集成测试成功率
-- 覆盖率阈值检查（默认 80%）
+输出单元测试和集成测试的成功率。
 
 #### 单独运行测试：
 
@@ -345,8 +321,17 @@ uv run pytest tests -v
 
 #### 测试覆盖率
 
-覆盖率报告生成在 `output/` 目录：
-- `coverage.xml` - XML 格式，供 CI 工具使用
+覆盖率仅在 CI 的 PR 流程中检查，使用**增量覆盖率**（仅检查新增/修改的代码行）。配置文件 `tests/cfg.yml`：
+
+```yaml
+coverage:
+  threshold: 80        # 变更代码的最低覆盖率
+  exclude:             # 排除的文件
+    - "src/**/handler.py"
+    - "src/**/model.py"
+```
+
+测试报告生成在 `output/` 目录：
 - `junit-unit.xml` - 单元测试 JUnit 报告
 - `junit-integration.xml` - 集成测试 JUnit 报告
 
@@ -355,8 +340,9 @@ uv run pytest tests -v
 本项目包含 GitHub Actions 工作流：
 
 **CI (`.github/workflows/ci.yml`)**:
-1. **Lint Job**: ruff check、ruff format、mypy 类型检查
-2. **Test Job**: 单元测试 + 集成测试，覆盖率阈值 80%
+1. **Lint Job**: ruff check、ruff format
+2. **Test Job**: 单元测试 + 集成测试
+3. **Coverage Check (仅 PR)**: 使用 [diff-cover](https://github.com/Bachmann1234/diff-cover) 检查变更代码的增量覆盖率
 
 在 `master` 分支的 push/PR 时触发。
 

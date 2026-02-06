@@ -15,7 +15,7 @@ run: ## Start the development server (with auto-reload)
 migrate: ## Run database migrations
 	@./scripts/migrate.sh
 
-lint: ## Run linting checks (ruff, mypy)
+lint: ## Run linting checks (ruff)
 	@./scripts/lint.sh
 
 test: ## Run all tests (unit + integration)
