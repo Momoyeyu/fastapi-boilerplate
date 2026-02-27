@@ -6,9 +6,11 @@ from functools import cache
 from jwt import PyJWT
 
 from auth.model import create_refresh_token, revoke_refresh_token, rotate_refresh_token
+from auth.verification import consume_verification_code, create_verification_code
 from common import erri
+from common.email import send_verification_email
 from conf.config import settings
-from user.model import User, get_user
+from user.model import User, create_user, email_exists, get_user_by_identifier
 
 
 @cache
@@ -99,14 +101,107 @@ def revoke_token(refresh_token: str) -> bool:
     return revoke_refresh_token(refresh_token)
 
 
-def login_user(username: str, password: str) -> TokenPair:
+def login_user(identifier: str, password: str) -> TokenPair:
     """Authenticate user and create tokens.
+
+    Args:
+        identifier: Email or username.
+        password: Plain text password.
 
     Returns:
         A TokenPair containing access_token, refresh_token, and expiration info.
     """
-    user = get_user(username)
+    user = get_user_by_identifier(identifier)
     encrypted_password = get_password_hash(password)
     if not user or user.password != encrypted_password or user.id is None:
         raise erri.unauthorized("Invalid credentials")
     return create_token(user)
+
+
+def initiate_registration(email: str, password: str) -> None:
+    """Initiate registration by sending a verification code.
+
+    Args:
+        email: User's email address.
+        password: User's password (validated but not stored yet).
+
+    Raises:
+        BusinessError: If email is already registered.
+    """
+    if email_exists(email):
+        raise erri.conflict("Email already registered")
+
+    code = create_verification_code(email, "register")
+    send_verification_email(email, code.code, "register")
+
+
+def complete_registration(email: str, code: str, password: str) -> TokenPair:
+    """Complete registration after email verification.
+
+    Args:
+        email: User's email address.
+        code: Verification code.
+        password: User's password.
+
+    Returns:
+        A TokenPair for the newly created user.
+
+    Raises:
+        BusinessError: If verification fails or user creation fails.
+    """
+    if not consume_verification_code(email, code, "register"):
+        raise erri.bad_request("Invalid or expired verification code")
+
+    if email_exists(email):
+        raise erri.conflict("Email already registered")
+
+    encrypted_password = get_password_hash(password)
+    username = email.split("@")[0]
+    user = create_user(username, encrypted_password, email)
+    if not user or user.id is None:
+        raise erri.internal("Create user failed")
+
+    return create_token(user)
+
+
+def request_password_reset(email: str) -> None:
+    """Request password reset by sending a verification code.
+
+    Args:
+        email: User's email address.
+
+    Note:
+        Always returns success to prevent email enumeration.
+    """
+    if not email_exists(email):
+        return
+
+    code = create_verification_code(email, "reset_password")
+    send_verification_email(email, code.code, "reset_password")
+
+
+def reset_password(email: str, code: str, new_password: str) -> bool:
+    """Reset password after email verification.
+
+    Args:
+        email: User's email address.
+        code: Verification code.
+        new_password: New password.
+
+    Returns:
+        True if password was reset successfully.
+
+    Raises:
+        BusinessError: If verification fails.
+    """
+    if not consume_verification_code(email, code, "reset_password"):
+        raise erri.bad_request("Invalid or expired verification code")
+
+    from user.model import get_user_by_email, update_user_password
+
+    user = get_user_by_email(email)
+    if not user:
+        raise erri.not_found("User not found")
+
+    encrypted_password = get_password_hash(new_password)
+    return update_user_password(user.username, encrypted_password)

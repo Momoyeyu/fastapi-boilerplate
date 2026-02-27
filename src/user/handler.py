@@ -7,17 +7,6 @@ from user import dto, service
 router = APIRouter(prefix="/user", tags=["user"])
 
 
-@auth.exempt
-@router.post("/register", response_model=dto.UserRegisterResponse)
-async def register(body: dto.UserRegisterRequest) -> dto.UserRegisterResponse:
-    try:
-        user = service.register_user(body.username, body.password)
-        assert user.id is not None  # guaranteed by service
-        return dto.UserRegisterResponse(id=user.id, username=user.username)
-    except erri.BusinessError as e:
-        raise HTTPException(status_code=e.status_code, detail=e.detail) from None
-
-
 @router.get("/whoami", response_model=dto.UserWhoAmIResponse)
 async def whoami(request: Request) -> dto.UserWhoAmIResponse:
     try:
@@ -44,14 +33,13 @@ async def get_me(request: Request) -> dto.UserProfileResponse:
         raise HTTPException(status_code=e.status_code, detail=e.detail) from None
 
 
-@router.patch("/me", response_model=dto.UserProfileResponse)
+@router.post("/me", response_model=dto.UserProfileResponse)
 async def update_me(request: Request, body: dto.UserProfileUpdateRequest) -> dto.UserProfileResponse:
     try:
         username = auth.get_username(request)
         user = service.update_my_profile(
             username,
             nickname=body.nickname,
-            email=body.email,
             avatar_url=body.avatar_url,
         )
         return dto.UserProfileResponse(
@@ -62,5 +50,15 @@ async def update_me(request: Request, body: dto.UserProfileUpdateRequest) -> dto
             role=user.role,
             is_active=user.is_active,
         )
+    except erri.BusinessError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail) from None
+
+
+@router.post("/password/change", response_model=dto.PasswordChangeResponse)
+async def change_password(request: Request, body: dto.PasswordChangeRequest) -> dto.PasswordChangeResponse:
+    try:
+        username = auth.get_username(request)
+        service.change_password(username, body.old_password, body.new_password)
+        return dto.PasswordChangeResponse()
     except erri.BusinessError as e:
         raise HTTPException(status_code=e.status_code, detail=e.detail) from None

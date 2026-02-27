@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_seconds: int = 3600
     refresh_token_expire_seconds: int = 604800  # 7 days
+    verification_code_expire_seconds: int = 300  # 5 minutes
 
     # Admin account
     admin_username: str = "admin"

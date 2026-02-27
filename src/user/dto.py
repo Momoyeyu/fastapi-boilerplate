@@ -1,16 +1,6 @@
 from pydantic import BaseModel
 
 
-class UserRegisterRequest(BaseModel):
-    username: str
-    password: str
-
-
-class UserRegisterResponse(BaseModel):
-    id: int
-    username: str
-
-
 class UserWhoAmIResponse(BaseModel):
     username: str
 
@@ -18,7 +8,7 @@ class UserWhoAmIResponse(BaseModel):
 class UserProfileResponse(BaseModel):
     username: str
     nickname: str | None
-    email: str | None
+    email: str
     avatar_url: str | None
     role: str
     is_active: bool
@@ -26,5 +16,13 @@ class UserProfileResponse(BaseModel):
 
 class UserProfileUpdateRequest(BaseModel):
     nickname: str | None = None
-    email: str | None = None
     avatar_url: str | None = None
+
+
+class PasswordChangeRequest(BaseModel):
+    old_password: str
+    new_password: str
+
+
+class PasswordChangeResponse(BaseModel):
+    message: str = "Password changed successfully"

@@ -194,20 +194,20 @@ def test_user_me_uses_get_username_to_fetch_profile(monkeypatch: pytest.MonkeyPa
     assert resp.json()["username"] == "alice"
 
 
-def test_user_me_patch_updates_profile(monkeypatch: pytest.MonkeyPatch):
+def test_user_me_post_updates_profile(monkeypatch: pytest.MonkeyPatch):
     auth.EXEMPT_PATHS.clear()
     app = FastAPI()
     app.include_router(user_handler.router)
     auth.setup_auth_middleware(app)
     client = TestClient(app)
 
-    def _update_my_profile(username: str, *, nickname: str | None, email: str | None, avatar_url: str | None) -> User:
+    def _update_my_profile(username: str, *, nickname: str | None, avatar_url: str | None) -> User:
         return User(
             id=1,
             username=username,
             password="x",
+            email="alice@test.com",
             nickname=nickname,
-            email=email,
             avatar_url=avatar_url,
             role="user",
             is_active=True,
@@ -223,8 +223,8 @@ def test_user_me_patch_updates_profile(monkeypatch: pytest.MonkeyPatch):
         raising=True,
     )
 
-    token_pair = auth_service.create_token(User(id=1, username="alice", password="x"))
-    resp = client.patch(
+    token_pair = auth_service.create_token(User(id=1, username="alice", password="x", email="alice@test.com"))
+    resp = client.post(
         "/user/me",
         headers={"Authorization": f"Bearer {token_pair.access_token}"},
         json={"nickname": "NewName"},
