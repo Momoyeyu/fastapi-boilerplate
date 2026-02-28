@@ -6,6 +6,7 @@ from fastapi import APIRouter, FastAPI
 from loguru import logger
 
 from auth.handler import router as auth_router
+from common.trap import setup_exception_handlers
 from conf import logging
 from conf.db import close_db
 from conf.openapi import setup_openapi
@@ -57,6 +58,7 @@ def create_app() -> FastAPI:
 
     init_routers(_app)
     init_middlewares(_app)
+    setup_exception_handlers(_app)
 
     # Swagger Documents
     setup_openapi(_app)
