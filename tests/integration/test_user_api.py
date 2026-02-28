@@ -7,37 +7,24 @@ Tests the complete request/response cycle including database operations.
 from fastapi.testclient import TestClient
 
 
-class TestUserRegister:
-    """Tests for POST /user/register endpoint."""
+def register_and_verify(client: TestClient, email: str, password: str) -> dict:
+    """Helper to register a user through the two-step process."""
+    from auth.verification import _verification_codes
 
-    def test_register_success(self, client: TestClient):
-        """Test successful user registration."""
-        response = client.post(
-            "/user/register",
-            json={"username": "testuser", "password": "testpass123"},
-        )
-        assert response.status_code == 200
-        data = response.json()
-        assert data["username"] == "testuser"
-        assert "id" in data
-        assert isinstance(data["id"], int)
+    client.post("/auth/register", json={"email": email, "password": password})
+    key = f"{email.lower()}:register"
+    code = _verification_codes[key].code
+    response = client.post(
+        "/auth/register/verify",
+        json={"email": email, "code": code, "password": password},
+    )
+    return response.json()
 
-    def test_register_duplicate_username(self, client: TestClient):
-        """Test registration fails for duplicate username."""
-        # First registration should succeed
-        response1 = client.post(
-            "/user/register",
-            json={"username": "duplicate_user", "password": "pass123"},
-        )
-        assert response1.status_code == 200
 
-        # Second registration with same username should fail
-        response2 = client.post(
-            "/user/register",
-            json={"username": "duplicate_user", "password": "different_pass"},
-        )
-        assert response2.status_code == 409
-        assert "already exists" in response2.json()["detail"].lower()
+def get_auth_header(client: TestClient, email: str, password: str) -> dict:
+    """Helper to get auth header for a user."""
+    data = register_and_verify(client, email, password)
+    return {"Authorization": f"Bearer {data['access_token']}"}
 
 
 class TestProtectedEndpoints:
@@ -50,24 +37,11 @@ class TestProtectedEndpoints:
 
     def test_whoami_with_valid_token(self, client: TestClient):
         """Test accessing /user/whoami with valid token returns username."""
-        # Register and login
-        client.post(
-            "/user/register",
-            json={"username": "auth_user", "password": "authpass"},
-        )
-        login_response = client.post(
-            "/auth/login",
-            data={"username": "auth_user", "password": "authpass"},
-        )
-        token = login_response.json()["access_token"]
+        headers = get_auth_header(client, "auth@example.com", "authpass")
 
-        # Access protected endpoint
-        response = client.get(
-            "/user/whoami",
-            headers={"Authorization": f"Bearer {token}"},
-        )
+        response = client.get("/user/whoami", headers=headers)
         assert response.status_code == 200
-        assert response.json()["username"] == "auth_user"
+        assert response.json()["username"] == "auth"
 
     def test_whoami_with_invalid_token(self, client: TestClient):
         """Test accessing /user/whoami with invalid token returns 401."""
@@ -76,3 +50,66 @@ class TestProtectedEndpoints:
             headers={"Authorization": "Bearer invalid-token"},
         )
         assert response.status_code == 401
+
+
+class TestUserProfile:
+    """Tests for /user/me endpoint."""
+
+    def test_get_me_success(self, client: TestClient):
+        """Test GET /user/me returns user profile."""
+        headers = get_auth_header(client, "profile@example.com", "password")
+
+        response = client.get("/user/me", headers=headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["username"] == "profile"
+        assert data["email"] == "profile@example.com"
+        assert data["role"] == "user"
+        assert data["is_active"] is True
+
+    def test_update_me_success(self, client: TestClient):
+        """Test POST /user/me updates user profile."""
+        headers = get_auth_header(client, "update@example.com", "password")
+
+        response = client.post(
+            "/user/me",
+            headers=headers,
+            json={"nickname": "New Nick", "avatar_url": "https://example.com/avatar.png"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["nickname"] == "New Nick"
+        assert data["avatar_url"] == "https://example.com/avatar.png"
+
+
+class TestPasswordChange:
+    """Tests for /user/password/change endpoint."""
+
+    def test_change_password_success(self, client: TestClient):
+        """Test successful password change."""
+        headers = get_auth_header(client, "change@example.com", "oldpass")
+
+        response = client.post(
+            "/user/password/change",
+            headers=headers,
+            json={"old_password": "oldpass", "new_password": "newpass"},
+        )
+        assert response.status_code == 200
+
+        # Login with new password
+        login_response = client.post(
+            "/auth/login",
+            data={"username": "change@example.com", "password": "newpass"},
+        )
+        assert login_response.status_code == 200
+
+    def test_change_password_wrong_old(self, client: TestClient):
+        """Test password change fails with wrong old password."""
+        headers = get_auth_header(client, "wrongold@example.com", "correct")
+
+        response = client.post(
+            "/user/password/change",
+            headers=headers,
+            json={"old_password": "wrong", "new_password": "newpass"},
+        )
+        assert response.status_code == 400

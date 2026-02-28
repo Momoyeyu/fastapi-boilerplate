@@ -17,50 +17,53 @@ def mock_settings(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     return mock
 
 
-def test_register_user_when_user_exists(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(service, "get_user", lambda username: User(id=1, username=username, password="x"), raising=True)
-    with pytest.raises(erri.BusinessError) as exc:
-        service.register_user("alice", "pw")
-    assert exc.value.status_code == 409
-
-
-def test_register_user_success_hashes_password_and_calls_create(
-    monkeypatch: pytest.MonkeyPatch, mock_settings: MagicMock
-):
+def test_get_user_profile_not_found(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(service, "get_user", lambda username: None, raising=True)
-
-    captured: dict[str, str] = {}
-
-    def _create_user(username: str, password: str):
-        captured["username"] = username
-        captured["password"] = password
-        return User(id=123, username=username, password=password)
-
-    monkeypatch.setattr(service, "create_user", _create_user, raising=True)
-
-    user = service.register_user("alice", "pw")
-    assert user.id == 123
-    assert user.username == "alice"
-    assert captured["username"] == "alice"
-    assert captured["password"] == auth_service.get_password_hash("pw")
-
-
-def test_register_user_create_failed_returns_none(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(service, "get_user", lambda username: None, raising=True)
-    monkeypatch.setattr(service, "create_user", lambda username, password: None, raising=True)
     with pytest.raises(erri.BusinessError) as exc:
-        service.register_user("alice", "pw")
-    assert exc.value.status_code == 500
+        service.get_user_profile("alice")
+    assert exc.value.status_code == 404
 
 
-def test_register_user_create_failed_returns_user_without_id(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(service, "get_user", lambda username: None, raising=True)
-    monkeypatch.setattr(
-        service,
-        "create_user",
-        lambda username, password: User(id=None, username=username, password=password),
-        raising=True,
-    )
+def test_get_user_profile_success(monkeypatch: pytest.MonkeyPatch):
+    user = User(id=1, username="alice", email="alice@test.com", password="x")
+    monkeypatch.setattr(service, "get_user", lambda username: user, raising=True)
+    result = service.get_user_profile("alice")
+    assert result.username == "alice"
+    assert result.email == "alice@test.com"
+
+
+def test_update_my_profile_not_found(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(service, "update_user_profile", lambda *args, **kwargs: None, raising=True)
     with pytest.raises(erri.BusinessError) as exc:
-        service.register_user("alice", "pw")
-    assert exc.value.status_code == 500
+        service.update_my_profile("alice", nickname="Alice", avatar_url=None)
+    assert exc.value.status_code == 404
+
+
+def test_update_my_profile_success(monkeypatch: pytest.MonkeyPatch):
+    user = User(id=1, username="alice", email="alice@test.com", password="x", nickname="Alice")
+    monkeypatch.setattr(service, "update_user_profile", lambda *args, **kwargs: user, raising=True)
+    result = service.update_my_profile("alice", nickname="Alice", avatar_url=None)
+    assert result.nickname == "Alice"
+
+
+def test_change_password_user_not_found(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(service, "get_user", lambda username: None, raising=True)
+    with pytest.raises(erri.BusinessError) as exc:
+        service.change_password("alice", "old", "new")
+    assert exc.value.status_code == 404
+
+
+def test_change_password_wrong_old_password(monkeypatch: pytest.MonkeyPatch, mock_settings: MagicMock):
+    user = User(id=1, username="alice", email="alice@test.com", password=auth_service.get_password_hash("correct"))
+    monkeypatch.setattr(service, "get_user", lambda username: user, raising=True)
+    with pytest.raises(erri.BusinessError) as exc:
+        service.change_password("alice", "wrong", "new")
+    assert exc.value.status_code == 400
+
+
+def test_change_password_success(monkeypatch: pytest.MonkeyPatch, mock_settings: MagicMock):
+    user = User(id=1, username="alice", email="alice@test.com", password=auth_service.get_password_hash("old"))
+    monkeypatch.setattr(service, "get_user", lambda username: user, raising=True)
+    monkeypatch.setattr(service, "update_user_password", lambda *args, **kwargs: True, raising=True)
+    result = service.change_password("alice", "old", "new")
+    assert result is True
