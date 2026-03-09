@@ -7,9 +7,11 @@ from sqlalchemy import engine_from_config, pool
 from sqlmodel import SQLModel
 
 from conf.config import settings
+from invitation import model as invitation_model
 from user import model as user_model
 
 _ = user_model.User
+_ = invitation_model.InvitationCode
 
 alembic_config = context.config
 

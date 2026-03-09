@@ -14,14 +14,29 @@ class User(SQLModel, table=True):
     avatar_url: str | None = Field(default=None)
     role: str = Field(default="user")
     is_active: bool = Field(default=True)
+    invitation_code_id: int | None = Field(default=None)
     is_deleted: bool = Field(default=False)
     deleted_at: datetime | None = Field(default=None)
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
-def create_user(username: str, password: str, email: str, *, role: str = "user") -> User | None:
-    user = User(username=username, password=password, email=email, nickname=username, role=role)
+def create_user(
+    username: str,
+    password: str,
+    email: str,
+    *,
+    role: str = "user",
+    invitation_code_id: int | None = None,
+) -> User | None:
+    user = User(
+        username=username,
+        password=password,
+        email=email,
+        nickname=username,
+        role=role,
+        invitation_code_id=invitation_code_id,
+    )
     with Session(engine) as session:
         try:
             session.add(user)
