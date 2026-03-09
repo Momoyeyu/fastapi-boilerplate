@@ -4,6 +4,7 @@ import pytest
 
 from auth import service as auth_service
 from common import erri
+from common.resp import Code
 from user import service
 from user.model import User
 
@@ -21,7 +22,7 @@ def test_get_user_profile_not_found(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(service, "get_user", lambda username: None, raising=True)
     with pytest.raises(erri.BusinessError) as exc:
         service.get_user_profile("alice")
-    assert exc.value.status_code == 404
+    assert exc.value.code == Code.NOT_FOUND
 
 
 def test_get_user_profile_success(monkeypatch: pytest.MonkeyPatch):
@@ -36,7 +37,7 @@ def test_update_my_profile_not_found(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(service, "update_user_profile", lambda *args, **kwargs: None, raising=True)
     with pytest.raises(erri.BusinessError) as exc:
         service.update_my_profile("alice", nickname="Alice", avatar_url=None)
-    assert exc.value.status_code == 404
+    assert exc.value.code == Code.NOT_FOUND
 
 
 def test_update_my_profile_success(monkeypatch: pytest.MonkeyPatch):
@@ -50,7 +51,7 @@ def test_change_password_user_not_found(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(service, "get_user", lambda username: None, raising=True)
     with pytest.raises(erri.BusinessError) as exc:
         service.change_password("alice", "old", "new")
-    assert exc.value.status_code == 404
+    assert exc.value.code == Code.NOT_FOUND
 
 
 def test_change_password_wrong_old_password(monkeypatch: pytest.MonkeyPatch, mock_settings: MagicMock):
@@ -58,7 +59,7 @@ def test_change_password_wrong_old_password(monkeypatch: pytest.MonkeyPatch, moc
     monkeypatch.setattr(service, "get_user", lambda username: user, raising=True)
     with pytest.raises(erri.BusinessError) as exc:
         service.change_password("alice", "wrong", "new")
-    assert exc.value.status_code == 400
+    assert exc.value.code == Code.BAD_REQUEST
 
 
 def test_change_password_success(monkeypatch: pytest.MonkeyPatch, mock_settings: MagicMock):

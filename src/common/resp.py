@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 
 class Code:
-    """Business error codes, derived from HTTP status codes × 100."""
+    """Business error codes, derived from HTTP status codes x 100."""
 
     OK = 0
     BAD_REQUEST = 40000
@@ -35,11 +35,3 @@ def ok(data: Any = None, message: str = "ok") -> Response:
 
 def error(code: int, message: str, data: Any = None) -> Response:
     return Response(code=code, message=message, data=data)
-
-
-def bad_request(message: str, data: Any = None) -> Response:
-    return Response(code=Code.BAD_REQUEST, message=message, data=data)
-
-
-def internal_error(message: str, data: Any = None) -> Response:
-    return Response(code=Code.INTERNAL_ERROR, message=message, data=data)

@@ -1,11 +1,11 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import Any
 
 from fastapi import APIRouter, FastAPI
 from loguru import logger
 
 from auth.handler import router as auth_router
+from common.resp import Response, ok
 from common.trap import setup_exception_handlers
 from conf import logging
 from conf.db import close_db
@@ -31,8 +31,8 @@ def init_routers(_app: FastAPI) -> None:
     root_router = APIRouter()
 
     @root_router.get("/")
-    async def root() -> dict[str, Any]:
-        return {"message": "Hello FastAPI + UV!"}
+    async def root() -> Response:
+        return ok(message="Hello FastAPI + UV!")
 
     _app.include_router(root_router)
     _app.include_router(auth_router)

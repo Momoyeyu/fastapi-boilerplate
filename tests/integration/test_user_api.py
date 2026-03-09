@@ -6,6 +6,8 @@ Tests the complete request/response cycle including database operations.
 
 from fastapi.testclient import TestClient
 
+from common.resp import Code
+
 
 def register_and_verify(client: TestClient, email: str, password: str) -> dict:
     """Helper to register a user through the two-step process."""
@@ -23,17 +25,18 @@ def register_and_verify(client: TestClient, email: str, password: str) -> dict:
 
 def get_auth_header(client: TestClient, email: str, password: str) -> dict:
     """Helper to get auth header for a user."""
-    data = register_and_verify(client, email, password)
-    return {"Authorization": f"Bearer {data['access_token']}"}
+    body = register_and_verify(client, email, password)
+    return {"Authorization": f"Bearer {body['data']['access_token']}"}
 
 
 class TestProtectedEndpoints:
     """Tests for protected endpoints requiring authentication."""
 
     def test_whoami_without_token(self, client: TestClient):
-        """Test accessing /user/whoami without token returns 401."""
+        """Test accessing /user/whoami without token returns unauthorized."""
         response = client.get("/user/whoami")
-        assert response.status_code == 401
+        assert response.status_code == 200
+        assert response.json()["code"] == Code.UNAUTHORIZED
 
     def test_whoami_with_valid_token(self, client: TestClient):
         """Test accessing /user/whoami with valid token returns username."""
@@ -41,15 +44,18 @@ class TestProtectedEndpoints:
 
         response = client.get("/user/whoami", headers=headers)
         assert response.status_code == 200
-        assert response.json()["username"] == "auth"
+        body = response.json()
+        assert body["code"] == Code.OK
+        assert body["data"]["username"] == "auth"
 
     def test_whoami_with_invalid_token(self, client: TestClient):
-        """Test accessing /user/whoami with invalid token returns 401."""
+        """Test accessing /user/whoami with invalid token returns unauthorized."""
         response = client.get(
             "/user/whoami",
             headers={"Authorization": "Bearer invalid-token"},
         )
-        assert response.status_code == 401
+        assert response.status_code == 200
+        assert response.json()["code"] == Code.UNAUTHORIZED
 
 
 class TestUserProfile:
@@ -61,7 +67,9 @@ class TestUserProfile:
 
         response = client.get("/user/me", headers=headers)
         assert response.status_code == 200
-        data = response.json()
+        body = response.json()
+        assert body["code"] == Code.OK
+        data = body["data"]
         assert data["username"] == "profile"
         assert data["email"] == "profile@example.com"
         assert data["role"] == "user"
@@ -77,7 +85,9 @@ class TestUserProfile:
             json={"nickname": "New Nick", "avatar_url": "https://example.com/avatar.png"},
         )
         assert response.status_code == 200
-        data = response.json()
+        body = response.json()
+        assert body["code"] == Code.OK
+        data = body["data"]
         assert data["nickname"] == "New Nick"
         assert data["avatar_url"] == "https://example.com/avatar.png"
 
@@ -95,6 +105,7 @@ class TestPasswordChange:
             json={"old_password": "oldpass", "new_password": "newpass"},
         )
         assert response.status_code == 200
+        assert response.json()["code"] == Code.OK
 
         # Login with new password
         login_response = client.post(
@@ -102,6 +113,7 @@ class TestPasswordChange:
             data={"username": "change@example.com", "password": "newpass"},
         )
         assert login_response.status_code == 200
+        assert login_response.json()["code"] == Code.OK
 
     def test_change_password_wrong_old(self, client: TestClient):
         """Test password change fails with wrong old password."""
@@ -112,4 +124,5 @@ class TestPasswordChange:
             headers=headers,
             json={"old_password": "wrong", "new_password": "newpass"},
         )
-        assert response.status_code == 400
+        assert response.status_code == 200
+        assert response.json()["code"] == Code.BAD_REQUEST

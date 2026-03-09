@@ -3,12 +3,13 @@ from fastapi import APIRouter, FastAPI, Request
 from fastapi.testclient import TestClient
 
 from auth import service as auth_service
+from common.resp import Code
 from middleware import auth
 from user import handler as user_handler
 from user.model import User
 
 
-def test_jwt_middleware_returns_401_when_missing_authorization_header():
+def test_jwt_middleware_returns_unauthorized_when_missing_authorization_header():
     auth.EXEMPT_PATHS.clear()
     app = FastAPI()
 
@@ -19,11 +20,11 @@ def test_jwt_middleware_returns_401_when_missing_authorization_header():
     auth.setup_auth_middleware(app)
     client = TestClient(app)
     resp = client.get("/protected")
-    assert resp.status_code == 401
-    assert resp.json() == {"detail": "Unauthorized"}
+    assert resp.status_code == 200
+    assert resp.json()["code"] == Code.UNAUTHORIZED
 
 
-def test_jwt_middleware_returns_401_when_token_invalid():
+def test_jwt_middleware_returns_unauthorized_when_token_invalid():
     auth.EXEMPT_PATHS.clear()
     app = FastAPI()
 
@@ -34,8 +35,8 @@ def test_jwt_middleware_returns_401_when_token_invalid():
     auth.setup_auth_middleware(app)
     client = TestClient(app)
     resp = client.get("/protected", headers={"Authorization": "Bearer not-a-jwt"})
-    assert resp.status_code == 401
-    assert resp.json() == {"detail": "Invalid token"}
+    assert resp.status_code == 200
+    assert resp.json()["code"] == Code.UNAUTHORIZED
 
 
 def test_jwt_middleware_allows_exempt_route_without_authorization_header():
@@ -152,7 +153,8 @@ def test_user_whoami_returns_username_from_token(monkeypatch: pytest.MonkeyPatch
     token_pair = auth_service.create_token(User(id=1, username="alice", password="x"))
     resp = client.get("/user/whoami", headers={"Authorization": f"Bearer {token_pair.access_token}"})
     assert resp.status_code == 200
-    assert resp.json() == {"username": "alice"}
+    assert resp.json()["code"] == Code.OK
+    assert resp.json()["data"]["username"] == "alice"
 
 
 def test_user_me_uses_get_username_to_fetch_profile(monkeypatch: pytest.MonkeyPatch):
@@ -191,7 +193,7 @@ def test_user_me_uses_get_username_to_fetch_profile(monkeypatch: pytest.MonkeyPa
     resp = client.get("/user/me", headers={"Authorization": f"Bearer {token_pair.access_token}"})
     assert resp.status_code == 200
     assert captured["username"] == "alice"
-    assert resp.json()["username"] == "alice"
+    assert resp.json()["data"]["username"] == "alice"
 
 
 def test_user_me_post_updates_profile(monkeypatch: pytest.MonkeyPatch):
@@ -230,5 +232,5 @@ def test_user_me_post_updates_profile(monkeypatch: pytest.MonkeyPatch):
         json={"nickname": "NewName"},
     )
     assert resp.status_code == 200
-    assert resp.json()["username"] == "alice"
-    assert resp.json()["nickname"] == "NewName"
+    assert resp.json()["data"]["username"] == "alice"
+    assert resp.json()["data"]["nickname"] == "NewName"

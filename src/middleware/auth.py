@@ -2,12 +2,12 @@ from collections.abc import Awaitable, Callable
 from functools import cache
 from typing import Any, NoReturn
 
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 from jwt import PyJWT, PyJWTError
 
-from common import erri
+from common import erri, resp
 from conf.config import settings
 
 
@@ -105,13 +105,14 @@ def setup_auth_middleware(app: FastAPI) -> None:
 
         auth = request.headers.get("Authorization")
         if not auth or not auth.startswith("Bearer "):
-            return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
+            return JSONResponse(
+                status_code=200,
+                content=resp.error(resp.Code.UNAUTHORIZED, "Unauthorized").model_dump(),
+            )
         token = auth.split(" ", 1)[1]
         try:
             payload = verify_token(token)
         except erri.BusinessError as e:
-            return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
-        except HTTPException as e:
-            return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
+            return JSONResponse(status_code=200, content=resp.error(e.code, e.message).model_dump())
         request.state.user = payload.get("sub")
         return await call_next(request)

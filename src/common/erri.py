@@ -1,32 +1,34 @@
 from __future__ import annotations
 
+from common.resp import Code
+
 
 class BusinessError(Exception):
-    def __init__(self, *, status_code: int, detail: str):
-        self.status_code = status_code
-        self.detail = detail
-        super().__init__(detail)
+    def __init__(self, *, code: int, message: str):
+        self.code = code
+        self.message = message
+        super().__init__(message)
 
 
-def bad_request(detail: str) -> BusinessError:
-    return BusinessError(status_code=400, detail=detail)
+def bad_request(message: str) -> BusinessError:
+    return BusinessError(code=Code.BAD_REQUEST, message=message)
 
 
-def unauthorized(detail: str) -> BusinessError:
-    return BusinessError(status_code=401, detail=detail)
+def unauthorized(message: str) -> BusinessError:
+    return BusinessError(code=Code.UNAUTHORIZED, message=message)
 
 
-def forbidden(detail: str) -> BusinessError:
-    return BusinessError(status_code=403, detail=detail)
+def forbidden(message: str) -> BusinessError:
+    return BusinessError(code=Code.FORBIDDEN, message=message)
 
 
-def not_found(detail: str) -> BusinessError:
-    return BusinessError(status_code=404, detail=detail)
+def not_found(message: str) -> BusinessError:
+    return BusinessError(code=Code.NOT_FOUND, message=message)
 
 
-def conflict(detail: str) -> BusinessError:
-    return BusinessError(status_code=409, detail=detail)
+def conflict(message: str) -> BusinessError:
+    return BusinessError(code=Code.CONFLICT, message=message)
 
 
-def internal(detail: str) -> BusinessError:
-    return BusinessError(status_code=500, detail=detail)
+def internal(message: str) -> BusinessError:
+    return BusinessError(code=Code.INTERNAL_ERROR, message=message)

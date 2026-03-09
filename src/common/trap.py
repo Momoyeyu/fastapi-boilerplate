@@ -27,10 +27,9 @@ STATUS_TO_BUSINESS_CODE: dict[int, int] = {
 
 
 async def business_error_handler(_request: Request, exc: BusinessError) -> JSONResponse:
-    code = STATUS_TO_BUSINESS_CODE.get(exc.status_code, resp.Code.INTERNAL_ERROR)
     return JSONResponse(
         status_code=200,
-        content=resp.error(code, exc.detail).model_dump(),
+        content=resp.error(exc.code, exc.message).model_dump(),
     )
 
 
@@ -54,7 +53,7 @@ async def generic_error_handler(_request: Request, exc: Exception) -> JSONRespon
     logger.exception("Unhandled exception: {}", exc)
     return JSONResponse(
         status_code=200,
-        content=resp.internal_error("Internal server error").model_dump(),
+        content=resp.error(resp.Code.INTERNAL_ERROR, "Internal server error").model_dump(),
     )
 
 
