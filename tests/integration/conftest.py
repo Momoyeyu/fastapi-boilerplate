@@ -58,17 +58,34 @@ def client(test_engine, monkeypatch) -> Generator[TestClient, None, None]:
         yield test_client
 
 
+class FakeRedis:
+    """In-memory Redis mock so tests run without a real Redis server."""
+
+    def __init__(self):
+        self._store: dict[str, str] = {}
+
+    def setex(self, key, ttl, value):
+        self._store[key] = value
+
+    def get(self, key):
+        return self._store.get(key)
+
+    def delete(self, key):
+        self._store.pop(key, None)
+
+    def flushdb(self):
+        self._store.clear()
+
+    def close(self):
+        pass
+
+
 @pytest.fixture(autouse=True)
 def redis_test_db(monkeypatch):
-    """Use a separate Redis DB for tests and flush it."""
-    import redis as redis_lib
-
-    test_client = redis_lib.Redis(host="localhost", port=6379, db=1, decode_responses=True)
-    monkeypatch.setattr(redis_module, "_client", test_client)
-    test_client.flushdb()
-    yield test_client
-    test_client.flushdb()
-    test_client.close()
+    """Provide a FakeRedis instance so integration tests don't need a real Redis."""
+    fake = FakeRedis()
+    monkeypatch.setattr(redis_module, "_client", fake)
+    yield fake
     monkeypatch.setattr(redis_module, "_client", None)
 
 
