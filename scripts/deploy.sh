@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ===========================================
-# FastAPI Boilerplate - Deployment Script
+# FastAPI Demo - Deployment Script
 # ===========================================
 # This script handles the deployment process:
 # 1. Pull the latest Docker image
