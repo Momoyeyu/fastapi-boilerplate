@@ -1,103 +1,91 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 
 from auth import dto, service
-from common import erri
+from common.resp import Response, ok
 from middleware import auth
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @auth.exempt
-@router.post("/register", response_model=dto.RegisterResponse)
-async def register(body: dto.RegisterRequest) -> dto.RegisterResponse:
+@router.post("/register")
+async def register(body: dto.RegisterRequest) -> Response:
     """Initiate registration by sending a verification code to email."""
-    try:
-        service.initiate_registration(body.email, body.password)
-        return dto.RegisterResponse()
-    except erri.BusinessError as e:
-        raise HTTPException(status_code=e.status_code, detail=e.detail) from None
+    service.initiate_registration(body.email, body.password)
+    return ok(message="Verification code sent")
 
 
 @auth.exempt
-@router.post("/register/verify", response_model=dto.LoginResponse)
-async def register_verify(body: dto.RegisterVerifyRequest) -> dto.LoginResponse:
+@router.post("/register/verify")
+async def register_verify(body: dto.RegisterVerifyRequest) -> Response:
     """Complete registration after email verification."""
-    try:
-        token_pair = service.complete_registration(body.email, body.code, body.password)
-        return dto.LoginResponse(
+    token_pair = service.complete_registration(body.email, body.code, body.password)
+    return ok(
+        data=dto.TokenData(
             access_token=token_pair.access_token,
             refresh_token=token_pair.refresh_token,
             expires_in=token_pair.expires_in,
             refresh_token_expires_in=token_pair.refresh_token_expires_in,
-        )
-    except erri.BusinessError as e:
-        raise HTTPException(status_code=e.status_code, detail=e.detail) from None
+        ).model_dump()
+    )
 
 
 @auth.exempt
-@router.post("/login", response_model=dto.LoginResponse)
-async def login(form_data: OAuth2PasswordRequestForm = Depends()) -> dto.LoginResponse:
+@router.post("/login")
+async def login(form_data: OAuth2PasswordRequestForm = Depends()) -> Response:
     """Authenticate user and return access and refresh tokens.
 
     Supports login with email or username.
     """
-    try:
-        token_pair = service.login_user(form_data.username, form_data.password)
-        return dto.LoginResponse(
+    token_pair = service.login_user(form_data.username, form_data.password)
+    return ok(
+        data=dto.TokenData(
             access_token=token_pair.access_token,
             refresh_token=token_pair.refresh_token,
             expires_in=token_pair.expires_in,
             refresh_token_expires_in=token_pair.refresh_token_expires_in,
-        )
-    except erri.BusinessError as e:
-        raise HTTPException(
-            status_code=400,
-            detail={"error": "invalid_grant", "error_description": e.detail},
-        ) from None
+        ).model_dump()
+    )
 
 
 @auth.exempt
-@router.post("/token/refresh", response_model=dto.RefreshTokenResponse)
-async def refresh(body: dto.RefreshTokenRequest) -> dto.RefreshTokenResponse:
+@router.post("/token/refresh")
+async def refresh(body: dto.RefreshTokenRequest) -> Response:
     """Refresh access token using a valid refresh token.
 
     Implements Token Rotation: the old refresh token is revoked and a new one is issued.
     """
-    try:
-        token_pair = service.refresh_tokens(body.refresh_token)
-        return dto.RefreshTokenResponse(
+    token_pair = service.refresh_tokens(body.refresh_token)
+    return ok(
+        data=dto.TokenData(
             access_token=token_pair.access_token,
             refresh_token=token_pair.refresh_token,
             expires_in=token_pair.expires_in,
             refresh_token_expires_in=token_pair.refresh_token_expires_in,
-        )
-    except erri.BusinessError as e:
-        raise HTTPException(status_code=e.status_code, detail=e.detail) from None
+        ).model_dump()
+    )
 
 
 @auth.exempt
-@router.post("/logout", response_model=dto.LogoutResponse)
-async def logout(body: dto.RefreshTokenRequest) -> dto.LogoutResponse:
+@router.post("/logout")
+async def logout(body: dto.RefreshTokenRequest) -> Response:
     """Logout by revoking the refresh token."""
     service.revoke_token(body.refresh_token)
-    return dto.LogoutResponse()
+    return ok(message="Successfully logged out")
 
 
 @auth.exempt
-@router.post("/password/forgot", response_model=dto.PasswordForgotResponse)
-async def password_forgot(body: dto.PasswordForgotRequest) -> dto.PasswordForgotResponse:
+@router.post("/password/forgot")
+async def password_forgot(body: dto.PasswordForgotRequest) -> Response:
     """Request password reset by sending a verification code."""
     service.request_password_reset(body.email)
-    return dto.PasswordForgotResponse()
+    return ok(message="If the email is registered, a verification code has been sent")
 
 
 @auth.exempt
-@router.post("/password/reset", response_model=dto.PasswordResetResponse)
-async def password_reset(body: dto.PasswordResetRequest) -> dto.PasswordResetResponse:
+@router.post("/password/reset")
+async def password_reset(body: dto.PasswordResetRequest) -> Response:
     """Reset password after email verification."""
-    try:
-        service.reset_password(body.email, body.code, body.new_password)
-        return dto.PasswordResetResponse()
-    except erri.BusinessError as e:
-        raise HTTPException(status_code=e.status_code, detail=e.detail) from None
+    service.reset_password(body.email, body.code, body.new_password)
+    return ok(message="Password reset successfully")

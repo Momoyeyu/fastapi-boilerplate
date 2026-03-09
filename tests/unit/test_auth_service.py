@@ -6,6 +6,7 @@ import pytest
 from auth import service
 from auth.service import TokenPair
 from common import erri
+from common.resp import Code
 from user.model import User
 
 
@@ -28,7 +29,7 @@ def test_login_user_user_not_found(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(service, "get_user_by_identifier", lambda identifier: None, raising=True)
     with pytest.raises(erri.BusinessError) as exc:
         service.login_user("alice", "pw")
-    assert exc.value.status_code == 401
+    assert exc.value.code == Code.UNAUTHORIZED
 
 
 def test_login_user_password_mismatch(monkeypatch: pytest.MonkeyPatch, mock_settings: MagicMock):
@@ -36,7 +37,7 @@ def test_login_user_password_mismatch(monkeypatch: pytest.MonkeyPatch, mock_sett
     monkeypatch.setattr(service, "get_user_by_identifier", lambda identifier: user, raising=True)
     with pytest.raises(erri.BusinessError) as exc:
         service.login_user("alice", "wrong")
-    assert exc.value.status_code == 401
+    assert exc.value.code == Code.UNAUTHORIZED
 
 
 def test_login_user_user_without_id(monkeypatch: pytest.MonkeyPatch, mock_settings: MagicMock):
@@ -44,7 +45,7 @@ def test_login_user_user_without_id(monkeypatch: pytest.MonkeyPatch, mock_settin
     monkeypatch.setattr(service, "get_user_by_identifier", lambda identifier: user, raising=True)
     with pytest.raises(erri.BusinessError) as exc:
         service.login_user("alice", "pw")
-    assert exc.value.status_code == 401
+    assert exc.value.code == Code.UNAUTHORIZED
 
 
 def test_login_user_success_creates_token(monkeypatch: pytest.MonkeyPatch, mock_settings: MagicMock):
@@ -91,7 +92,7 @@ def test_initiate_registration_email_exists(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(service, "email_exists", lambda email: True, raising=True)
     with pytest.raises(erri.BusinessError) as exc:
         service.initiate_registration("alice@test.com", "pw")
-    assert exc.value.status_code == 409
+    assert exc.value.code == Code.CONFLICT
 
 
 def test_initiate_registration_success(monkeypatch: pytest.MonkeyPatch):
@@ -135,7 +136,7 @@ def test_complete_registration_invalid_code(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(service, "consume_verification_code", lambda *args: False, raising=True)
     with pytest.raises(erri.BusinessError) as exc:
         service.complete_registration("alice@test.com", "wrong", "pw")
-    assert exc.value.status_code == 400
+    assert exc.value.code == Code.BAD_REQUEST
 
 
 def test_complete_registration_success(monkeypatch: pytest.MonkeyPatch, mock_settings: MagicMock):

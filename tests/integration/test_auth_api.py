@@ -6,6 +6,10 @@ Tests the complete request/response cycle including database operations.
 
 from fastapi.testclient import TestClient
 
+from common.resp import Code
+
+ENVELOPE_KEYS = {"code", "message", "data"}
+
 
 def register_and_verify(client: TestClient, email: str, password: str) -> dict:
     """Helper to register a user through the two-step process."""
@@ -36,11 +40,15 @@ class TestAuthRegister:
             json={"email": "test@example.com", "password": "secret123"},
         )
         assert response.status_code == 200
-        assert "Verification code sent" in response.json()["message"]
+        body = response.json()
+        assert body["code"] == Code.OK
+        assert "Verification code sent" in body["message"]
 
     def test_register_verify_success(self, client: TestClient):
         """Test successful registration verification."""
-        data = register_and_verify(client, "newuser@example.com", "secret123")
+        body = register_and_verify(client, "newuser@example.com", "secret123")
+        assert body["code"] == Code.OK
+        data = body["data"]
         assert "access_token" in data
         assert "refresh_token" in data
         assert data["token_type"] == "bearer"
@@ -53,14 +61,15 @@ class TestAuthRegister:
             "/auth/register",
             json={"email": "duplicate@example.com", "password": "different"},
         )
-        assert response.status_code == 409
+        assert response.status_code == 200
+        assert response.json()["code"] == Code.CONFLICT
 
 
 class TestAuthLogin:
     """Tests for POST /auth/login endpoint."""
 
     def test_login_success(self, client: TestClient):
-        """Test successful login returns OAuth2 compliant token response with refresh token."""
+        """Test successful login returns token data in envelope."""
         register_and_verify(client, "login@example.com", "secret123")
 
         response = client.post(
@@ -68,11 +77,12 @@ class TestAuthLogin:
             data={"username": "login@example.com", "password": "secret123"},
         )
         assert response.status_code == 200
-        data = response.json()
+        body = response.json()
+        assert body["code"] == Code.OK
+        data = body["data"]
         assert "access_token" in data
         assert data["token_type"] == "bearer"
         assert len(data["access_token"]) > 0
-        assert "expires_in" in data
         assert isinstance(data["expires_in"], int)
         assert data["expires_in"] > 0
         assert "refresh_token" in data
@@ -83,34 +93,32 @@ class TestAuthLogin:
         """Test login with username instead of email."""
         register_and_verify(client, "username_test@example.com", "secret123")
 
-        # Login with username (email prefix)
         response = client.post(
             "/auth/login",
             data={"username": "username_test", "password": "secret123"},
         )
         assert response.status_code == 200
+        assert response.json()["code"] == Code.OK
 
     def test_login_wrong_password(self, client: TestClient):
-        """Test login fails with wrong password returns OAuth2 error."""
+        """Test login fails with wrong password."""
         register_and_verify(client, "wrongpass@example.com", "correct_pass")
 
         response = client.post(
             "/auth/login",
             data={"username": "wrongpass@example.com", "password": "wrong_pass"},
         )
-        assert response.status_code == 400
-        data = response.json()["detail"]
-        assert data["error"] == "invalid_grant"
+        assert response.status_code == 200
+        assert response.json()["code"] == Code.UNAUTHORIZED
 
     def test_login_nonexistent_user(self, client: TestClient):
-        """Test login fails for non-existent user returns OAuth2 error."""
+        """Test login fails for non-existent user."""
         response = client.post(
             "/auth/login",
             data={"username": "nonexistent@example.com", "password": "anypass"},
         )
-        assert response.status_code == 400
-        data = response.json()["detail"]
-        assert data["error"] == "invalid_grant"
+        assert response.status_code == 200
+        assert response.json()["code"] == Code.UNAUTHORIZED
 
 
 class TestRefreshToken:
@@ -118,15 +126,17 @@ class TestRefreshToken:
 
     def test_refresh_success(self, client: TestClient):
         """Test successful token refresh returns new token pair."""
-        data = register_and_verify(client, "refresh@example.com", "secret123")
-        refresh_token = data["refresh_token"]
+        body = register_and_verify(client, "refresh@example.com", "secret123")
+        refresh_token = body["data"]["refresh_token"]
 
         response = client.post(
             "/auth/token/refresh",
             json={"refresh_token": refresh_token},
         )
         assert response.status_code == 200
-        data = response.json()
+        body = response.json()
+        assert body["code"] == Code.OK
+        data = body["data"]
         assert "access_token" in data
         assert "refresh_token" in data
         assert data["token_type"] == "bearer"
@@ -138,12 +148,13 @@ class TestRefreshToken:
             "/auth/token/refresh",
             json={"refresh_token": "invalid-token"},
         )
-        assert response.status_code == 401
+        assert response.status_code == 200
+        assert response.json()["code"] == Code.UNAUTHORIZED
 
     def test_refresh_with_revoked_token(self, client: TestClient):
         """Test refresh fails with already used (revoked) token."""
-        data = register_and_verify(client, "revoked@example.com", "secret123")
-        refresh_token = data["refresh_token"]
+        body = register_and_verify(client, "revoked@example.com", "secret123")
+        refresh_token = body["data"]["refresh_token"]
 
         # First refresh should succeed
         first_refresh = client.post(
@@ -151,13 +162,15 @@ class TestRefreshToken:
             json={"refresh_token": refresh_token},
         )
         assert first_refresh.status_code == 200
+        assert first_refresh.json()["code"] == Code.OK
 
         # Second refresh with same token should fail (Token Rotation)
         second_refresh = client.post(
             "/auth/token/refresh",
             json={"refresh_token": refresh_token},
         )
-        assert second_refresh.status_code == 401
+        assert second_refresh.status_code == 200
+        assert second_refresh.json()["code"] == Code.UNAUTHORIZED
 
 
 class TestLogout:
@@ -165,14 +178,15 @@ class TestLogout:
 
     def test_logout_success(self, client: TestClient):
         """Test successful logout revokes refresh token."""
-        data = register_and_verify(client, "logout@example.com", "secret123")
-        refresh_token = data["refresh_token"]
+        body = register_and_verify(client, "logout@example.com", "secret123")
+        refresh_token = body["data"]["refresh_token"]
 
         response = client.post(
             "/auth/logout",
             json={"refresh_token": refresh_token},
         )
         assert response.status_code == 200
+        assert response.json()["code"] == Code.OK
         assert response.json()["message"] == "Successfully logged out"
 
         # Try to use the revoked refresh token
@@ -180,7 +194,8 @@ class TestLogout:
             "/auth/token/refresh",
             json={"refresh_token": refresh_token},
         )
-        assert refresh_response.status_code == 401
+        assert refresh_response.status_code == 200
+        assert refresh_response.json()["code"] == Code.UNAUTHORIZED
 
     def test_logout_with_invalid_token(self, client: TestClient):
         """Test logout with invalid token still returns success (idempotent)."""
@@ -189,6 +204,7 @@ class TestLogout:
             json={"refresh_token": "invalid-token"},
         )
         assert response.status_code == 200
+        assert response.json()["code"] == Code.OK
 
 
 class TestPasswordReset:
@@ -203,6 +219,7 @@ class TestPasswordReset:
             json={"email": "forgot@example.com"},
         )
         assert response.status_code == 200
+        assert response.json()["code"] == Code.OK
 
     def test_password_forgot_nonexistent_email(self, client: TestClient):
         """Test password forgot for non-existent email returns success (no enumeration)."""
@@ -211,6 +228,7 @@ class TestPasswordReset:
             json={"email": "nonexistent@example.com"},
         )
         assert response.status_code == 200
+        assert response.json()["code"] == Code.OK
 
     def test_password_reset_success(self, client: TestClient):
         """Test password reset with valid code."""
@@ -231,6 +249,7 @@ class TestPasswordReset:
             json={"email": "reset@example.com", "code": code, "new_password": "newpass"},
         )
         assert response.status_code == 200
+        assert response.json()["code"] == Code.OK
 
         # Login with new password
         login_response = client.post(
@@ -238,3 +257,4 @@ class TestPasswordReset:
             data={"username": "reset@example.com", "password": "newpass"},
         )
         assert login_response.status_code == 200
+        assert login_response.json()["code"] == Code.OK
