@@ -144,6 +144,10 @@ def test_complete_registration_success(monkeypatch: pytest.MonkeyPatch, mock_set
     monkeypatch.setattr(service, "consume_verification_code", lambda *args: True, raising=True)
     monkeypatch.setattr(service, "email_exists", lambda email: False, raising=True)
 
+    import auth.verification as verification_mod
+
+    monkeypatch.setattr(verification_mod, "consume_invitation_context", lambda email: None)
+
     user = User(id=1, username="alice", email="alice@test.com", password="x")
     monkeypatch.setattr(service, "create_user", lambda *args, **kwargs: user, raising=True)
 

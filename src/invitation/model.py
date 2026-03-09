@@ -48,22 +48,3 @@ def increment_used_count(code_id: int) -> bool:
         session.add(invitation)
         session.commit()
         return True
-
-
-def create_invitation_code(
-    code: str,
-    *,
-    max_uses: int = 0,
-    is_active: bool = True,
-    expires_at: datetime | None = None,
-) -> InvitationCode | None:
-    invitation = InvitationCode(code=code, max_uses=max_uses, is_active=is_active, expires_at=expires_at)
-    with Session(engine) as session:
-        try:
-            session.add(invitation)
-            session.commit()
-            session.refresh(invitation)
-        except Exception:
-            session.rollback()
-            return None
-    return invitation
