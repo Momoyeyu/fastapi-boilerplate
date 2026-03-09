@@ -13,11 +13,11 @@ ENVELOPE_KEYS = {"code", "message", "data"}
 
 
 def register_and_verify(client: TestClient, email: str, password: str) -> dict:
-    from auth.verification import _verification_codes
+    from conf.redis import get_redis
 
     client.post("/auth/register", json={"email": email, "password": password})
-    key = f"{email.lower()}:register"
-    code = _verification_codes[key].code
+    key = f"verification:{email.lower()}:register"
+    code = get_redis().get(key)
     response = client.post(
         "/auth/register/verify",
         json={"email": email, "code": code, "password": password},
