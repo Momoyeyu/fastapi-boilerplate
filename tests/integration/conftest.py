@@ -14,6 +14,7 @@ from sqlmodel import Session, SQLModel, create_engine
 
 from auth import model as auth_model
 from conf import db as db_module
+from conf import redis as redis_module
 from user import model as user_model
 
 
@@ -55,6 +56,20 @@ def client(test_engine, monkeypatch) -> Generator[TestClient, None, None]:
 
     with TestClient(app) as test_client:
         yield test_client
+
+
+@pytest.fixture(autouse=True)
+def redis_test_db(monkeypatch):
+    """Use a separate Redis DB for tests and flush it."""
+    import redis as redis_lib
+
+    test_client = redis_lib.Redis(host="localhost", port=6379, db=1, decode_responses=True)
+    monkeypatch.setattr(redis_module, "_client", test_client)
+    test_client.flushdb()
+    yield test_client
+    test_client.flushdb()
+    test_client.close()
+    monkeypatch.setattr(redis_module, "_client", None)
 
 
 @pytest.fixture(scope="function")

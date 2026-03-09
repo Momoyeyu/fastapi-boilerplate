@@ -15,6 +15,18 @@ services:
       timeout: 3s
       retries: 12
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
   app:
     image: ${DOCKER_IMAGE:-fastapi-boilerplate:latest}
     build:
@@ -35,11 +47,14 @@ services:
       JWT_EXPIRE_SECONDS: ${JWT_EXPIRE_SECONDS:-3600}
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      REDIS_HOST: redis
       DEBUG: ${DEBUG:-false}
     ports:
       - "8000:8000"
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8000/ >/dev/null || exit 1"]
@@ -49,3 +64,4 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:

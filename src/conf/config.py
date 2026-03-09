@@ -27,6 +27,11 @@ class Settings(BaseSettings):
     def database_url(self) -> str:
         return f"postgresql+psycopg://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
 
+    # Redis configuration
+    redis_host: str = "localhost"
+    redis_port: int = 6379
+    redis_db: int = 0
+
     # Security configuration
     password_salt: str = "Momoyeyu"
     jwt_secret: str = "Momoyeyu"

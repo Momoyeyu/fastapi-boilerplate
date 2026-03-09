@@ -18,6 +18,7 @@ dependencies = [
     "sqlmodel>=0.0.31",
     "uvicorn[standard]>=0.40.0",
     "alembic>=1.17.2",
+    "redis>=5.0.0",
 ]
 
 [project.optional-dependencies]
