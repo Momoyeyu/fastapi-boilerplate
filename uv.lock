@@ -225,7 +225,46 @@ standard = [
 ]
 
 [[package]]
-name = "fastapi-boilerplate"
+name = "fastapi-cli"
+version = "0.0.20"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "rich-toolkit" },
+    { name = "typer" },
+    { name = "uvicorn", extra = ["standard"] },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d3/ca/d90fb3bfbcbd6e56c77afd9d114dd6ce8955d8bb90094399d1c70e659e40/fastapi_cli-0.0.20.tar.gz", hash = "sha256:d17c2634f7b96b6b560bc16b0035ed047d523c912011395f49f00a421692bc3a", size = 19786, upload-time = "2025-12-22T17:13:33.794Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/08/89/5c4eef60524d0fd704eb0706885b82cd5623a43396b94e4a5b17d3a3f516/fastapi_cli-0.0.20-py3-none-any.whl", hash = "sha256:e58b6a0038c0b1532b7a0af690656093dee666201b6b19d3c87175b358e9f783", size = 12390, upload-time = "2025-12-22T17:13:31.708Z" },
+]
+
+[package.optional-dependencies]
+standard = [
+    { name = "fastapi-cloud-cli" },
+    { name = "uvicorn", extra = ["standard"] },
+]
+
+[[package]]
+name = "fastapi-cloud-cli"
+version = "0.8.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "fastar" },
+    { name = "httpx" },
+    { name = "pydantic", extra = ["email"] },
+    { name = "rich-toolkit" },
+    { name = "rignore" },
+    { name = "sentry-sdk" },
+    { name = "typer" },
+    { name = "uvicorn", extra = ["standard"] },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/51/5d/3b33438de35521fab4968b232caa9a4bd568a5078f2b2dfb7bb8a4528603/fastapi_cloud_cli-0.8.0.tar.gz", hash = "sha256:cf07c502528bfd9e6b184776659f05d9212811d76bbec9fbb6bf34bed4c7456f", size = 30257, upload-time = "2025-12-23T12:08:33.904Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/dd/8e/abb95ef59e91bb5adaa2d18fbf9ea70fd524010bb03f406a2dd2a4775ef9/fastapi_cloud_cli-0.8.0-py3-none-any.whl", hash = "sha256:e9f40bee671d985fd25d7a5409b56d4f103777bf8a0c6d746ea5fbf97a8186d9", size = 22306, upload-time = "2025-12-23T12:08:32.68Z" },
+]
+
+[[package]]
+name = "fastapi-demo"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
@@ -271,45 +310,6 @@ requires-dist = [
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.40.0" },
 ]
 provides-extras = ["dev"]
-
-[[package]]
-name = "fastapi-cli"
-version = "0.0.20"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "rich-toolkit" },
-    { name = "typer" },
-    { name = "uvicorn", extra = ["standard"] },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/d3/ca/d90fb3bfbcbd6e56c77afd9d114dd6ce8955d8bb90094399d1c70e659e40/fastapi_cli-0.0.20.tar.gz", hash = "sha256:d17c2634f7b96b6b560bc16b0035ed047d523c912011395f49f00a421692bc3a", size = 19786, upload-time = "2025-12-22T17:13:33.794Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/08/89/5c4eef60524d0fd704eb0706885b82cd5623a43396b94e4a5b17d3a3f516/fastapi_cli-0.0.20-py3-none-any.whl", hash = "sha256:e58b6a0038c0b1532b7a0af690656093dee666201b6b19d3c87175b358e9f783", size = 12390, upload-time = "2025-12-22T17:13:31.708Z" },
-]
-
-[package.optional-dependencies]
-standard = [
-    { name = "fastapi-cloud-cli" },
-    { name = "uvicorn", extra = ["standard"] },
-]
-
-[[package]]
-name = "fastapi-cloud-cli"
-version = "0.8.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "fastar" },
-    { name = "httpx" },
-    { name = "pydantic", extra = ["email"] },
-    { name = "rich-toolkit" },
-    { name = "rignore" },
-    { name = "sentry-sdk" },
-    { name = "typer" },
-    { name = "uvicorn", extra = ["standard"] },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/51/5d/3b33438de35521fab4968b232caa9a4bd568a5078f2b2dfb7bb8a4528603/fastapi_cloud_cli-0.8.0.tar.gz", hash = "sha256:cf07c502528bfd9e6b184776659f05d9212811d76bbec9fbb6bf34bed4c7456f", size = 30257, upload-time = "2025-12-23T12:08:33.904Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/dd/8e/abb95ef59e91bb5adaa2d18fbf9ea70fd524010bb03f406a2dd2a4775ef9/fastapi_cloud_cli-0.8.0-py3-none-any.whl", hash = "sha256:e9f40bee671d985fd25d7a5409b56d4f103777bf8a0c6d746ea5fbf97a8186d9", size = 22306, upload-time = "2025-12-23T12:08:32.68Z" },
-]
 
 [[package]]
 name = "fastar"

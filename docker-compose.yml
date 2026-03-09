@@ -4,13 +4,13 @@ services:
     environment:
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
-      POSTGRES_DB: ${DB_NAME:-fastapi-boilerplate}
+      POSTGRES_DB: ${DB_NAME:-fastapi-demo}
     ports:
       - "5432:${DB_PORT:-5432}"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-fastapi-boilerplate}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-fastapi-demo}"]
       interval: 5s
       timeout: 3s
       retries: 12
@@ -28,7 +28,7 @@ services:
       retries: 12
 
   app:
-    image: ${DOCKER_IMAGE:-fastapi-boilerplate:latest}
+    image: ${DOCKER_IMAGE:-fastapi-demo:latest}
     build:
       context: .
       dockerfile: Dockerfile
@@ -40,7 +40,7 @@ services:
       DB_PORT: ${DB_PORT:-5432}
       DB_USER: ${DB_USER:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-postgres}
-      DB_NAME: ${DB_NAME:-fastapi-boilerplate}
+      DB_NAME: ${DB_NAME:-fastapi-demo}
       PASSWORD_SALT: ${PASSWORD_SALT:-}
       JWT_SECRET: ${JWT_SECRET:-}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}

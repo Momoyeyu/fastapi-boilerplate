@@ -101,7 +101,7 @@ def test_initiate_registration_success(monkeypatch: pytest.MonkeyPatch):
     def mock_create_code(email, purpose):
         code_created["email"] = email
         code_created["purpose"] = purpose
-        return MagicMock(code="123456")
+        return "123456"
 
     monkeypatch.setattr(service, "create_verification_code", mock_create_code, raising=True)
     monkeypatch.setattr(service, "send_verification_email", lambda *args: True, raising=True)
@@ -109,6 +109,26 @@ def test_initiate_registration_success(monkeypatch: pytest.MonkeyPatch):
     service.initiate_registration("alice@test.com", "pw")
     assert code_created["email"] == "alice@test.com"
     assert code_created["purpose"] == "register"
+
+
+def test_request_password_reset_sends_code(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(service, "email_exists", lambda email: True, raising=True)
+    sent = {}
+
+    monkeypatch.setattr(service, "create_verification_code", lambda email, purpose: "654321", raising=True)
+
+    def mock_send(email, code, purpose):
+        sent["email"] = email
+        sent["code"] = code
+        sent["purpose"] = purpose
+        return True
+
+    monkeypatch.setattr(service, "send_verification_email", mock_send, raising=True)
+
+    service.request_password_reset("alice@test.com")
+    assert sent["email"] == "alice@test.com"
+    assert sent["code"] == "654321"
+    assert sent["purpose"] == "reset_password"
 
 
 def test_complete_registration_invalid_code(monkeypatch: pytest.MonkeyPatch):

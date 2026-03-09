@@ -1,6 +1,6 @@
-# FastAPI Boilerplate (脚手架)
+# FastAPI Demo
 
-[![CI](https://github.com/Momoyeyu/fastapi-boilerplate/actions/workflows/ci.yml/badge.svg)](https://github.com/Momoyeyu/fastapi-boilerplate/actions/workflows/ci.yml)
+[![CI](https://github.com/Momoyeyu/fastapi-demo/actions/workflows/ci.yml/badge.svg)](https://github.com/Momoyeyu/fastapi-demo/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.112+-009688.svg?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
@@ -27,7 +27,7 @@
 ## 📂 项目结构
 
 ```text
-fastapi-boilerplate/
+fastapi-demo/
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml          # GitHub Actions CI 工作流
@@ -73,8 +73,8 @@ fastapi-boilerplate/
 
 1.  **克隆仓库**
     ```bash
-    git clone https://github.com/Momoyeyu/fastapi-boilerplate.git
-    cd fastapi-boilerplate
+    git clone https://github.com/Momoyeyu/fastapi-demo.git
+    cd fastapi-demo
     ```
 
 2.  **安装依赖**
