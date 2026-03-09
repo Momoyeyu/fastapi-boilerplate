@@ -32,3 +32,21 @@ def consume_verification_code(email: str, code: str, purpose: PurposeType) -> bo
         return False
     r.delete(key)
     return True
+
+
+_INVITATION_PREFIX = "invitation_context:"
+
+
+def store_invitation_context(email: str, invitation_code_id: int) -> None:
+    key = f"{_INVITATION_PREFIX}{email.lower()}"
+    get_redis().setex(key, settings.verification_code_expire_seconds, str(invitation_code_id))
+
+
+def consume_invitation_context(email: str) -> int | None:
+    key = f"{_INVITATION_PREFIX}{email.lower()}"
+    r = get_redis()
+    value = r.get(key)
+    if value is None:
+        return None
+    r.delete(key)
+    return int(value)

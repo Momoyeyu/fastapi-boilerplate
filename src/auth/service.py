@@ -118,21 +118,38 @@ def login_user(identifier: str, password: str) -> TokenPair:
     return create_token(user)
 
 
-def initiate_registration(email: str, password: str) -> None:
+def initiate_registration(email: str, password: str, invitation_code: str | None = None) -> None:
     """Initiate registration by sending a verification code.
 
     Args:
         email: User's email address.
         password: User's password (validated but not stored yet).
+        invitation_code: Optional invitation code (required if configured).
 
     Raises:
-        BusinessError: If email is already registered.
+        BusinessError: If email is already registered or invitation code is invalid.
     """
     if email_exists(email):
         raise erri.conflict("Email already registered")
 
+    invitation_code_id: int | None = None
+    if settings.require_invitation_code:
+        if not invitation_code:
+            raise erri.bad_request("Invitation code is required")
+        from invitation.model import validate_invitation_code
+
+        invitation = validate_invitation_code(invitation_code)
+        if not invitation or invitation.id is None:
+            raise erri.bad_request("Invalid or expired invitation code")
+        invitation_code_id = invitation.id
+
     code = create_verification_code(email, "register")
     send_verification_email(email, code, "register")
+
+    if invitation_code_id is not None:
+        from auth.verification import store_invitation_context
+
+        store_invitation_context(email, invitation_code_id)
 
 
 def complete_registration(email: str, code: str, password: str) -> TokenPair:
@@ -155,11 +172,20 @@ def complete_registration(email: str, code: str, password: str) -> TokenPair:
     if email_exists(email):
         raise erri.conflict("Email already registered")
 
+    from auth.verification import consume_invitation_context
+
+    invitation_code_id = consume_invitation_context(email)
+
     encrypted_password = get_password_hash(password)
     username = email.split("@")[0]
-    user = create_user(username, encrypted_password, email)
+    user = create_user(username, encrypted_password, email, invitation_code_id=invitation_code_id)
     if not user or user.id is None:
         raise erri.internal("Create user failed")
+
+    if invitation_code_id is not None:
+        from invitation.model import increment_used_count
+
+        increment_used_count(invitation_code_id)
 
     return create_token(user)
 

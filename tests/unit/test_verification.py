@@ -2,7 +2,13 @@ from unittest.mock import patch
 
 import pytest
 
-from auth.verification import consume_verification_code, create_verification_code, generate_code
+from auth.verification import (
+    consume_invitation_context,
+    consume_verification_code,
+    create_verification_code,
+    generate_code,
+    store_invitation_context,
+)
 
 
 class FakeRedis:
@@ -71,3 +77,14 @@ def test_create_verification_code_overwrites_previous(fake_redis):
     if code1 != code2:
         assert consume_verification_code("user@test.com", code1, "register") is False
     assert consume_verification_code("user@test.com", code2, "register") is True
+
+
+def test_store_and_consume_invitation_context(fake_redis):
+    store_invitation_context("Alice@Test.com", 42)
+    assert consume_invitation_context("Alice@Test.com") == 42
+    # Should be deleted after consumption
+    assert consume_invitation_context("Alice@Test.com") is None
+
+
+def test_consume_invitation_context_missing(fake_redis):
+    assert consume_invitation_context("nobody@test.com") is None

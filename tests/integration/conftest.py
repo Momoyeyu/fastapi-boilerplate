@@ -15,6 +15,7 @@ from sqlmodel import Session, SQLModel, create_engine
 from auth import model as auth_model
 from conf import db as db_module
 from conf import redis as redis_module
+from invitation import model as invitation_model
 from user import model as user_model
 
 
@@ -48,6 +49,7 @@ def client(test_engine, monkeypatch) -> Generator[TestClient, None, None]:
     monkeypatch.setattr(db_module, "engine", test_engine)
     monkeypatch.setattr(user_model, "engine", test_engine)
     monkeypatch.setattr(auth_model, "engine", test_engine)
+    monkeypatch.setattr(invitation_model, "engine", test_engine)
 
     # Import create_app after patching to ensure patches are in effect
     from main import create_app

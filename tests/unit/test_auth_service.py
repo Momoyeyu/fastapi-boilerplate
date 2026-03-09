@@ -15,6 +15,7 @@ def mock_settings(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     """Create a mock settings object with default test values."""
     mock = MagicMock()
     mock.password_salt = "salt"
+    mock.require_invitation_code = False
     monkeypatch.setattr(service, "settings", mock)
     return mock
 
@@ -143,6 +144,10 @@ def test_complete_registration_success(monkeypatch: pytest.MonkeyPatch, mock_set
     monkeypatch.setattr(service, "consume_verification_code", lambda *args: True, raising=True)
     monkeypatch.setattr(service, "email_exists", lambda email: False, raising=True)
 
+    import auth.verification as verification_mod
+
+    monkeypatch.setattr(verification_mod, "consume_invitation_context", lambda email: None)
+
     user = User(id=1, username="alice", email="alice@test.com", password="x")
     monkeypatch.setattr(service, "create_user", lambda *args, **kwargs: user, raising=True)
 
@@ -156,3 +161,92 @@ def test_complete_registration_success(monkeypatch: pytest.MonkeyPatch, mock_set
 
     result = service.complete_registration("alice@test.com", "123456", "pw")
     assert result.access_token == "token-123"
+
+
+def test_initiate_registration_requires_invitation_code(monkeypatch: pytest.MonkeyPatch, mock_settings: MagicMock):
+    mock_settings.require_invitation_code = True
+    monkeypatch.setattr(service, "email_exists", lambda email: False, raising=True)
+    with pytest.raises(erri.BusinessError) as exc:
+        service.initiate_registration("alice@test.com", "pw")
+    assert exc.value.code == Code.BAD_REQUEST
+
+
+def test_initiate_registration_invalid_invitation_code(monkeypatch: pytest.MonkeyPatch, mock_settings: MagicMock):
+    mock_settings.require_invitation_code = True
+    monkeypatch.setattr(service, "email_exists", lambda email: False, raising=True)
+
+    import invitation.model as inv_model
+
+    monkeypatch.setattr(inv_model, "validate_invitation_code", lambda code: None)
+
+    with pytest.raises(erri.BusinessError) as exc:
+        service.initiate_registration("alice@test.com", "pw", "BADCODE")
+    assert exc.value.code == Code.BAD_REQUEST
+
+
+def test_initiate_registration_valid_invitation_code(monkeypatch: pytest.MonkeyPatch, mock_settings: MagicMock):
+    mock_settings.require_invitation_code = True
+    monkeypatch.setattr(service, "email_exists", lambda email: False, raising=True)
+    monkeypatch.setattr(service, "create_verification_code", lambda *a: "123456")
+    monkeypatch.setattr(service, "send_verification_email", lambda *a: None)
+
+    import invitation.model as inv_model
+    from invitation.model import InvitationCode
+
+    mock_inv = InvitationCode(id=1, code="VALID", max_uses=10, used_count=0, is_active=True)
+    monkeypatch.setattr(inv_model, "validate_invitation_code", lambda code: mock_inv)
+
+    import auth.verification as verification_mod
+
+    stored: dict[str, int] = {}
+    monkeypatch.setattr(
+        verification_mod,
+        "store_invitation_context",
+        lambda email, inv_id: stored.update({"inv_id": inv_id}),  # type: ignore[func-returns-value]
+    )
+
+    service.initiate_registration("alice@test.com", "pw", "VALID")
+    assert stored["inv_id"] == 1
+
+
+def test_initiate_registration_skips_invitation_when_disabled(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(service, "email_exists", lambda email: False, raising=True)
+    monkeypatch.setattr(service, "create_verification_code", lambda *a: "123456")
+    monkeypatch.setattr(service, "send_verification_email", lambda *a: None)
+
+    # Should succeed without invitation code validation
+    service.initiate_registration("alice@test.com", "pw", "ANYCODE")
+
+
+def test_complete_registration_with_invitation_context(monkeypatch: pytest.MonkeyPatch, mock_settings: MagicMock):
+    monkeypatch.setattr(service, "consume_verification_code", lambda *args: True, raising=True)
+    monkeypatch.setattr(service, "email_exists", lambda email: False, raising=True)
+
+    import auth.verification as verification_mod
+
+    monkeypatch.setattr(verification_mod, "consume_invitation_context", lambda email: 42)
+
+    captured_kwargs: dict = {}
+
+    def mock_create_user(*args, **kwargs):
+        captured_kwargs.update(kwargs)
+        return User(id=1, username="alice", email="alice@test.com", password="x")
+
+    monkeypatch.setattr(service, "create_user", mock_create_user, raising=True)
+
+    mock_token_pair = TokenPair(
+        access_token="token-123",
+        refresh_token="refresh-456",
+        expires_in=3600,
+        refresh_token_expires_in=604800,
+    )
+    monkeypatch.setattr(service, "create_token", lambda _: mock_token_pair, raising=True)
+
+    import invitation.model as inv_model
+
+    incremented: list[int] = []
+    monkeypatch.setattr(inv_model, "increment_used_count", lambda cid: incremented.append(cid))
+
+    service.complete_registration("alice@test.com", "123456", "pw")
+    assert captured_kwargs["invitation_code_id"] == 42
+    assert incremented == [42]
