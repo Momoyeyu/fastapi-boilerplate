@@ -1,7 +1,7 @@
 [project]
-name = "fastapi-demo"
+name = "fastapi-boilerplate"
 version = "0.1.0"
-description = "A modern, production-ready FastAPI demo"
+description = "A modern, production-ready FastAPI boilerplate"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

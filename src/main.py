@@ -51,7 +51,7 @@ def create_app() -> FastAPI:
 
     _app = FastAPI(
         title="FastAPI + UV Project",
-        description="A FastAPI demo initialized by UV",
+        description="A FastAPI boilerplate initialized by UV",
         version="1.0.0",
         lifespan=lifespan,
     )

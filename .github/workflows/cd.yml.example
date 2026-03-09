@@ -16,7 +16,7 @@ on:
 
 env:
   REGISTRY: docker.io
-  IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/fastapi-demo
+  IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/fastapi-boilerplate
 
 jobs:
   build:
@@ -74,8 +74,8 @@ jobs:
       - name: Create .env file on server
         run: |
           ssh -i ~/.ssh/deploy_key ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'ENVSSH'
-          mkdir -p ~/fastapi-demo
-          cat > ~/fastapi-demo/.env << 'ENVFILE'
+          mkdir -p ~/fastapi-boilerplate
+          cat > ~/fastapi-boilerplate/.env << 'ENVFILE'
           DB_HOST=${{ secrets.DB_HOST }}
           DB_PORT=${{ secrets.DB_PORT }}
           DB_USER=${{ secrets.DB_USER }}
@@ -94,17 +94,17 @@ jobs:
 
       - name: Copy docker-compose.yml to server
         run: |
-          scp -i ~/.ssh/deploy_key docker-compose.yml ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:~/fastapi-demo/
+          scp -i ~/.ssh/deploy_key docker-compose.yml ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:~/fastapi-boilerplate/
 
       - name: Copy deploy script to server
         run: |
-          ssh -i ~/.ssh/deploy_key ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "mkdir -p ~/fastapi-demo/scripts"
-          scp -i ~/.ssh/deploy_key scripts/deploy.sh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:~/fastapi-demo/scripts/
+          ssh -i ~/.ssh/deploy_key ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "mkdir -p ~/fastapi-boilerplate/scripts"
+          scp -i ~/.ssh/deploy_key scripts/deploy.sh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:~/fastapi-boilerplate/scripts/
 
       - name: Deploy application
         run: |
           ssh -i ~/.ssh/deploy_key ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'DEPLOYSSH'
-          cd ~/fastapi-demo
+          cd ~/fastapi-boilerplate
           chmod +x scripts/deploy.sh
           ./scripts/deploy.sh
           DEPLOYSSH
