@@ -12,7 +12,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 @router.post("/register")
 async def register(body: dto.RegisterRequest) -> Response:
     """Initiate registration by sending a verification code to email."""
-    service.initiate_registration(body.email, body.password)
+    service.initiate_registration(body.email, body.password, body.invitation_code)
     return ok(message="Verification code sent")
 
 
