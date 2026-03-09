@@ -132,7 +132,7 @@ def initiate_registration(email: str, password: str) -> None:
         raise erri.conflict("Email already registered")
 
     code = create_verification_code(email, "register")
-    send_verification_email(email, code.code, "register")
+    send_verification_email(email, code, "register")
 
 
 def complete_registration(email: str, code: str, password: str) -> TokenPair:
@@ -177,7 +177,7 @@ def request_password_reset(email: str) -> None:
         return
 
     code = create_verification_code(email, "reset_password")
-    send_verification_email(email, code.code, "reset_password")
+    send_verification_email(email, code, "reset_password")
 
 
 def reset_password(email: str, code: str, new_password: str) -> bool:

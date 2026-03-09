@@ -14,6 +14,7 @@ from sqlmodel import Session, SQLModel, create_engine
 
 from auth import model as auth_model
 from conf import db as db_module
+from conf import redis as redis_module
 from user import model as user_model
 
 
@@ -55,6 +56,37 @@ def client(test_engine, monkeypatch) -> Generator[TestClient, None, None]:
 
     with TestClient(app) as test_client:
         yield test_client
+
+
+class FakeRedis:
+    """In-memory Redis mock so tests run without a real Redis server."""
+
+    def __init__(self):
+        self._store: dict[str, str] = {}
+
+    def setex(self, key, ttl, value):
+        self._store[key] = value
+
+    def get(self, key):
+        return self._store.get(key)
+
+    def delete(self, key):
+        self._store.pop(key, None)
+
+    def flushdb(self):
+        self._store.clear()
+
+    def close(self):
+        pass
+
+
+@pytest.fixture(autouse=True)
+def redis_test_db(monkeypatch):
+    """Provide a FakeRedis instance so integration tests don't need a real Redis."""
+    fake = FakeRedis()
+    monkeypatch.setattr(redis_module, "_client", fake)
+    yield fake
+    monkeypatch.setattr(redis_module, "_client", None)
 
 
 @pytest.fixture(scope="function")

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ===========================================
-# FastAPI Boilerplate - Deployment Script
+# FastAPI Demo - Deployment Script
 # ===========================================
 # This script handles the deployment process:
 # 1. Pull the latest Docker image
@@ -63,8 +63,8 @@ backup_state() {
     if docker compose -f "$COMPOSE_FILE" ps -q app 2>/dev/null | grep -q .; then
         BACKUP_IMAGE=$(docker compose -f "$COMPOSE_FILE" images app -q 2>/dev/null || echo "")
         if [[ -n "$BACKUP_IMAGE" ]]; then
-            docker tag "$BACKUP_IMAGE" fastapi-boilerplate:rollback 2>/dev/null || true
-            log_info "Backup image tagged as fastapi-boilerplate:rollback"
+            docker tag "$BACKUP_IMAGE" fastapi-demo:rollback 2>/dev/null || true
+            log_info "Backup image tagged as fastapi-demo:rollback"
         fi
     else
         log_info "No existing deployment found, skipping backup"
@@ -110,12 +110,12 @@ health_check() {
 rollback() {
     log_error "Deployment failed! Initiating rollback..."
     
-    if docker image inspect fastapi-boilerplate:rollback > /dev/null 2>&1; then
+    if docker image inspect fastapi-demo:rollback > /dev/null 2>&1; then
         log_info "Rolling back to previous version..."
         docker compose -f "$COMPOSE_FILE" down --remove-orphans || true
         
         # Use rollback image
-        DOCKER_IMAGE=fastapi-boilerplate:rollback docker compose -f "$COMPOSE_FILE" up -d
+        DOCKER_IMAGE=fastapi-demo:rollback docker compose -f "$COMPOSE_FILE" up -d
         
         if health_check; then
             log_info "Rollback successful!"

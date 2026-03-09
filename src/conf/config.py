@@ -20,12 +20,17 @@ class Settings(BaseSettings):
     db_port: int = 5432
     db_user: str = "postgres"
     db_password: str = "postgres"
-    db_name: str = "fastapi-boilerplate"
+    db_name: str = "fastapi-demo"
 
     @computed_field  # type: ignore[prop-decorator]
     @property
     def database_url(self) -> str:
         return f"postgresql+psycopg://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
+
+    # Redis configuration
+    redis_host: str = "localhost"
+    redis_port: int = 6379
+    redis_db: int = 0
 
     # Security configuration
     password_salt: str = "Momoyeyu"

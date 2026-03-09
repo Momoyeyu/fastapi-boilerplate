@@ -1,7 +1,7 @@
 [project]
-name = "fastapi-boilerplate"
+name = "fastapi-demo"
 version = "0.1.0"
-description = "A modern, production-ready FastAPI boilerplate"
+description = "A modern, production-ready FastAPI demo"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -18,6 +18,7 @@ dependencies = [
     "sqlmodel>=0.0.31",
     "uvicorn[standard]>=0.40.0",
     "alembic>=1.17.2",
+    "redis>=5.0.0",
 ]
 
 [project.optional-dependencies]

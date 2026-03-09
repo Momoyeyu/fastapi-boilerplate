@@ -9,6 +9,7 @@ from auth.handler import router as auth_router
 from conf import logging
 from conf.db import close_db
 from conf.openapi import setup_openapi
+from conf.redis import close_redis
 from middleware.auth import setup_auth_middleware
 from middleware.logging import setup_logging_middleware
 from user.handler import router as user_router
@@ -21,6 +22,7 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Application started")
     yield
     logger.info("Application shutdown")
+    close_redis()
     close_db()
 
 

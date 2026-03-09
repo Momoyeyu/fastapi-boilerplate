@@ -9,14 +9,14 @@ from fastapi.testclient import TestClient
 
 def register_and_verify(client: TestClient, email: str, password: str) -> dict:
     """Helper to register a user through the two-step process."""
-    from auth.verification import _verification_codes
+    from conf.redis import get_redis
 
     # Step 1: Initiate registration
     client.post("/auth/register", json={"email": email, "password": password})
 
-    # Get verification code from memory store
-    key = f"{email.lower()}:register"
-    code = _verification_codes[key].code
+    # Get verification code from Redis
+    key = f"verification:{email.lower()}:register"
+    code = get_redis().get(key)
 
     # Step 2: Verify and complete registration
     response = client.post(
@@ -214,7 +214,7 @@ class TestPasswordReset:
 
     def test_password_reset_success(self, client: TestClient):
         """Test password reset with valid code."""
-        from auth.verification import _verification_codes
+        from conf.redis import get_redis
 
         register_and_verify(client, "reset@example.com", "oldpass")
 
@@ -222,8 +222,8 @@ class TestPasswordReset:
         client.post("/auth/password/forgot", json={"email": "reset@example.com"})
 
         # Get verification code
-        key = "reset@example.com:reset_password"
-        code = _verification_codes[key].code
+        key = "verification:reset@example.com:reset_password"
+        code = get_redis().get(key)
 
         # Reset password
         response = client.post(
