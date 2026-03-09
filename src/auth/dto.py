@@ -4,6 +4,7 @@ from pydantic import BaseModel, EmailStr
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
+    invitation_code: str | None = None
 
 
 class RegisterVerifyRequest(BaseModel):

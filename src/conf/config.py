@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     refresh_token_expire_seconds: int = 604800  # 7 days
     verification_code_expire_seconds: int = 300  # 5 minutes
 
+    # Invitation code
+    require_invitation_code: bool = False
+
     # Admin account
     admin_username: str = "admin"
     admin_password: str = "admin"
