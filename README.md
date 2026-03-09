@@ -1,6 +1,6 @@
-# FastAPI Demo
+# FastAPI Boilerplate
 
-[![CI](https://github.com/Momoyeyu/fastapi-demo/actions/workflows/ci.yml/badge.svg)](https://github.com/Momoyeyu/fastapi-demo/actions/workflows/ci.yml)
+[![CI](https://github.com/Momoyeyu/fastapi-boilerplate/actions/workflows/ci.yml/badge.svg)](https://github.com/Momoyeyu/fastapi-boilerplate/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.112+-009688.svg?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
@@ -8,7 +8,7 @@
 
 [中文文档](README_zh.md) | [English](README.md)
 
-A modern, production-ready FastAPI demo designed to kickstart your backend development. This project provides a solid foundation with best practices for project structure, database management, authentication, testing, and CI/CD pipelines — so you can focus on building your business logic.
+A modern, production-ready FastAPI boilerplate designed to kickstart your backend development. This project provides a solid foundation with best practices for project structure, database management, authentication, testing, and CI/CD pipelines — so you can focus on building your business logic.
 
 ## ✨ Features
 
@@ -27,7 +27,7 @@ A modern, production-ready FastAPI demo designed to kickstart your backend devel
 ## 📂 Project Structure
 
 ```text
-fastapi-demo/
+fastapi-boilerplate/
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml          # GitHub Actions CI workflow
@@ -73,8 +73,8 @@ fastapi-demo/
 
 1.  **Clone the repository**
     ```bash
-    git clone https://github.com/Momoyeyu/fastapi-demo.git
-    cd fastapi-demo
+    git clone https://github.com/Momoyeyu/fastapi-boilerplate.git
+    cd fastapi-boilerplate
     ```
 
 2.  **Install dependencies**

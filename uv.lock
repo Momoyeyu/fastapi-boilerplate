@@ -264,7 +264,7 @@ wheels = [
 ]
 
 [[package]]
-name = "fastapi-demo"
+name = "fastapi-boilerplate"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

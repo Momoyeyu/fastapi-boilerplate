@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     db_port: int = 5432
     db_user: str = "postgres"
     db_password: str = "postgres"
-    db_name: str = "fastapi-demo"
+    db_name: str = "fastapi-boilerplate"
 
     @computed_field  # type: ignore[prop-decorator]
     @property
