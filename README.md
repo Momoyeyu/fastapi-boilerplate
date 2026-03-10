@@ -206,7 +206,7 @@ raise erri.internal("Server error")         # code 50000
 - JWT middleware in `src/middleware/auth.py` validates tokens on all routes by default
 - Use `@auth.exempt` decorator on handler functions to skip auth
 - Extract current user: `username = auth.get_username(request)`
-- Auth endpoints: `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout`
+- Auth endpoints: `POST /auth/login`, `POST /auth/token/refresh`, `POST /auth/logout`
 
 ### Database Transactions
 

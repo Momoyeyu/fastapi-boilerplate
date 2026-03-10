@@ -206,7 +206,7 @@ raise erri.internal("Server error")         # code 50000
 - JWT 中间件位于 `src/middleware/auth.py`，默认对所有路由进行 token 校验
 - 使用 `@auth.exempt` 装饰器跳过认证
 - 获取当前用户：`username = auth.get_username(request)`
-- 认证接口：`POST /auth/login`、`POST /auth/refresh`、`POST /auth/logout`
+- 认证接口：`POST /auth/login`、`POST /auth/token/refresh`、`POST /auth/logout`
 
 ### 数据库事务
 
