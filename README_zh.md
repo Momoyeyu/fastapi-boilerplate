@@ -138,7 +138,7 @@ class ProductResponse(BaseModel):
     price: float
 ```
 
-4. **service.py** — 业务逻辑和错误处理：
+4. **`{domain}.py`** — 业务逻辑和错误处理（如 `product.py`）：
 ```python
 from common import erri
 from product import model
