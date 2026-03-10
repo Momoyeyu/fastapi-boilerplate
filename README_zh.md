@@ -8,367 +8,312 @@
 
 [中文文档](README_zh.md) | [English](README.md)
 
-这是一个现代化的、生产就绪的 FastAPI 脚手架，旨在帮助你快速启动后端开发。本项目提供了坚实的基础架构，集成了项目结构、数据库管理、身份验证、测试和 CI/CD 流水线的最佳实践——让你可以专注于业务逻辑的开发。
+生产就绪的 FastAPI 脚手架，专为 AI 编程代理快速、规范地搭建后端项目而设计。提供标准的 4 层模块架构、JWT 认证、自动迁移、结构化日志、Docker 支持和 CI/CD 流水线，让代理（和人类）专注于业务逻辑。
 
-## ✨ 特性 (Features)
+> **AI 编程代理**：请参阅 [CLAUDE.md](CLAUDE.md) 获取代理工作流指南。
 
--   **现代技术栈**: 基于 **FastAPI** (Python 3.12+) 构建，提供高性能 API 服务。
--   **ORM 与数据库**: 使用 **SQLModel** (SQLAlchemy + Pydantic) 配合 **PostgreSQL**。
--   **自动迁移**: 集成 **Alembic**，支持服务启动时自动同步数据库表结构。
--   **身份验证**: 基于 JWT 的身份验证系统，支持 Access Token + Refresh Token 双令牌机制、Token 轮转和安全的密码哈希处理。
--   **配置管理**: 使用 **pydantic-settings** 进行类型安全的配置管理，自动从 `.env` 文件加载。
--   **结构化日志**: 使用 **Loguru** 实现，支持控制台彩色输出、文件轮转、自动保留与压缩。
--   **依赖管理**: 使用 **uv** 进行极速的 Python 包管理。
--   **Docker 支持**: 提供完整的 **Docker Compose** 配置，支持本地开发和容器化部署。
--   **CI/CD 流水线**: GitHub Actions 工作流，包含静态检查和自动化测试。
--   **代码质量**: 使用 **ruff** 进行代码检查与格式化。
--   **清晰架构**: 模块化的 `src/` 目录结构，分离关注点 (Handler, Service, Model, DTO)。
+## 快速开始
 
-## 📂 项目结构
+**前置要求**: Python 3.12+、[uv](https://github.com/astral-sh/uv)、Docker（可选）
 
-```text
-fastapi-boilerplate/
-├── .github/
-│   └── workflows/
-│       ├── ci.yml          # GitHub Actions CI 工作流
-│       └── cd.yml.example  # GitHub Actions CD 工作流模板
-├── scripts/
-│   ├── deploy.sh           # 部署脚本
-│   ├── lint.sh             # 本地代码检查脚本
-│   ├── migrate.sh          # 数据库迁移脚本
-│   ├── run.sh              # 本地启动脚本
-│   └── test.sh             # 运行测试
-├── src/                    # 源代码目录
-│   ├── auth/               # 认证模块 (JWT, Refresh Token)
-│   ├── common/             # 通用工具与错误处理
-│   ├── conf/               # 配置与数据库设置
-│   ├── middleware/         # 自定义中间件 (Auth, Logging)
-│   ├── user/               # 用户模块 (领域逻辑)
-│   └── main.py             # 应用入口文件
-├── migration/              # Alembic 迁移脚本
-│   ├── alembic/            # 迁移版本与环境配置
-│   └── runner.py           # 迁移执行器
-├── tests/                  # 单元测试与集成测试
-│   ├── unit/               # 单元测试 (mock 依赖)
-│   ├── integration/        # 集成测试 (SQLite 内存数据库)
-│   └── cfg.yml             # 测试配置（覆盖率阈值、路径）
-├── logs/                   # 应用日志目录 (自动创建)
-│   └── backend_{date}.log  # 每日日志文件 (自动轮转)
-├── .env.example            # 环境变量模板
-├── docker-compose.yml      # Docker 服务编排 (App + DB)
-├── Makefile                # 开发命令
-├── pyproject.toml          # 项目依赖与工具配置
-└── README.md               # 项目文档
+```bash
+git clone https://github.com/Momoyeyu/fastapi-boilerplate.git
+cd fastapi-boilerplate
+cp .env.example .env          # 配置环境变量
+uv sync                       # 安装依赖
+docker-compose up -d db redis # 启动 PostgreSQL + Redis
+make run                      # 迁移数据库 + 启动开发服务器 localhost:8000
 ```
 
-## 🚀 快速开始 (Getting Started)
+**验证**: `http://localhost:8000/docs`（Swagger UI，设置 `DEBUG=true` 可免认证访问）
 
-### 前置要求
-
--   **Python 3.12+**
--   **uv** (推荐的包管理器): `pip install uv`
--   **Docker** & **Docker Compose** (可选，用于容器化运行)
-
-### 安装
-
-1.  **克隆仓库**
-    ```bash
-    git clone https://github.com/Momoyeyu/fastapi-boilerplate.git
-    cd fastapi-boilerplate
-    ```
-
-2.  **安装依赖**
-    ```bash
-    uv sync
-    ```
-
-### 本地运行
-
-1.  **启动数据库**
-    你可以使用 Docker 快速启动一个 PostgreSQL 实例：
-    ```bash
-    docker-compose up -d db
-    ```
-
-2.  **运行应用**
-    使用 Makefile 启动开发服务器：
-    ```bash
-    make run
-    # 或者手动运行:
-    # ./scripts/run.sh
-    ```
-    API 服务将在 `http://localhost:8000` 启动。
-    交互式文档 (Swagger UI): `http://localhost:8000/docs`
-
-3.  **调试模式（可选）**
-    在 `.env` 文件中设置 `DEBUG=true` 以启用开发功能：
-    - Swagger UI (`/docs`)、ReDoc (`/redoc`) 和 OpenAPI schema (`/openapi.json`) 无需认证即可访问
-    
-    > ⚠️ **注意**：生产环境请保持 `DEBUG=false`（默认值），以确保 API 文档需要认证才能访问。
-
-4.  **使用 Swagger UI 测试接口**
-    项目支持 OAuth2 密码模式的 Swagger UI 认证：
-    1. 访问 `http://localhost:8000/docs`
-    2. 点击右上角的 **"Authorize"** 按钮
-    3. 输入账号密码
-    4. 点击 **"Authorize"** 登录
-    5. 现在可以直接在 Swagger UI 中测试所有受保护的接口
-
-### 使用 Docker 运行
-
-构建并启动整个技术栈 (应用 + 数据库 + 迁移)：
-
+**Docker 运行**（完整栈）：
 ```bash
 docker-compose up --build
 ```
 
-## 🛠 开发指南
+## 项目结构
 
-### 数据库迁移
+```
+fastapi-boilerplate/
+├── src/                        # 应用源码
+│   ├── main.py                 # 应用工厂，路由和中间件注册
+│   ├── conf/
+│   │   ├── config.py           # pydantic-settings 配置（加载 .env）
+│   │   ├── db.py               # SQLAlchemy 引擎
+│   │   └── logging.py          # Loguru 配置
+│   ├── common/
+│   │   ├── resp.py             # 响应信封和状态码
+│   │   ├── erri.py             # BusinessError 工厂（bad_request、not_found 等）
+│   │   └── trap.py             # 全局异常处理器
+│   ├── middleware/
+│   │   ├── auth.py             # JWT 认证中间件 + @auth.exempt 装饰器
+│   │   └── logging.py          # 请求/响应日志中间件
+│   ├── auth/                   # 认证模块（登录、刷新、登出）
+│   ├── user/                   # 用户模块（个人信息、注册）
+│   └── invitation/             # 邀请码模块
+├── migration/
+│   ├── runner.py               # 迁移执行接口
+│   └── alembic/                # Alembic 环境和版本脚本
+├── tests/
+│   ├── unit/                   # 单元测试（mock 依赖）
+│   ├── integration/            # 集成测试（SQLite 内存数据库）
+│   │   └── conftest.py         # 测试 fixtures（TestClient、FakeRedis、测试 DB）
+│   └── cfg.yml                 # 测试覆盖率配置
+├── scripts/                    # 开发任务脚本
+├── .env.example                # 环境变量模板
+├── docker-compose.yml          # App + PostgreSQL + Redis
+├── Makefile                    # 开发命令
+├── pyproject.toml              # 依赖和工具配置
+└── CLAUDE.md                   # 代理工作流指南
+```
 
-本项目使用 **Alembic** 进行数据库模式迁移。迁移代码位于项目根目录的 `migration/`。
+## 模块架构
 
-*   **自动模式**: 迁移会在应用启动前自动执行（通过 `scripts/migrate.sh`）。
-*   **手动模式**: 手动运行迁移：
-    ```bash
-    make migrate
-    ```
-*   **创建新迁移**: 当修改了模型 (Model) 后：
-    ```bash
-    # 生成迁移脚本
-    PYTHONPATH="src:." uv run alembic -c migration/alembic.ini revision --autogenerate -m "description_of_changes"
-    ```
+每个功能模块遵循 4 层模式，位于 `src/{module}/`：
+
+| 层级 | 文件 | 职责 |
+|------|------|------|
+| **Model** | `model.py` | SQLModel 表类 + 数据库查询函数 |
+| **DTO** | `dto.py` | Pydantic 请求/响应模型（无数据库依赖） |
+| **Service** | `service.py` | 业务逻辑、校验、抛出 `BusinessError` |
+| **Handler** | `handler.py` | FastAPI `APIRouter`，调用 service，返回 `Response` |
+
+**数据流**: Handler（解析请求） -> Service（校验 + 编排） -> Model（数据库操作）
+
+**参考实现**: `src/user/` 是一个完整的示例模块。
+
+### 添加新模块
+
+1. 创建 `src/{module}/` 目录，包含 `__init__.py`、`model.py`、`dto.py`、`service.py`、`handler.py`
+
+2. **model.py** — 定义表和查询：
+```python
+from datetime import UTC, datetime
+from sqlmodel import Field, Session, SQLModel, select
+from conf.db import engine
+
+class Product(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    name: str = Field(unique=True, index=True)
+    price: float
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+def create_product(name: str, price: float) -> Product | None:
+    product = Product(name=name, price=price)
+    with Session(engine) as session:
+        try:
+            session.add(product)
+            session.commit()
+            session.refresh(product)
+        except Exception:
+            session.rollback()
+            return None
+    return product
+
+def get_product(product_id: int) -> Product | None:
+    with Session(engine) as session:
+        return session.get(Product, product_id)
+```
+
+3. **dto.py** — 请求/响应模型：
+```python
+from pydantic import BaseModel
+
+class ProductCreateRequest(BaseModel):
+    name: str
+    price: float
+
+class ProductResponse(BaseModel):
+    id: int
+    name: str
+    price: float
+```
+
+4. **service.py** — 业务逻辑和错误处理：
+```python
+from common import erri
+from product import model
+
+def create_product(name: str, price: float) -> model.Product:
+    product = model.create_product(name, price)
+    if not product:
+        raise erri.internal("Create product failed")
+    return product
+
+def get_product(product_id: int) -> model.Product:
+    product = model.get_product(product_id)
+    if not product:
+        raise erri.not_found("Product not found")
+    return product
+```
+
+5. **handler.py** — 路由：
+```python
+from fastapi import APIRouter
+from common.resp import Response, ok
+from product import dto, service
+
+router = APIRouter(prefix="/product", tags=["product"])
+
+@router.post("")
+async def create_product(body: dto.ProductCreateRequest) -> Response:
+    product = service.create_product(body.name, body.price)
+    return ok(data=dto.ProductResponse(**product.__dict__).model_dump())
+
+@router.get("/{product_id}")
+async def get_product(product_id: int) -> Response:
+    product = service.get_product(product_id)
+    return ok(data=dto.ProductResponse(**product.__dict__).model_dump())
+```
+
+6. **注册路由**，在 `src/main.py` 的 `init_routers()` 中：
+```python
+from product.handler import router as product_router
+_app.include_router(product_router)
+```
+
+7. **导入模型**，在 `migration/alembic/env.py` 中（用于自动迁移）：
+```python
+from product.model import Product  # noqa: F401
+```
+
+8. **添加测试**：`tests/unit/test_{module}_service.py` 和 `tests/integration/test_{module}_api.py`
+
+## 核心模式
+
+### 响应信封
+
+所有接口返回标准化 `Response`：
+```python
+from common.resp import Response, ok
+
+# 成功
+return ok(data={"key": "value"})
+return ok(message="Operation completed")
+
+# 错误 — 抛出 BusinessError，trap.py 自动转换
+from common import erri
+raise erri.bad_request("Invalid input")     # code 40000
+raise erri.unauthorized("Login required")   # code 40100
+raise erri.forbidden("No permission")       # code 40300
+raise erri.not_found("Resource not found")  # code 40400
+raise erri.internal("Server error")         # code 50000
+```
+
+### 认证
+
+- JWT 中间件位于 `src/middleware/auth.py`，默认对所有路由进行 token 校验
+- 使用 `@auth.exempt` 装饰器跳过认证
+- 获取当前用户：`username = auth.get_username(request)`
+- 认证接口：`POST /auth/login`、`POST /auth/refresh`、`POST /auth/logout`
+
+### 数据库事务
+
+```python
+# model.py 中的标准模式
+with Session(engine) as session:
+    try:
+        session.add(obj)
+        session.commit()
+        session.refresh(obj)
+    except Exception:
+        session.rollback()
+        return None  # service 层将 None 转换为 BusinessError
+```
 
 ### 配置管理
 
-本项目使用 **pydantic-settings** 进行类型安全的配置管理，配置文件位于 `src/conf/config.py`。
+在 `src/conf/config.py` 中通过 `pydantic-settings` 定义，从 `.env` 加载：
 
-**功能特性：**
--   **自动加载**: 自动从 `.env` 文件和环境变量加载配置
--   **类型安全**: 所有配置项都经过 Pydantic 验证
--   **单例模式**: 全局共享单一 `settings` 实例
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `DEBUG` | `false` | 启用调试模式（免认证访问文档） |
+| `DB_HOST` | `localhost` | PostgreSQL 主机 |
+| `DB_PORT` | `5432` | PostgreSQL 端口 |
+| `DB_USER` | `postgres` | PostgreSQL 用户 |
+| `DB_PASSWORD` | `postgres` | PostgreSQL 密码 |
+| `DB_NAME` | `fastapi-boilerplate` | PostgreSQL 数据库 |
+| `REDIS_HOST` | `localhost` | Redis 主机 |
+| `REDIS_PORT` | `6379` | Redis 端口 |
+| `REDIS_DB` | `0` | Redis 数据库编号 |
+| `PASSWORD_SALT` | `Momoyeyu` | 密码哈希盐值（生产环境必须修改） |
+| `JWT_SECRET` | `Momoyeyu` | JWT 签名密钥（生产环境必须修改） |
+| `JWT_ALGORITHM` | `HS256` | JWT 算法 |
+| `JWT_EXPIRE_SECONDS` | `3600` | Access Token 过期时间 |
+| `REFRESH_TOKEN_EXPIRE_SECONDS` | `604800` | Refresh Token 过期时间（7 天） |
+| `VERIFICATION_CODE_EXPIRE_SECONDS` | `300` | 验证码过期时间 |
+| `REQUIRE_INVITATION_CODE` | `false` | 注册时是否需要邀请码 |
 
-**可用配置项：**
-
-| 配置项 | 环境变量 | 默认值 | 说明 |
-|--------|----------|--------|------|
-| `debug` | `DEBUG` | `false` | 启用调试模式 |
-| `database_url` | `DATABASE_URL` | PostgreSQL 本地 | 数据库连接字符串 |
-| `redis_host` | `REDIS_HOST` | `localhost` | Redis 主机地址 |
-| `redis_port` | `REDIS_PORT` | `6379` | Redis 端口 |
-| `redis_db` | `REDIS_DB` | `0` | Redis 数据库编号 |
-| `password_salt` | `PASSWORD_SALT` | `Momoyeyu` | 密码哈希盐值 |
-| `jwt_secret` | `JWT_SECRET` | `Momoyeyu` | JWT 签名密钥 |
-| `jwt_algorithm` | `JWT_ALGORITHM` | `HS256` | JWT 签名算法 |
-| `jwt_expire_seconds` | `JWT_EXPIRE_SECONDS` | `3600` | Access Token 过期时间（秒） |
-| `refresh_token_expire_seconds` | `REFRESH_TOKEN_EXPIRE_SECONDS` | `604800` | Refresh Token 过期时间（秒，默认 7 天） |
-| `verification_code_expire_seconds` | `VERIFICATION_CODE_EXPIRE_SECONDS` | `300` | 验证码过期时间（秒） |
-| `require_invitation_code` | `REQUIRE_INVITATION_CODE` | `false` | 注册时是否需要邀请码 |
-
-**使用示例：**
-
-```python
-from conf.config import settings
-
-if settings.debug:
-    print("调试模式已启用")
-
-print(f"数据库: {settings.database_url}")
-```
+使用方式：`from conf.config import settings`
 
 ### 日志
 
-本项目使用 **Loguru** 进行结构化日志记录，配置文件位于 `src/conf/logging.py`。
-
-**功能特性：**
--   **控制台输出**: 彩色、易读的日志输出到 stderr
--   **文件输出**: 日志写入 `logs/backend_{日期}.log`（如 `backend_2024-01-22.log`）
--   **自动轮转**: 每日午夜自动轮转
--   **自动保留**: 旧日志保留 7 天
--   **自动压缩**: 轮转后的日志自动压缩为 `.zip`
--   **日志级别**: `DEBUG=true` 时为 DEBUG 级别，否则为 INFO 级别
-
-**使用示例：**
+在 `src/conf/logging.py` 中通过 Loguru 配置。输出到控制台（彩色）和 `logs/backend_{date}.log`（每日轮转、保留 7 天、zip 压缩）。
 
 ```python
 from loguru import logger
-
 logger.info("User logged in", user_id=123)
-logger.error("Failed to process request", exc_info=True)
 ```
 
-日志文件存储在 `logs/` 目录（首次运行时自动创建）。
+请求日志中间件（`src/middleware/logging.py`）自动记录方法、路径、状态码、耗时，并对敏感字段（`password`、`authorization`、`access_token` 等）脱敏。
 
-### 请求日志中间件
-
-本项目内置请求/响应日志中间件（`src/middleware/logging.py`），用于调试和监控。
-
-**功能特性：**
--   **自动记录**: 记录每个请求的方法、路径、状态码和耗时
--   **详细日志**: DEBUG 级别记录 headers、query params 和 body
--   **敏感信息脱敏**: 自动掩盖密码、token 等敏感字段（显示为 `***`）
--   **路径排除**: 自动跳过 `/docs`、`/redoc` 等文档路径
-
-**日志输出示例：**
-
-```
-INFO  | Request 1769136075426 | POST /auth/login
-DEBUG | Request headers: {"content-type": "application/json", "authorization": "***"}
-DEBUG | Request body: {"username": "alice", "password": "***"}
-INFO  | Response 1769136075426 | 200 | 5.23ms
-DEBUG | Response body: {"access_token": "***", "token_type": "bearer"}
-```
-
-**脱敏字段：**
--   Headers: `authorization`、`cookie`、`x-api-key`
--   Body/Params: `password`、`access_token`、`refresh_token`、`api_key`
-
-### 认证系统
-
-本项目实现了完整的 JWT 认证系统，支持 Access Token + Refresh Token 双令牌机制，代码位于 `src/auth/` 模块。
-
-**功能特性：**
--   **双令牌机制**: Access Token（短期，默认 1 小时）用于 API 认证，Refresh Token（长期，默认 7 天）用于刷新 Access Token
--   **Token 轮转**: 每次使用 Refresh Token 刷新时，旧 Token 会被撤销并生成新 Token，增强安全性
--   **数据库存储**: Refresh Token 存储在数据库中，支持主动撤销和审计
--   **安全设计**: Refresh Token 使用加密安全的随机字符串生成
-
-**API 端点：**
-
-| 端点 | 方法 | 说明 |
-|------|------|------|
-| `/auth/login` | POST | 用户登录，返回 Access Token 和 Refresh Token |
-| `/auth/refresh` | POST | 使用 Refresh Token 获取新的令牌对 |
-| `/auth/logout` | POST | 撤销 Refresh Token |
-
-**认证流程：**
-
-```
-1. 用户登录 -> 获取 Access Token + Refresh Token
-2. 使用 Access Token 访问 API
-3. Access Token 过期后，使用 Refresh Token 刷新
-4. 刷新时旧 Refresh Token 被撤销，返回新的令牌对
-5. 用户登出时撤销 Refresh Token
-```
-
-**使用示例：**
-
-```http
-# 登录
-POST /auth/login
-Content-Type: application/x-www-form-urlencoded
-username=admin&password=admin
-
-# 响应
-{
-    "access_token": "eyJhbG...",
-    "refresh_token": "abc123...",
-    "token_type": "bearer"
-}
-
-# 刷新 Token
-POST /auth/refresh
-Content-Type: application/json
-{"refresh_token": "abc123..."}
-
-# 登出
-POST /auth/logout
-Content-Type: application/json
-{"refresh_token": "abc123..."}
-```
-
-### 代码质量
-
-本项目使用 **ruff** 进行代码检查与格式化。
-
-安装开发依赖：
+## 开发命令
 
 ```bash
-uv sync --all-extras
-```
-
-运行所有检查：
-
-```bash
-make lint
-```
-
-如果检测到代码检查或格式问题，脚本会提示你是否自动修复 (`[y/n]`)。
-
-### 测试
-
-本项目包含**单元测试**和**集成测试**。
-
-#### 运行测试：
-
-```bash
-make test
-```
-
-输出单元测试和集成测试的成功率。
-
-#### 单独运行测试：
-
-```bash
-# 仅单元测试
-uv run pytest tests/unit -v
-
-# 仅集成测试
-uv run pytest tests/integration -v
-
-# 所有测试
-uv run pytest tests -v
-```
-
-#### 测试覆盖率
-
-覆盖率仅在 CI 的 PR 流程中检查，使用**增量覆盖率**（仅检查新增/修改的代码行）。配置文件 `tests/cfg.yml`：
-
-```yaml
-coverage:
-  threshold: 80        # 变更代码的最低覆盖率
-  exclude:             # 排除的文件
-    - "src/**/handler.py"
-    - "src/**/model.py"
-```
-
-测试报告生成在 `output/` 目录：
-- `junit-unit.xml` - 单元测试 JUnit 报告
-- `junit-integration.xml` - 集成测试 JUnit 报告
-
-### CI/CD
-
-本项目包含 GitHub Actions 工作流：
-
-**CI (`.github/workflows/ci.yml`)**:
-1. **Lint Job**: ruff check、ruff format
-2. **Test Job**: 单元测试 + 集成测试
-3. **Coverage Check (仅 PR)**: 使用 [diff-cover](https://github.com/Bachmann1234/diff-cover) 检查变更代码的增量覆盖率
-
-在 `master` 分支的 push/PR 时触发。
-
-**CD (`.github/workflows/cd.yml.example`)**:
-
-这是一个持续部署的模板文件。要启用 CD：
-1. 将 `cd.yml.example` 复制为 `cd.yml`
-2. 在 GitHub 仓库设置中配置所需的 secrets
-
-工作流包含：
-1. **Build Job**: 构建并推送 Docker 镜像到 Docker Hub
-2. **Deploy Job**: 通过 SSH 部署到服务器
-
-启用后，在 `master` 分支 push 或手动触发时执行。
-
-**可用的 Make 命令：**
-```bash
-make           # 显示帮助
-make run       # 启动开发服务器
-make migrate   # 运行数据库迁移
-make lint      # 运行代码检查
-make test      # 运行所有测试
+make run       # 迁移数据库 + 启动开发服务器（uvicorn 热重载）
+make test      # 运行单元测试 + 集成测试
+make lint      # ruff check + format
+make migrate   # 手动运行 Alembic 迁移
 make deploy    # 部署应用
 ```
 
-## 📄 许可证
+### 数据库迁移
 
-本项目基于 MIT 许可证开源 - 详见 [LICENSE](LICENSE) 文件。
+- **自动**：`make run` 启动前自动运行迁移
+- **手动**：`make migrate`
+- **生成新迁移**（修改模型后）：
+  ```bash
+  PYTHONPATH="src:." uv run alembic -c migration/alembic.ini revision --autogenerate -m "description"
+  ```
+
+### 测试
+
+```bash
+make test                          # 所有测试
+uv run pytest tests/unit -v        # 仅单元测试
+uv run pytest tests/integration -v # 仅集成测试
+```
+
+- 单元测试通过 `monkeypatch` mock 依赖
+- 集成测试使用 SQLite 内存数据库 + FakeRedis（见 `tests/integration/conftest.py`）
+- CI 在 PR 中检查增量覆盖率（阈值 80%，配置于 `tests/cfg.yml`）
+
+### CI/CD
+
+**CI**（`.github/workflows/ci.yml`）：lint -> test -> 覆盖率检查（仅 PR）。在 `master` 分支 push/PR 时触发。
+
+**CD**（`.github/workflows/cd.yml.example`）：Docker 构建 + SSH 部署模板。复制为 `cd.yml` 并配置 secrets 即可启用。
+
+## 技术栈
+
+| 组件 | 技术 |
+|------|------|
+| 框架 | FastAPI 0.112+ |
+| Python | 3.12+ |
+| ORM | SQLModel（SQLAlchemy + Pydantic） |
+| 数据库 | PostgreSQL 16 |
+| 缓存 | Redis 7 |
+| 认证 | PyJWT（Access + Refresh Token） |
+| 迁移 | Alembic |
+| 配置 | pydantic-settings |
+| 日志 | Loguru |
+| 包管理 | uv |
+| 代码检查 | Ruff |
+| 测试 | pytest |
+| 容器 | Docker Compose |
+| CI/CD | GitHub Actions |
+
+## 许可证
+
+MIT License — 详见 [LICENSE](LICENSE)。
