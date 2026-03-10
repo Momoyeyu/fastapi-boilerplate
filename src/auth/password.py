@@ -25,7 +25,7 @@ async def request_password_reset(email: str) -> None:
         return
 
     code = create_verification_code(email, "reset_password")
-    send_verification_email(email, code, "reset_password")
+    await send_verification_email(email, code, "reset_password")
 
 
 async def reset_password(email: str, code: str, new_password: str) -> bool:

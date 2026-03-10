@@ -33,7 +33,7 @@ async def initiate_registration(email: str, password: str, invitation_code: str 
         invitation_code_id = invitation.id
 
     code = create_verification_code(email, "register")
-    send_verification_email(email, code, "register")
+    await send_verification_email(email, code, "register")
 
     if invitation_code_id is not None:
         from auth.verification import store_invitation_context

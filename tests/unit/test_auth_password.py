@@ -42,7 +42,10 @@ async def test_request_password_reset_sends_code(monkeypatch: pytest.MonkeyPatch
         sent["purpose"] = purpose
         return True
 
-    monkeypatch.setattr(password, "send_verification_email", mock_send, raising=True)
+    async def async_mock_send(email, code, purpose):
+        return mock_send(email, code, purpose)
+
+    monkeypatch.setattr(password, "send_verification_email", async_mock_send, raising=True)
 
     await password.request_password_reset("alice@test.com")
     assert sent["email"] == "alice@test.com"

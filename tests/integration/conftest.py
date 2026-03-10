@@ -110,7 +110,7 @@ def mock_email(monkeypatch):
     """Mock email sending to avoid consuming real Resend quota."""
     sent_emails: list[dict[str, str]] = []
 
-    def fake_send(email, code, purpose):
+    async def fake_send(email, code, purpose):
         sent_emails.append({"email": email, "code": code, "purpose": purpose})
         return True
 

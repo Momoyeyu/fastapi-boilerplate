@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from pydantic import computed_field
+from pydantic import SecretStr, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _ENV_FILE = Path(__file__).resolve().parent.parent.parent / ".env"
@@ -13,6 +13,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    app_name: str = "FastAPI Boilerplate"
     debug: bool = False
 
     # Database configuration
@@ -45,6 +46,10 @@ class Settings(BaseSettings):
     jwt_expire_seconds: int = 3600
     refresh_token_expire_seconds: int = 604800  # 7 days
     verification_code_expire_seconds: int = 300  # 5 minutes
+
+    # Email (Resend)
+    resend_api_key: SecretStr = SecretStr("")
+    email_from: str = "noreply@example.com"
 
     # Invitation code
     require_invitation_code: bool = False
