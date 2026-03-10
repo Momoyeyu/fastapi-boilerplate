@@ -110,11 +110,9 @@ fastapi-boilerplate/
     The project supports OAuth2 Password Flow for Swagger UI authentication:
     1. Visit `http://localhost:8000/docs`
     2. Click the **"Authorize"** button in the top right
-    3. Enter admin credentials (default: `admin` / `admin`)
+    3. Enter your credentials
     4. Click **"Authorize"** to login
     5. Now you can test all protected endpoints directly from Swagger UI
-    
-    > The admin account is automatically created on application startup based on `ADMIN_USERNAME` and `ADMIN_PASSWORD` settings.
 
 ### Running with Docker
 
@@ -156,13 +154,16 @@ This project uses **pydantic-settings** for type-safe configuration management, 
 |---------|---------------------|---------|-------------|
 | `debug` | `DEBUG` | `false` | Enable debug mode |
 | `database_url` | `DATABASE_URL` | PostgreSQL local | Database connection string |
+| `redis_host` | `REDIS_HOST` | `localhost` | Redis host |
+| `redis_port` | `REDIS_PORT` | `6379` | Redis port |
+| `redis_db` | `REDIS_DB` | `0` | Redis database number |
 | `password_salt` | `PASSWORD_SALT` | `Momoyeyu` | Salt for password hashing |
 | `jwt_secret` | `JWT_SECRET` | `Momoyeyu` | Secret key for JWT tokens |
 | `jwt_algorithm` | `JWT_ALGORITHM` | `HS256` | JWT signing algorithm |
 | `jwt_expire_seconds` | `JWT_EXPIRE_SECONDS` | `3600` | Access Token expiration time (seconds) |
 | `refresh_token_expire_seconds` | `REFRESH_TOKEN_EXPIRE_SECONDS` | `604800` | Refresh Token expiration time (seconds, default 7 days) |
-| `admin_username` | `ADMIN_USERNAME` | `admin` | Admin account username (auto-created on startup) |
-| `admin_password` | `ADMIN_PASSWORD` | `admin` | Admin account password |
+| `verification_code_expire_seconds` | `VERIFICATION_CODE_EXPIRE_SECONDS` | `300` | Verification code expiration time (seconds) |
+| `require_invitation_code` | `REQUIRE_INVITATION_CODE` | `false` | Require invitation code for registration |
 
 **Usage:**
 

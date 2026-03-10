@@ -14,12 +14,10 @@ from conf.redis import close_redis
 from middleware.auth import setup_auth_middleware
 from middleware.logging import setup_logging_middleware
 from user.handler import router as user_router
-from user.service import ensure_admin_user
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
-    ensure_admin_user()
     logger.info("Application started")
     yield
     logger.info("Application shutdown")
