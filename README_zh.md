@@ -49,16 +49,22 @@ fastapi-boilerplate/
 │   ├── middleware/
 │   │   ├── auth.py             # JWT 认证中间件 + @auth.exempt 装饰器
 │   │   └── logging.py          # 请求/响应日志中间件
-│   ├── auth/                   # 认证模块（登录、刷新、登出）
-│   ├── user/                   # 用户模块（个人信息、注册）
+│   ├── auth/                   # 认证模块
+│   │   ├── token.py            # 登录、Token 创建/刷新/撤销
+│   │   ├── password.py         # 密码哈希和重置
+│   │   ├── register.py         # 邮箱验证注册
+│   │   └── verification.py     # 验证码管理（Redis）
+│   ├── user/                   # 用户模块
+│   │   └── profile.py          # 个人信息查询和更新
 │   └── invitation/             # 邀请码模块
 ├── migration/
 │   ├── runner.py               # 迁移执行接口
 │   └── alembic/                # Alembic 环境和版本脚本
 ├── tests/
 │   ├── unit/                   # 单元测试（mock 依赖）
-│   ├── integration/            # 集成测试（SQLite 内存数据库）
-│   │   └── conftest.py         # 测试 fixtures（TestClient、FakeRedis、测试 DB）
+│   ├── integration/            # 集成测试（SQLite + FakeRedis）
+│   │   ├── conftest.py         # fixtures（TestClient、FakeRedis、邮件 mock）
+│   │   └── test_workflow.py    # 端到端用户旅程测试
 │   └── cfg.yml                 # 测试覆盖率配置
 ├── scripts/                    # 开发任务脚本
 ├── .env.example                # 环境变量模板
@@ -76,16 +82,18 @@ fastapi-boilerplate/
 |------|------|------|
 | **Model** | `model.py` | SQLModel 表类 + 数据库查询函数 |
 | **DTO** | `dto.py` | Pydantic 请求/响应模型（无数据库依赖） |
-| **Service** | `service.py` | 业务逻辑、校验、抛出 `BusinessError` |
+| **Service** | `{domain}.py` | 业务逻辑、校验、抛出 `BusinessError` |
 | **Handler** | `handler.py` | FastAPI `APIRouter`，调用 service，返回 `Response` |
 
 **数据流**: Handler（解析请求） -> Service（校验 + 编排） -> Model（数据库操作）
 
-**参考实现**: `src/user/` 是一个完整的示例模块。
+Service 文件按业务领域命名（如 `token.py`、`password.py`、`register.py`），而非统一的 `service.py`。简单模块可使用单个 service 文件，复杂模块拆分为多个领域文件。
+
+**参考实现**: `src/user/` 是最小化模块；`src/auth/` 展示了多 service 文件的模块。
 
 ### 添加新模块
 
-1. 创建 `src/{module}/` 目录，包含 `__init__.py`、`model.py`、`dto.py`、`service.py`、`handler.py`
+1. 创建 `src/{module}/` 目录，包含 `__init__.py`、`model.py`、`dto.py`、`{domain}.py`（service）、`handler.py`
 
 2. **model.py** — 定义表和查询：
 ```python
@@ -130,7 +138,7 @@ class ProductResponse(BaseModel):
     price: float
 ```
 
-4. **service.py** — 业务逻辑和错误处理：
+4. **`{domain}.py`** — 业务逻辑和错误处理（如 `product.py`）：
 ```python
 from common import erri
 from product import model
@@ -178,7 +186,7 @@ _app.include_router(product_router)
 from product.model import Product  # noqa: F401
 ```
 
-8. **添加测试**：`tests/unit/test_{module}_service.py` 和 `tests/integration/test_{module}_api.py`
+8. **添加测试**：遵循命名规范 `test_{module}_{domain}.py`（详见[测试](#测试)）
 
 ## 核心模式
 
@@ -285,9 +293,54 @@ uv run pytest tests/unit -v        # 仅单元测试
 uv run pytest tests/integration -v # 仅集成测试
 ```
 
-- 单元测试通过 `monkeypatch` mock 依赖
-- 集成测试使用 SQLite 内存数据库 + FakeRedis（见 `tests/integration/conftest.py`）
-- CI 在 PR 中检查增量覆盖率（阈值 80%，配置于 `tests/cfg.yml`）
+#### 测试架构
+
+测试分为三层，均遵循命名规范 `test_{module}_{domain}.py`，与源文件 `src/{module}/{domain}.py` 一一对应：
+
+```
+tests/
+├── unit/                          # 隔离的 service 逻辑测试（monkeypatch mock）
+│   ├── test_auth_token.py         ← src/auth/token.py
+│   ├── test_auth_password.py      ← src/auth/password.py
+│   ├── test_auth_register.py      ← src/auth/register.py
+│   ├── test_user_profile.py       ← src/user/profile.py
+│   ├── test_auth_middleware.py     ← src/middleware/auth.py
+│   └── ...
+├── integration/                   # 完整请求/响应链路测试（SQLite + FakeRedis）
+│   ├── conftest.py                # 共享 fixtures
+│   ├── test_auth_register.py      # 注册 + 邀请码接口
+│   ├── test_auth_token.py         # 登录、Token 刷新、登出接口
+│   ├── test_auth_password.py      # 忘记/重置密码接口
+│   ├── test_user_profile.py       # 个人信息 + 修改密码接口
+│   ├── test_common_resp.py        # 响应信封格式一致性
+│   └── test_workflow.py           # 跨模块端到端用户旅程
+└── cfg.yml                        # 覆盖率配置（阈值、包含/排除规则）
+```
+
+| 层级 | 目的 | 依赖方式 |
+|------|------|----------|
+| **Unit** | 隔离测试单个 service 函数 | 所有外部调用通过 `monkeypatch` mock |
+| **Integration** | 测试 API 端点的完整调用链 | 临时 SQLite 数据库 + FakeRedis + mock 邮件 |
+| **Workflow** | 测试跨模块的多步骤用户旅程 | 与 Integration 相同（位于 `integration/` 目录） |
+
+#### 核心规范
+
+- **命名规范**：`test_{module}_{domain}.py` 对应 `src/{module}/{domain}.py`。添加新模块时，需在 `unit/` 和 `integration/` 中创建对应测试文件。
+- **Fixtures**（`integration/conftest.py`）：`client`（TestClient）、`register_and_verify`（两步注册）、`auth_header`（获取 Bearer Token）、`mock_email`（捕获发送的邮件）、`session`（直接数据库访问）。
+- **邮件 mock**：`mock_email` fixture（autouse）拦截所有邮件发送，避免消耗 Resend 额度。测试可通过 `mock_email` 列表验证邮件参数。
+- **覆盖率**：CI 在 PR 中检查增量覆盖率（阈值 80%，配置于 `tests/cfg.yml`）。
+
+#### Workflow 测试
+
+`test_workflow.py` 测试跨多个 API 模块的完整用户旅程：
+
+| 测试类 | 用户旅程 |
+|--------|----------|
+| `TestNewUserOnboarding` | 注册 → 邮箱验证 → 查看/更新个人信息 → 登出 |
+| `TestTokenLifecycle` | 访问 API → 刷新 Token → 再次访问 → 登出 → 验证 Token 已撤销 |
+| `TestMultiSession` | 两次登录 → 登出一个会话 → 另一个会话不受影响 |
+| `TestPasswordLifecycle` | 修改密码 → 登出 → 登录 → 忘记密码 → 重置 → 登录 |
+| `TestProfilePersistence` | 更新个人信息 → 登出 → 登录 → 验证数据已持久化 |
 
 ### CI/CD
 

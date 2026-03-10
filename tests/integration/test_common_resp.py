@@ -1,8 +1,8 @@
 """
-Integration tests for response format stability.
+Integration tests for response envelope format.
 
-Verifies that ALL responses (success and error) from the real app
-follow the standardized envelope: {code, message, data}.
+Verifies that ALL responses (success and error) follow the
+standardized envelope: {code, message, data}.
 """
 
 from fastapi.testclient import TestClient
@@ -12,25 +12,12 @@ from common.resp import Code
 ENVELOPE_KEYS = {"code", "message", "data"}
 
 
-def register_and_verify(client: TestClient, email: str, password: str) -> dict:
-    from conf.redis import get_redis
-
-    client.post("/auth/register", json={"email": email, "password": password})
-    key = f"verification:{email.lower()}:register"
-    code = get_redis().get(key)
-    response = client.post(
-        "/auth/register/verify",
-        json={"email": email, "code": code, "password": password},
-    )
-    return response.json()
-
-
 class TestErrorResponseFormat:
     """All error responses must be HTTP 200 with {code, message, data} envelope."""
 
-    def test_business_error_envelope(self, client: TestClient):
+    def test_business_error_envelope(self, client: TestClient, register_and_verify):
         """Duplicate registration triggers BusinessError → envelope."""
-        register_and_verify(client, "fmt_dup@example.com", "pass")
+        register_and_verify("fmt_dup@example.com", "pass")
         resp = client.post(
             "/auth/register",
             json={"email": "fmt_dup@example.com", "password": "x"},
@@ -69,9 +56,9 @@ class TestErrorResponseFormat:
         assert set(body.keys()) == ENVELOPE_KEYS
         assert body["code"] == Code.UNAUTHORIZED
 
-    def test_login_wrong_password_envelope(self, client: TestClient):
+    def test_login_wrong_password_envelope(self, client: TestClient, register_and_verify):
         """Wrong password → BusinessError → envelope."""
-        register_and_verify(client, "fmt_login@example.com", "right")
+        register_and_verify("fmt_login@example.com", "right")
         resp = client.post(
             "/auth/login",
             data={"username": "fmt_login@example.com", "password": "wrong"},
@@ -106,8 +93,8 @@ class TestSuccessResponseFormat:
         assert set(body.keys()) == ENVELOPE_KEYS
         assert body["code"] == Code.OK
 
-    def test_login_success_envelope(self, client: TestClient):
-        register_and_verify(client, "fmt_login_ok@example.com", "pass")
+    def test_login_success_envelope(self, client: TestClient, register_and_verify):
+        register_and_verify("fmt_login_ok@example.com", "pass")
         resp = client.post(
             "/auth/login",
             data={"username": "fmt_login_ok@example.com", "password": "pass"},
@@ -119,8 +106,8 @@ class TestSuccessResponseFormat:
         assert "access_token" in body["data"]
         assert "refresh_token" in body["data"]
 
-    def test_whoami_success_envelope(self, client: TestClient):
-        data = register_and_verify(client, "fmt_who@example.com", "pass")
+    def test_whoami_success_envelope(self, client: TestClient, register_and_verify):
+        data = register_and_verify("fmt_who@example.com", "pass")
         resp = client.get(
             "/user/whoami",
             headers={"Authorization": f"Bearer {data['data']['access_token']}"},

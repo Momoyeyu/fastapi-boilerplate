@@ -9,6 +9,7 @@ export PYTHONPATH="${PYTHONPATH:-$ROOT_DIR/src}"
 
 OUTPUT_DIR="$ROOT_DIR/output"
 mkdir -p "$OUTPUT_DIR"
+export COVERAGE_FILE="$OUTPUT_DIR/.coverage"
 
 # Helper function to calculate success rate
 calc_success_rate() {
@@ -51,6 +52,9 @@ echo "========================================"
 
 set +e
 UNIT_OUTPUT="$(uv run --extra dev pytest tests/unit -q \
+    --cov=src \
+    --cov-report=xml:$OUTPUT_DIR/coverage.xml \
+    --cov-report= \
     --junitxml=$OUTPUT_DIR/junit-unit.xml 2>&1)"
 UNIT_STATUS=$?
 set -e
@@ -99,3 +103,53 @@ fi
 
 echo ""
 echo "All tests PASSED"
+
+echo ""
+echo "========================================"
+echo "Coverage Report"
+echo "========================================"
+
+uv run python -c "
+import subprocess
+import sys
+import yaml
+
+with open('tests/cfg.yml', 'r') as f:
+    cfg = yaml.safe_load(f) or {}
+
+cov_cfg = cfg.get('coverage', {})
+threshold = cov_cfg.get('threshold', 80)
+include_patterns = cov_cfg.get('include', [])
+exclude_patterns = cov_cfg.get('exclude', [])
+if isinstance(include_patterns, str):
+    include_patterns = [include_patterns]
+if isinstance(exclude_patterns, str):
+    exclude_patterns = [exclude_patterns]
+
+cmd = ['uv', 'run', 'coverage', 'report']
+if include_patterns:
+    cmd.append('--include=' + ','.join(include_patterns))
+if exclude_patterns:
+    cmd.append('--omit=' + ','.join(exclude_patterns))
+
+result = subprocess.run(cmd)
+
+# Check threshold
+cmd_json = ['uv', 'run', 'coverage', 'json', '-o', '/dev/stdout', '-q']
+if include_patterns:
+    cmd_json.append('--include=' + ','.join(include_patterns))
+if exclude_patterns:
+    cmd_json.append('--omit=' + ','.join(exclude_patterns))
+
+import json
+out = subprocess.run(cmd_json, capture_output=True, text=True)
+if out.returncode == 0:
+    data = json.loads(out.stdout)
+    pct = data.get('totals', {}).get('percent_covered', 0)
+    print()
+    if pct >= threshold:
+        print(f'Coverage: {pct:.1f}% (threshold: {threshold}%) ✓')
+    else:
+        print(f'Coverage: {pct:.1f}% (threshold: {threshold}%) ✗')
+        sys.exit(1)
+"

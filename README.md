@@ -49,16 +49,22 @@ fastapi-boilerplate/
 │   ├── middleware/
 │   │   ├── auth.py             # JWT auth middleware + @auth.exempt decorator
 │   │   └── logging.py          # request/response logging middleware
-│   ├── auth/                   # auth module (login, refresh, logout)
-│   ├── user/                   # user module (profile, registration)
+│   ├── auth/                   # auth module
+│   │   ├── token.py            # login, token creation/refresh/revocation
+│   │   ├── password.py         # password hashing and reset
+│   │   ├── register.py         # registration with email verification
+│   │   └── verification.py     # verification code management (Redis)
+│   ├── user/                   # user module
+│   │   └── profile.py          # profile queries and updates
 │   └── invitation/             # invitation code module
 ├── migration/
 │   ├── runner.py               # migration execution interface
 │   └── alembic/                # Alembic env & version scripts
 ├── tests/
 │   ├── unit/                   # unit tests (mocked dependencies)
-│   ├── integration/            # integration tests (SQLite in-memory)
-│   │   └── conftest.py         # test fixtures (TestClient, FakeRedis, test DB)
+│   ├── integration/            # integration tests (SQLite + FakeRedis)
+│   │   ├── conftest.py         # fixtures (TestClient, FakeRedis, email mock)
+│   │   └── test_workflow.py    # end-to-end user journey tests
 │   └── cfg.yml                 # test coverage config
 ├── scripts/                    # shell scripts for dev tasks
 ├── .env.example                # environment variable template
@@ -76,16 +82,18 @@ Every feature module follows a 4-layer pattern under `src/{module}/`:
 |-------|------|----------------|
 | **Model** | `model.py` | SQLModel table classes + DB query functions |
 | **DTO** | `dto.py` | Pydantic request/response schemas (no DB dependency) |
-| **Service** | `service.py` | Business logic, validation, raises `BusinessError` |
+| **Service** | `{domain}.py` | Business logic, validation, raises `BusinessError` |
 | **Handler** | `handler.py` | FastAPI `APIRouter`, calls service, returns `Response` |
 
 **Data flow**: Handler (parse request) -> Service (validate + orchestrate) -> Model (DB operations)
 
-**Reference implementation**: `src/user/` is a complete example module.
+Service files are named by business domain (e.g., `token.py`, `password.py`, `register.py`) rather than a generic `service.py`. Simple modules may use a single service file; larger modules split into multiple domain files.
+
+**Reference implementation**: `src/user/` is a minimal module; `src/auth/` shows a multi-service module.
 
 ### Adding a New Module
 
-1. Create `src/{module}/` with `__init__.py`, `model.py`, `dto.py`, `service.py`, `handler.py`
+1. Create `src/{module}/` with `__init__.py`, `model.py`, `dto.py`, `{domain}.py` (service), `handler.py`
 
 2. **model.py** — define table + queries:
 ```python
@@ -130,7 +138,7 @@ class ProductResponse(BaseModel):
     price: float
 ```
 
-4. **service.py** — business logic + error handling:
+4. **`{domain}.py`** — business logic + error handling (e.g., `product.py`):
 ```python
 from common import erri
 from product import model
@@ -178,7 +186,7 @@ _app.include_router(product_router)
 from product.model import Product  # noqa: F401
 ```
 
-8. **Add tests** in `tests/unit/test_{module}_service.py` and `tests/integration/test_{module}_api.py`
+8. **Add tests** following the naming convention `test_{module}_{domain}.py` (see [Testing](#testing))
 
 ## Key Patterns
 
@@ -285,9 +293,54 @@ uv run pytest tests/unit -v        # unit only
 uv run pytest tests/integration -v # integration only
 ```
 
-- Unit tests mock dependencies via `monkeypatch`
-- Integration tests use SQLite in-memory DB + FakeRedis (see `tests/integration/conftest.py`)
-- CI checks incremental coverage on PRs (threshold: 80%, configured in `tests/cfg.yml`)
+#### Test Architecture
+
+Tests are organized into three layers, all following the naming convention `test_{module}_{domain}.py` to mirror source files in `src/{module}/{domain}.py`:
+
+```
+tests/
+├── unit/                          # isolated service logic (monkeypatch mocks)
+│   ├── test_auth_token.py         ← src/auth/token.py
+│   ├── test_auth_password.py      ← src/auth/password.py
+│   ├── test_auth_register.py      ← src/auth/register.py
+│   ├── test_user_profile.py       ← src/user/profile.py
+│   ├── test_auth_middleware.py     ← src/middleware/auth.py
+│   └── ...
+├── integration/                   # full request/response cycle (SQLite + FakeRedis)
+│   ├── conftest.py                # shared fixtures
+│   ├── test_auth_register.py      # registration + invitation code endpoints
+│   ├── test_auth_token.py         # login, token refresh, logout endpoints
+│   ├── test_auth_password.py      # password forgot/reset endpoints
+│   ├── test_user_profile.py       # profile + password change endpoints
+│   ├── test_common_resp.py        # response envelope format consistency
+│   └── test_workflow.py           # cross-module end-to-end user journeys
+└── cfg.yml                        # coverage config (threshold, include/exclude)
+```
+
+| Layer | Purpose | Dependencies |
+|-------|---------|--------------|
+| **Unit** | Test individual service functions in isolation | All external calls mocked via `monkeypatch` |
+| **Integration** | Test API endpoints through the full stack | Temporary SQLite DB + FakeRedis + mocked email |
+| **Workflow** | Test multi-step user journeys across modules | Same as integration (lives in `integration/`) |
+
+#### Key Conventions
+
+- **Naming**: `test_{module}_{domain}.py` mirrors `src/{module}/{domain}.py`. When adding a new module, create corresponding test files in both `unit/` and `integration/`.
+- **Fixtures** (`integration/conftest.py`): `client` (TestClient), `register_and_verify` (two-step registration helper), `auth_header` (get Bearer token), `mock_email` (captures sent emails), `session` (direct DB access).
+- **Email mocking**: `mock_email` fixture (autouse) intercepts all email sending. Tests can inspect `mock_email` to verify email parameters.
+- **Coverage**: CI checks incremental coverage on PRs (threshold: 80%, configured in `tests/cfg.yml`).
+
+#### Workflow Tests
+
+`test_workflow.py` tests complete user journeys that span multiple API modules:
+
+| Test Class | Journey |
+|------------|---------|
+| `TestNewUserOnboarding` | Register → verify email → view/update profile → logout |
+| `TestTokenLifecycle` | Access API → refresh token → access again → logout → verify revoked |
+| `TestMultiSession` | Login twice → logout one session → other session unaffected |
+| `TestPasswordLifecycle` | Change password → logout → login → forgot → reset → login |
+| `TestProfilePersistence` | Update profile → logout → login → verify data persisted |
 
 ### CI/CD
 
