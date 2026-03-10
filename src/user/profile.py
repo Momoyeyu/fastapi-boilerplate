@@ -1,4 +1,4 @@
-from auth.service import get_password_hash
+from auth.password import get_password_hash
 from common import erri
 from user.model import User, get_user, update_user_password, update_user_profile
 
