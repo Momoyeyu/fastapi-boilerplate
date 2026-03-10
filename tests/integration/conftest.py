@@ -108,6 +108,39 @@ def mock_email(monkeypatch):
     return sent_emails
 
 
+@pytest.fixture
+def register_and_verify(client):
+    """Register a user through the two-step process and return the response body."""
+
+    def _do(email: str, password: str, invitation_code: str | None = None) -> dict:
+        from conf.redis import get_redis
+
+        body: dict = {"email": email, "password": password}
+        if invitation_code is not None:
+            body["invitation_code"] = invitation_code
+        client.post("/auth/register", json=body)
+        key = f"verification:{email.lower()}:register"
+        code = get_redis().get(key)
+        response = client.post(
+            "/auth/register/verify",
+            json={"email": email, "code": code, "password": password},
+        )
+        return response.json()
+
+    return _do
+
+
+@pytest.fixture
+def auth_header(register_and_verify):
+    """Get an Authorization header for a freshly registered user."""
+
+    def _do(email: str, password: str) -> dict:
+        body = register_and_verify(email, password)
+        return {"Authorization": f"Bearer {body['data']['access_token']}"}
+
+    return _do
+
+
 @pytest.fixture(scope="function")
 def session(test_engine) -> Generator[Session, None, None]:
     """Create a database session for direct database operations in tests."""
