@@ -81,14 +81,6 @@ async def email_exists(email: str) -> bool:
         return result.scalars().one_or_none() is not None
 
 
-async def username_exists(username: str) -> bool:
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            select(User).where(User.username == username, User.is_deleted == False)  # noqa: E712
-        )
-        return result.scalars().one_or_none() is not None
-
-
 async def update_user_profile(
     username: str,
     *,

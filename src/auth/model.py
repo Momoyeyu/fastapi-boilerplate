@@ -45,38 +45,6 @@ async def create_refresh_token(user_id: int, username: str) -> RefreshToken:
     return refresh_token
 
 
-async def get_refresh_token(token: str) -> RefreshToken | None:
-    """Get a refresh token by its token string."""
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(select(RefreshToken).where(RefreshToken.token == token))
-        return result.scalars().one_or_none()
-
-
-async def validate_refresh_token(token: str) -> RefreshToken | None:
-    """Validate a refresh token and return it if valid.
-
-    Returns None if the token is invalid, expired, or revoked.
-    """
-    refresh_token = await get_refresh_token(token)
-    if not refresh_token:
-        return None
-
-    if refresh_token.revoked:
-        return None
-
-    # Check expiration (ensure both datetimes are timezone-aware for comparison)
-    now = datetime.now(UTC)
-    expires_at = (
-        refresh_token.expires_at.replace(tzinfo=UTC)
-        if refresh_token.expires_at.tzinfo is None
-        else refresh_token.expires_at
-    )
-    if expires_at < now:
-        return None
-
-    return refresh_token
-
-
 async def revoke_refresh_token(token: str) -> bool:
     """Revoke a refresh token.
 
@@ -94,31 +62,6 @@ async def revoke_refresh_token(token: str) -> bool:
         await session.commit()
 
     return True
-
-
-async def revoke_all_user_tokens(user_id: int) -> int:
-    """Revoke all refresh tokens for a user.
-
-    Returns the number of tokens revoked.
-    """
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            select(RefreshToken).where(
-                RefreshToken.user_id == user_id,
-                RefreshToken.revoked == False,  # noqa: E712
-            )
-        )
-        tokens = result.scalars().all()
-
-        count = 0
-        for token in tokens:
-            token.revoked = True
-            session.add(token)
-            count += 1
-
-        await session.commit()
-
-    return count
 
 
 async def rotate_refresh_token(old_token: str) -> RefreshToken | None:
