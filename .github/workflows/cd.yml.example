@@ -85,6 +85,12 @@ jobs:
           JWT_SECRET=${{ secrets.JWT_SECRET }}
           JWT_ALGORITHM=${{ secrets.JWT_ALGORITHM }}
           JWT_EXPIRE_SECONDS=${{ secrets.JWT_EXPIRE_SECONDS }}
+          REFRESH_TOKEN_EXPIRE_SECONDS=${{ secrets.REFRESH_TOKEN_EXPIRE_SECONDS }}
+          VERIFICATION_CODE_EXPIRE_SECONDS=${{ secrets.VERIFICATION_CODE_EXPIRE_SECONDS }}
+          REQUIRE_INVITATION_CODE=${{ secrets.REQUIRE_INVITATION_CODE }}
+          REDIS_HOST=${{ secrets.REDIS_HOST }}
+          REDIS_PORT=${{ secrets.REDIS_PORT }}
+          REDIS_DB=${{ secrets.REDIS_DB }}
           DEBUG=false
           DOCKER_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           ENVFILE
