@@ -29,7 +29,7 @@ def test_jwt_middleware_returns_unauthorized_when_missing_authorization_header()
     auth.setup_auth_middleware(app)
     client = TestClient(app)
     resp = client.get("/protected")
-    assert resp.status_code == 200
+    assert resp.status_code == 401
     assert resp.json()["code"] == Code.UNAUTHORIZED
 
 
@@ -44,7 +44,7 @@ def test_jwt_middleware_returns_unauthorized_when_token_invalid():
     auth.setup_auth_middleware(app)
     client = TestClient(app)
     resp = client.get("/protected", headers={"Authorization": "Bearer not-a-jwt"})
-    assert resp.status_code == 200
+    assert resp.status_code == 401
     assert resp.json()["code"] == Code.UNAUTHORIZED
 
 

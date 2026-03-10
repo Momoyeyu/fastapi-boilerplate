@@ -106,13 +106,13 @@ def setup_auth_middleware(app: FastAPI) -> None:
         auth = request.headers.get("Authorization")
         if not auth or not auth.startswith("Bearer "):
             return JSONResponse(
-                status_code=200,
+                status_code=401,
                 content=resp.error(resp.Code.UNAUTHORIZED, "Unauthorized").model_dump(),
             )
         token = auth.split(" ", 1)[1]
         try:
             payload = verify_token(token)
         except erri.BusinessError as e:
-            return JSONResponse(status_code=200, content=resp.error(e.code, e.message).model_dump())
+            return JSONResponse(status_code=e.status_code, content=resp.error(e.code, e.message).model_dump())
         request.state.user = payload.get("sub")
         return await call_next(request)
