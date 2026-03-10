@@ -13,7 +13,7 @@ ENVELOPE_KEYS = {"code", "message", "data"}
 
 
 class TestErrorResponseFormat:
-    """All error responses must be HTTP 200 with {code, message, data} envelope."""
+    """Error responses use proper HTTP status codes with {code, message, data} envelope."""
 
     def test_business_error_envelope(self, client: TestClient, register_and_verify):
         """Duplicate registration triggers BusinessError → envelope."""
@@ -22,7 +22,7 @@ class TestErrorResponseFormat:
             "/auth/register",
             json={"email": "fmt_dup@example.com", "password": "x"},
         )
-        assert resp.status_code == 200
+        assert resp.status_code == 409
         body = resp.json()
         assert set(body.keys()) == ENVELOPE_KEYS
         assert body["code"] == Code.CONFLICT
@@ -31,7 +31,7 @@ class TestErrorResponseFormat:
     def test_validation_error_envelope(self, client: TestClient):
         """Missing required field triggers RequestValidationError → envelope."""
         resp = client.post("/auth/register", json={})
-        assert resp.status_code == 200
+        assert resp.status_code == 422
         body = resp.json()
         assert set(body.keys()) == ENVELOPE_KEYS
         assert body["code"] == Code.INVALID_PARAM
@@ -40,7 +40,7 @@ class TestErrorResponseFormat:
     def test_auth_middleware_unauthorized_envelope(self, client: TestClient):
         """No token on protected endpoint → envelope from middleware."""
         resp = client.get("/user/whoami")
-        assert resp.status_code == 200
+        assert resp.status_code == 401
         body = resp.json()
         assert set(body.keys()) == ENVELOPE_KEYS
         assert body["code"] == Code.UNAUTHORIZED
@@ -51,7 +51,7 @@ class TestErrorResponseFormat:
             "/user/whoami",
             headers={"Authorization": "Bearer garbage"},
         )
-        assert resp.status_code == 200
+        assert resp.status_code == 401
         body = resp.json()
         assert set(body.keys()) == ENVELOPE_KEYS
         assert body["code"] == Code.UNAUTHORIZED
@@ -63,7 +63,7 @@ class TestErrorResponseFormat:
             "/auth/login",
             data={"username": "fmt_login@example.com", "password": "wrong"},
         )
-        assert resp.status_code == 200
+        assert resp.status_code == 401
         body = resp.json()
         assert set(body.keys()) == ENVELOPE_KEYS
         assert body["code"] == Code.UNAUTHORIZED
@@ -74,7 +74,7 @@ class TestErrorResponseFormat:
             "/auth/token/refresh",
             json={"refresh_token": "nonexistent"},
         )
-        assert resp.status_code == 200
+        assert resp.status_code == 401
         body = resp.json()
         assert set(body.keys()) == ENVELOPE_KEYS
         assert body["code"] == Code.UNAUTHORIZED

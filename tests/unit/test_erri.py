@@ -31,8 +31,22 @@ def test_factory_exception_is_raisable_and_catchable(factory, expected_code):
     assert exc_info.value.code == expected_code
 
 
+def test_factory_carries_correct_http_status_code():
+    cases = [
+        (erri.bad_request, 400),
+        (erri.unauthorized, 401),
+        (erri.forbidden, 403),
+        (erri.not_found, 404),
+        (erri.conflict, 409),
+        (erri.internal, 500),
+    ]
+    for factory, expected_status in cases:
+        exc = factory("msg")
+        assert exc.status_code == expected_status
+
+
 def test_business_error_str_is_message():
-    exc = BusinessError(code=Code.BAD_REQUEST, message="oops")
+    exc = BusinessError(code=Code.BAD_REQUEST, status_code=400, message="oops")
     assert str(exc) == "oops"
 
 

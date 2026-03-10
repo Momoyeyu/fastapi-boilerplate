@@ -48,7 +48,7 @@ class TestAuthLogin:
             "/auth/login",
             data={"username": "wrongpass@example.com", "password": "wrong_pass"},
         )
-        assert response.status_code == 200
+        assert response.status_code == 401
         assert response.json()["code"] == Code.UNAUTHORIZED
 
     def test_login_nonexistent_user(self, client: TestClient):
@@ -57,7 +57,7 @@ class TestAuthLogin:
             "/auth/login",
             data={"username": "nonexistent@example.com", "password": "anypass"},
         )
-        assert response.status_code == 200
+        assert response.status_code == 401
         assert response.json()["code"] == Code.UNAUTHORIZED
 
 
@@ -88,7 +88,7 @@ class TestRefreshToken:
             "/auth/token/refresh",
             json={"refresh_token": "invalid-token"},
         )
-        assert response.status_code == 200
+        assert response.status_code == 401
         assert response.json()["code"] == Code.UNAUTHORIZED
 
     def test_refresh_with_revoked_token(self, client: TestClient, register_and_verify):
