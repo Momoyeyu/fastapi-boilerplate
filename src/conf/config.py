@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from pydantic import computed_field
+from pydantic import SecretStr, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _ENV_FILE = Path(__file__).resolve().parent.parent.parent / ".env"
@@ -47,7 +47,7 @@ class Settings(BaseSettings):
     verification_code_expire_seconds: int = 300  # 5 minutes
 
     # Email (Resend)
-    resend_api_key: str = ""
+    resend_api_key: SecretStr = SecretStr("")
     email_from: str = "noreply@example.com"
 
     # Invitation code

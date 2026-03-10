@@ -6,9 +6,10 @@ from conf.config import settings
 
 def _init_resend() -> bool:
     """Initialize Resend API key. Returns False if not configured."""
-    if not settings.resend_api_key:
+    key = settings.resend_api_key.get_secret_value()
+    if not key:
         return False
-    resend.api_key = settings.resend_api_key
+    resend.api_key = key
     return True
 
 
