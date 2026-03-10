@@ -46,6 +46,10 @@ class Settings(BaseSettings):
     refresh_token_expire_seconds: int = 604800  # 7 days
     verification_code_expire_seconds: int = 300  # 5 minutes
 
+    # Email (Resend)
+    resend_api_key: str = ""
+    email_from: str = "noreply@example.com"
+
     # Invitation code
     require_invitation_code: bool = False
 
