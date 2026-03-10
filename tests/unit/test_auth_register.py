@@ -46,7 +46,7 @@ async def test_initiate_registration_success(monkeypatch: pytest.MonkeyPatch):
         return "123456"
 
     monkeypatch.setattr(register, "create_verification_code", mock_create_code, raising=True)
-    monkeypatch.setattr(register, "send_verification_email", lambda *args: True, raising=True)
+    monkeypatch.setattr(register, "send_verification_email", async_return(True), raising=True)
 
     await register.initiate_registration("alice@test.com", "pw")
     assert code_created["email"] == "alice@test.com"
@@ -110,7 +110,7 @@ async def test_initiate_registration_valid_invitation_code(monkeypatch: pytest.M
     mock_settings.require_invitation_code = True
     monkeypatch.setattr(register, "email_exists", async_return(False), raising=True)
     monkeypatch.setattr(register, "create_verification_code", lambda *a: "123456")
-    monkeypatch.setattr(register, "send_verification_email", lambda *a: None)
+    monkeypatch.setattr(register, "send_verification_email", async_return(None))
 
     import invitation.model as inv_model
     from invitation.model import InvitationCode
@@ -134,7 +134,7 @@ async def test_initiate_registration_valid_invitation_code(monkeypatch: pytest.M
 async def test_initiate_registration_skips_invitation_when_disabled(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(register, "email_exists", async_return(False), raising=True)
     monkeypatch.setattr(register, "create_verification_code", lambda *a: "123456")
-    monkeypatch.setattr(register, "send_verification_email", lambda *a: None)
+    monkeypatch.setattr(register, "send_verification_email", async_return(None))
 
     # Should succeed without invitation code validation
     await register.initiate_registration("alice@test.com", "pw", "ANYCODE")
