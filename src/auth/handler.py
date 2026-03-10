@@ -3,6 +3,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 
 from auth import dto, password, register, token
 from common.resp import Response, ok
+from conf.config import settings
 from middleware import auth
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -33,12 +34,12 @@ async def register_verify(body: dto.RegisterVerifyRequest) -> Response:
 
 @auth.exempt
 @router.post("/login")
-async def login(form_data: OAuth2PasswordRequestForm = Depends()) -> Response:
+async def login(body: dto.LoginRequest) -> Response:
     """Authenticate user and return access and refresh tokens.
 
-    Supports login with email or username.
+    Supports login with email or username via JSON body.
     """
-    token_pair = await token.login_user(form_data.username, form_data.password)
+    token_pair = await token.login_user(body.identifier, body.password)
     return ok(
         data=dto.TokenData(
             access_token=token_pair.access_token,
@@ -47,6 +48,23 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()) -> Response:
             refresh_token_expires_in=token_pair.refresh_token_expires_in,
         ).model_dump()
     )
+
+
+if settings.debug:
+
+    @auth.exempt
+    @router.post("/swagger/login", tags=["swagger"], include_in_schema=True)
+    async def swagger_login(form_data: OAuth2PasswordRequestForm = Depends()) -> Response:
+        """OAuth2-compatible login for Swagger UI. Only available in debug mode."""
+        token_pair = await token.login_user(form_data.username, form_data.password)
+        return ok(
+            data=dto.TokenData(
+                access_token=token_pair.access_token,
+                refresh_token=token_pair.refresh_token,
+                expires_in=token_pair.expires_in,
+                refresh_token_expires_in=token_pair.refresh_token_expires_in,
+            ).model_dump()
+        )
 
 
 @auth.exempt

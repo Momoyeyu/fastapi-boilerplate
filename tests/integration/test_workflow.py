@@ -99,7 +99,7 @@ class TestNewUserOnboarding:
         # 4. Login with the new account
         resp = client.post(
             "/auth/login",
-            data={"username": "invited@example.com", "password": "pass123"},
+            json={"identifier": "invited@example.com", "password": "pass123"},
         )
         assert resp.json()["code"] == Code.OK
         headers = {"Authorization": f"Bearer {resp.json()['data']['access_token']}"}
@@ -178,7 +178,7 @@ class TestMultiSession:
         # Session 1: login
         resp = client.post(
             "/auth/login",
-            data={"username": "multi@example.com", "password": "pass123"},
+            json={"identifier": "multi@example.com", "password": "pass123"},
         )
         assert resp.json()["code"] == Code.OK
         s1_access = resp.json()["data"]["access_token"]
@@ -187,7 +187,7 @@ class TestMultiSession:
         # Session 2: login again (different device)
         resp = client.post(
             "/auth/login",
-            data={"username": "multi@example.com", "password": "pass123"},
+            json={"identifier": "multi@example.com", "password": "pass123"},
         )
         assert resp.json()["code"] == Code.OK
         s2_access = resp.json()["data"]["access_token"]
@@ -237,14 +237,14 @@ class TestPasswordLifecycle:
         # 3. Old password no longer works
         resp = client.post(
             "/auth/login",
-            data={"username": "pwlife@example.com", "password": "original"},
+            json={"identifier": "pwlife@example.com", "password": "original"},
         )
         assert resp.json()["code"] == Code.UNAUTHORIZED
 
         # 4. New password works
         resp = client.post(
             "/auth/login",
-            data={"username": "pwlife@example.com", "password": "changed"},
+            json={"identifier": "pwlife@example.com", "password": "changed"},
         )
         assert resp.json()["code"] == Code.OK
 
@@ -264,7 +264,7 @@ class TestPasswordLifecycle:
         # 7. Login with reset password
         resp = client.post(
             "/auth/login",
-            data={"username": "pwlife@example.com", "password": "reset"},
+            json={"identifier": "pwlife@example.com", "password": "reset"},
         )
         assert resp.json()["code"] == Code.OK
 
@@ -314,7 +314,7 @@ class TestProfilePersistence:
         # Login again
         resp = client.post(
             "/auth/login",
-            data={"username": "persist@example.com", "password": "pass123"},
+            json={"identifier": "persist@example.com", "password": "pass123"},
         )
         new_token = resp.json()["data"]["access_token"]
 

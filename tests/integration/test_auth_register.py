@@ -181,7 +181,7 @@ class TestInvitationFullFlow:
         # Login with the registered account
         login_resp = client.post(
             "/auth/login",
-            data={"username": "flow@example.com", "password": "pass123"},
+            json={"identifier": "flow@example.com", "password": "pass123"},
         )
         assert login_resp.json()["code"] == Code.OK
         assert "access_token" in login_resp.json()["data"]

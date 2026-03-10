@@ -62,7 +62,7 @@ class TestPasswordReset:
         # Login with new password
         login_resp = client.post(
             "/auth/login",
-            data={"username": "reset@example.com", "password": "newpass"},
+            json={"identifier": "reset@example.com", "password": "newpass"},
         )
         assert login_resp.json()["code"] == Code.OK
 
