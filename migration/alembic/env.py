@@ -4,13 +4,16 @@ from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
-from sqlmodel import SQLModel
 
 from conf.config import settings
+from conf.db import Base
+
+from auth import model as auth_model
 from invitation import model as invitation_model
 from user import model as user_model
 
 _ = user_model.User
+_ = auth_model.RefreshToken
 _ = invitation_model.InvitationCode
 
 alembic_config = context.config
@@ -18,11 +21,11 @@ alembic_config = context.config
 if alembic_config.config_file_name is not None:
     fileConfig(alembic_config.config_file_name)
 
-target_metadata = SQLModel.metadata
+target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
-    url = settings.database_url
+    url = settings.sync_database_url
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -37,7 +40,7 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     configuration = alembic_config.get_section(alembic_config.config_ini_section) or {}
-    configuration["sqlalchemy.url"] = settings.database_url
+    configuration["sqlalchemy.url"] = settings.sync_database_url
 
     connectable = engine_from_config(
         configuration,

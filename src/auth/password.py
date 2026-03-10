@@ -12,7 +12,7 @@ def get_password_hash(password: str) -> str:
     return hashlib.sha512((password + settings.password_salt).encode("utf-8")).hexdigest()
 
 
-def request_password_reset(email: str) -> None:
+async def request_password_reset(email: str) -> None:
     """Request password reset by sending a verification code.
 
     Args:
@@ -21,14 +21,14 @@ def request_password_reset(email: str) -> None:
     Note:
         Always returns success to prevent email enumeration.
     """
-    if not email_exists(email):
+    if not await email_exists(email):
         return
 
     code = create_verification_code(email, "reset_password")
     send_verification_email(email, code, "reset_password")
 
 
-def reset_password(email: str, code: str, new_password: str) -> bool:
+async def reset_password(email: str, code: str, new_password: str) -> bool:
     """Reset password after email verification.
 
     Args:
@@ -47,9 +47,9 @@ def reset_password(email: str, code: str, new_password: str) -> bool:
 
     from user.model import get_user_by_email, update_user_password
 
-    user = get_user_by_email(email)
+    user = await get_user_by_email(email)
     if not user:
         raise erri.not_found("User not found")
 
     encrypted_password = get_password_hash(new_password)
-    return update_user_password(user.username, encrypted_password)
+    return await update_user_password(user.username, encrypted_password)

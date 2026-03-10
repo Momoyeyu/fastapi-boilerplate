@@ -54,7 +54,7 @@ tests/
 
 | 层级 | 文件 | 职责 |
 |------|------|------|
-| Model | `model.py` | SQLModel 表类 + 数据库查询函数 |
+| Model | `model.py` | SQLAlchemy ORM 模型 + 异步数据库查询函数 |
 | DTO | `dto.py` | Pydantic 请求/响应模型（无数据库依赖） |
 | Service | `{domain}.py` | 业务逻辑、校验、抛出 `BusinessError` |
 | Handler | `handler.py` | FastAPI `APIRouter`，调用 service，返回 `Response` |
@@ -66,10 +66,10 @@ Service 文件按业务领域命名（如 `token.py`、`password.py`），而非
 ### 添加新模块
 
 1. 创建 `src/{module}/` 目录，包含 `__init__.py`、`model.py`、`dto.py`、`{domain}.py`、`handler.py`
-2. `model.py` — 定义 SQLModel 表 + 查询函数（使用 `Session(engine)` 的 try/commit/rollback 模式）
+2. `model.py` — 定义 SQLAlchemy ORM 模型 + 异步查询函数（使用 `async with AsyncSessionLocal()` 的 try/commit/rollback 模式）
 3. `dto.py` — 定义 Pydantic 请求/响应模型
-4. `{domain}.py` — 实现业务逻辑，调用 model 函数，出错时抛出 `erri.*`
-5. `handler.py` — 定义 `APIRouter` 路由，调用 service，返回 `ok(data=...)`
+4. `{domain}.py` — 实现异步业务逻辑，调用 model 函数，出错时抛出 `erri.*`
+5. `handler.py` — 定义 `APIRouter` 路由，`await` service 调用，返回 `ok(data=...)`
 6. 在 `src/main.py` 的 `init_routers()` 中注册路由
 7. 在 `migration/alembic/env.py` 中导入 model（用于自动迁移）
 8. 按 `test_{module}_{domain}.py` 命名规范添加测试
@@ -141,7 +141,7 @@ PYTHONPATH="src:." uv run alembic -c migration/alembic.ini revision --autogenera
 
 ## 技术栈
 
-FastAPI 0.112+ | Python 3.12+ | SQLModel | PostgreSQL 16 | Redis 7 | PyJWT | Alembic | pydantic-settings | Loguru | uv | Ruff | pytest | Docker Compose | GitHub Actions
+FastAPI 0.112+ | Python 3.12+ | SQLAlchemy 2.0（异步） | PostgreSQL 16 | Redis 7 | PyJWT | Alembic | pydantic-settings | Loguru | uv | Ruff | pytest | Docker Compose | GitHub Actions
 
 ## 许可证
 

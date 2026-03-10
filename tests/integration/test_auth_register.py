@@ -3,7 +3,7 @@
 from datetime import datetime, timedelta
 
 from fastapi.testclient import TestClient
-from sqlmodel import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.resp import Code
 from conf import config as config_module
@@ -88,13 +88,13 @@ class TestInvitationRequired:
         response = _initiate(client, "bad@example.com", "pass123", "INVALID")
         assert response.json()["code"] == Code.BAD_REQUEST
 
-    def test_register_with_valid_code_full_flow(self, client: TestClient, session: Session, monkeypatch):
+    async def test_register_with_valid_code_full_flow(self, client: TestClient, session: AsyncSession, monkeypatch):
         monkeypatch.setattr(config_module.settings, "require_invitation_code", True)
 
         inv = InvitationCode(code="TESTCODE", max_uses=10, used_count=0, is_active=True)
         session.add(inv)
-        session.commit()
-        session.refresh(inv)
+        await session.commit()
+        await session.refresh(inv)
 
         # Step 1: Initiate
         response = _initiate(client, "valid@example.com", "pass123", "TESTCODE")
@@ -110,30 +110,30 @@ class TestInvitationRequired:
         assert "access_token" in verify_resp.json()["data"]
 
         # Verify used_count incremented
-        session.refresh(inv)
+        await session.refresh(inv)
         assert inv.used_count == 1
 
-    def test_register_with_exhausted_code_fails(self, client: TestClient, session: Session, monkeypatch):
+    async def test_register_with_exhausted_code_fails(self, client: TestClient, session: AsyncSession, monkeypatch):
         monkeypatch.setattr(config_module.settings, "require_invitation_code", True)
 
         inv = InvitationCode(code="MAXED", max_uses=1, used_count=1, is_active=True)
         session.add(inv)
-        session.commit()
+        await session.commit()
 
         response = _initiate(client, "maxed@example.com", "pass123", "MAXED")
         assert response.json()["code"] == Code.BAD_REQUEST
 
-    def test_register_with_inactive_code_fails(self, client: TestClient, session: Session, monkeypatch):
+    async def test_register_with_inactive_code_fails(self, client: TestClient, session: AsyncSession, monkeypatch):
         monkeypatch.setattr(config_module.settings, "require_invitation_code", True)
 
         inv = InvitationCode(code="INACTIVE", max_uses=0, used_count=0, is_active=False)
         session.add(inv)
-        session.commit()
+        await session.commit()
 
         response = _initiate(client, "inactive@example.com", "pass123", "INACTIVE")
         assert response.json()["code"] == Code.BAD_REQUEST
 
-    def test_register_with_expired_code_fails(self, client: TestClient, session: Session, monkeypatch):
+    async def test_register_with_expired_code_fails(self, client: TestClient, session: AsyncSession, monkeypatch):
         monkeypatch.setattr(config_module.settings, "require_invitation_code", True)
 
         inv = InvitationCode(
@@ -144,18 +144,18 @@ class TestInvitationRequired:
             expires_at=datetime.now() - timedelta(days=1),
         )
         session.add(inv)
-        session.commit()
+        await session.commit()
 
         response = _initiate(client, "expired@example.com", "pass123", "EXPIRED")
         assert response.json()["code"] == Code.BAD_REQUEST
 
-    def test_unlimited_invitation_code(self, client: TestClient, session: Session, monkeypatch):
+    async def test_unlimited_invitation_code(self, client: TestClient, session: AsyncSession, monkeypatch):
         """Invitation code with max_uses=0 allows unlimited registrations."""
         monkeypatch.setattr(config_module.settings, "require_invitation_code", True)
 
         inv = InvitationCode(code="NOLIMIT", max_uses=0, used_count=100, is_active=True)
         session.add(inv)
-        session.commit()
+        await session.commit()
 
         response = _initiate(client, "unlim@example.com", "pass123", "NOLIMIT")
         assert response.json()["code"] == Code.OK
@@ -164,15 +164,15 @@ class TestInvitationRequired:
 class TestInvitationFullFlow:
     """Full end-to-end flows simulating frontend interaction with invitation codes."""
 
-    def test_invitation_register_then_login(
-        self, client: TestClient, session: Session, monkeypatch, register_and_verify
+    async def test_invitation_register_then_login(
+        self, client: TestClient, session: AsyncSession, monkeypatch, register_and_verify
     ):
-        """Complete flow: initiate with invitation → verify email → login."""
+        """Complete flow: initiate with invitation -> verify email -> login."""
         monkeypatch.setattr(config_module.settings, "require_invitation_code", True)
 
         inv = InvitationCode(code="FLOW", max_uses=10, used_count=0, is_active=True)
         session.add(inv)
-        session.commit()
+        await session.commit()
 
         body = register_and_verify("flow@example.com", "pass123", "FLOW")
         assert body["code"] == Code.OK
@@ -186,15 +186,15 @@ class TestInvitationFullFlow:
         assert login_resp.json()["code"] == Code.OK
         assert "access_token" in login_resp.json()["data"]
 
-    def test_invitation_register_then_access_profile(
-        self, client: TestClient, session: Session, monkeypatch, register_and_verify
+    async def test_invitation_register_then_access_profile(
+        self, client: TestClient, session: AsyncSession, monkeypatch, register_and_verify
     ):
-        """Full flow: invitation register → use token to access protected endpoint."""
+        """Full flow: invitation register -> use token to access protected endpoint."""
         monkeypatch.setattr(config_module.settings, "require_invitation_code", True)
 
         inv = InvitationCode(code="PROFILE", max_uses=10, used_count=0, is_active=True)
         session.add(inv)
-        session.commit()
+        await session.commit()
 
         body = register_and_verify("profile@example.com", "pass123", "PROFILE")
         token = body["data"]["access_token"]
@@ -203,33 +203,33 @@ class TestInvitationFullFlow:
         assert me_resp.json()["code"] == Code.OK
         assert me_resp.json()["data"]["email"] == "profile@example.com"
 
-    def test_multiple_users_share_invitation_code(
-        self, client: TestClient, session: Session, monkeypatch, register_and_verify
+    async def test_multiple_users_share_invitation_code(
+        self, client: TestClient, session: AsyncSession, monkeypatch, register_and_verify
     ):
         """Multiple users register with the same invitation code, used_count increments."""
         monkeypatch.setattr(config_module.settings, "require_invitation_code", True)
 
         inv = InvitationCode(code="SHARED", max_uses=5, used_count=0, is_active=True)
         session.add(inv)
-        session.commit()
-        session.refresh(inv)
+        await session.commit()
+        await session.refresh(inv)
 
         for i in range(3):
             body = register_and_verify(f"shared{i}@example.com", "pass123", "SHARED")
             assert body["code"] == Code.OK
 
-        session.refresh(inv)
+        await session.refresh(inv)
         assert inv.used_count == 3
 
-    def test_invitation_code_exhausted_mid_flow(
-        self, client: TestClient, session: Session, monkeypatch, register_and_verify
+    async def test_invitation_code_exhausted_mid_flow(
+        self, client: TestClient, session: AsyncSession, monkeypatch, register_and_verify
     ):
         """Code with max_uses=1 works for first user, rejects second."""
         monkeypatch.setattr(config_module.settings, "require_invitation_code", True)
 
         inv = InvitationCode(code="ONCE", max_uses=1, used_count=0, is_active=True)
         session.add(inv)
-        session.commit()
+        await session.commit()
 
         body = register_and_verify("first@example.com", "pass123", "ONCE")
         assert body["code"] == Code.OK
@@ -237,15 +237,15 @@ class TestInvitationFullFlow:
         response = _initiate(client, "second@example.com", "pass123", "ONCE")
         assert response.json()["code"] == Code.BAD_REQUEST
 
-    def test_invitation_email_sent_with_correct_params(
-        self, client: TestClient, session: Session, monkeypatch, mock_email: list
+    async def test_invitation_email_sent_with_correct_params(
+        self, client: TestClient, session: AsyncSession, monkeypatch, mock_email: list
     ):
         """Verify email is sent with correct parameters during invitation registration."""
         monkeypatch.setattr(config_module.settings, "require_invitation_code", True)
 
         inv = InvitationCode(code="EMAILCHK", max_uses=10, used_count=0, is_active=True)
         session.add(inv)
-        session.commit()
+        await session.commit()
 
         _initiate(client, "invemail@example.com", "pass123", "EMAILCHK")
         assert len(mock_email) == 1

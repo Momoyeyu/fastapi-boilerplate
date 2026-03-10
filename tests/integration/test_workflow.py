@@ -6,7 +6,7 @@ API modules, verifying that the system works correctly as a whole.
 """
 
 from fastapi.testclient import TestClient
-from sqlmodel import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.resp import Code
 from conf import config as config_module
@@ -18,7 +18,7 @@ class TestNewUserOnboarding:
     """Simulate a new user's first experience from signup to profile setup."""
 
     def test_standard_onboarding(self, client: TestClient, mock_email: list):
-        """Register → verify email → view profile → update profile → logout."""
+        """Register -> verify email -> view profile -> update profile -> logout."""
         # 1. Initiate registration
         resp = client.post(
             "/auth/register",
@@ -61,14 +61,16 @@ class TestNewUserOnboarding:
         )
         assert resp.json()["code"] == Code.OK
 
-    def test_invitation_onboarding(self, client: TestClient, session: Session, monkeypatch, mock_email: list):
-        """Invitation code → register → verify → login → access profile."""
+    async def test_invitation_onboarding(
+        self, client: TestClient, session: AsyncSession, monkeypatch, mock_email: list
+    ):
+        """Invitation code -> register -> verify -> login -> access profile."""
         monkeypatch.setattr(config_module.settings, "require_invitation_code", True)
 
         inv = InvitationCode(code="WELCOME", max_uses=10, used_count=0, is_active=True)
         session.add(inv)
-        session.commit()
-        session.refresh(inv)
+        await session.commit()
+        await session.refresh(inv)
 
         # 1. Register with invitation code
         resp = client.post(
@@ -91,7 +93,7 @@ class TestNewUserOnboarding:
         assert resp.json()["code"] == Code.OK
 
         # 3. Verify invitation used_count
-        session.refresh(inv)
+        await session.refresh(inv)
         assert inv.used_count == 1
 
         # 4. Login with the new account
@@ -112,7 +114,7 @@ class TestTokenLifecycle:
     """Verify the full lifecycle of access and refresh tokens."""
 
     def test_access_refresh_logout(self, client: TestClient, register_and_verify):
-        """Register → access API → refresh → access again → logout → verify revoked."""
+        """Register -> access API -> refresh -> access again -> logout -> verify revoked."""
         body = register_and_verify("tokenlife@example.com", "pass123")
         access_token = body["data"]["access_token"]
         refresh_token = body["data"]["refresh_token"]
@@ -170,7 +172,7 @@ class TestMultiSession:
     """Verify concurrent sessions (multi-device login) work independently."""
 
     def test_two_sessions_independent_logout(self, client: TestClient, register_and_verify):
-        """Login twice → two sessions → logout one → other still works."""
+        """Login twice -> two sessions -> logout one -> other still works."""
         register_and_verify("multi@example.com", "pass123")
 
         # Session 1: login
@@ -216,7 +218,7 @@ class TestPasswordLifecycle:
     """Verify password change and reset across the full user lifecycle."""
 
     def test_change_then_reset(self, client: TestClient, register_and_verify, mock_email: list):
-        """Register → change password → logout → login → forgot → reset → login."""
+        """Register -> change password -> logout -> login -> forgot -> reset -> login."""
         body = register_and_verify("pwlife@example.com", "original")
         headers = {"Authorization": f"Bearer {body['data']['access_token']}"}
         refresh_token = body["data"]["refresh_token"]
@@ -294,7 +296,7 @@ class TestProfilePersistence:
     """Verify profile data persists across sessions."""
 
     def test_profile_survives_relogin(self, client: TestClient, register_and_verify):
-        """Update profile → logout → login again → profile data persisted."""
+        """Update profile -> logout -> login again -> profile data persisted."""
         body = register_and_verify("persist@example.com", "pass123")
         headers = {"Authorization": f"Bearer {body['data']['access_token']}"}
 

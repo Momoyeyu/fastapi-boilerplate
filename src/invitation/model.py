@@ -1,30 +1,32 @@
 from datetime import UTC, datetime
 
-from sqlmodel import Field, Session, SQLModel, select
+from sqlalchemy import DateTime, String, select
+from sqlalchemy.orm import Mapped, mapped_column
 
-from conf.db import engine
+from conf.db import AsyncSessionLocal, Base
 
 
-class InvitationCode(SQLModel, table=True):
+class InvitationCode(Base):
     __tablename__ = "invitation_code"
 
-    id: int | None = Field(default=None, primary_key=True)
-    code: str = Field(unique=True, index=True, max_length=50)
-    max_uses: int = Field(default=0)  # 0 means unlimited
-    used_count: int = Field(default=0)
-    is_active: bool = Field(default=True)
-    expires_at: datetime | None = Field(default=None)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    id: Mapped[int] = mapped_column(primary_key=True)
+    code: Mapped[str] = mapped_column(String(50), unique=True, index=True)
+    max_uses: Mapped[int] = mapped_column(default=0)  # 0 means unlimited
+    used_count: Mapped[int] = mapped_column(default=0)
+    is_active: Mapped[bool] = mapped_column(default=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
 
-def get_invitation_code(code: str) -> InvitationCode | None:
-    with Session(engine) as session:
-        return session.exec(select(InvitationCode).where(InvitationCode.code == code)).one_or_none()
+async def get_invitation_code(code: str) -> InvitationCode | None:
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(select(InvitationCode).where(InvitationCode.code == code))
+        return result.scalars().one_or_none()
 
 
-def validate_invitation_code(code: str) -> InvitationCode | None:
+async def validate_invitation_code(code: str) -> InvitationCode | None:
     """Return the invitation code if valid, None otherwise."""
-    invitation = get_invitation_code(code)
+    invitation = await get_invitation_code(code)
     if not invitation or not invitation.is_active:
         return None
     if invitation.expires_at is not None:
@@ -39,12 +41,12 @@ def validate_invitation_code(code: str) -> InvitationCode | None:
     return invitation
 
 
-def increment_used_count(code_id: int) -> bool:
-    with Session(engine) as session:
-        invitation = session.get(InvitationCode, code_id)
+async def increment_used_count(code_id: int) -> bool:
+    async with AsyncSessionLocal() as session:
+        invitation = await session.get(InvitationCode, code_id)
         if not invitation:
             return False
         invitation.used_count += 1
         session.add(invitation)
-        session.commit()
+        await session.commit()
         return True

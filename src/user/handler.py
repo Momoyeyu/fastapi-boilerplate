@@ -16,7 +16,7 @@ async def whoami(request: Request) -> Response:
 @router.get("/me")
 async def get_me(request: Request) -> Response:
     username = auth.get_username(request)
-    user = profile.get_user_profile(username)
+    user = await profile.get_user_profile(username)
     return ok(
         data=dto.UserProfileResponse(
             username=user.username,
@@ -32,7 +32,7 @@ async def get_me(request: Request) -> Response:
 @router.post("/me")
 async def update_me(request: Request, body: dto.UserProfileUpdateRequest) -> Response:
     username = auth.get_username(request)
-    user = profile.update_my_profile(
+    user = await profile.update_my_profile(
         username,
         nickname=body.nickname,
         avatar_url=body.avatar_url,
@@ -52,5 +52,5 @@ async def update_me(request: Request, body: dto.UserProfileUpdateRequest) -> Res
 @router.post("/password/change")
 async def change_password(request: Request, body: dto.PasswordChangeRequest) -> Response:
     username = auth.get_username(request)
-    profile.change_password(username, body.old_password, body.new_password)
+    await profile.change_password(username, body.old_password, body.new_password)
     return ok(message="Password changed successfully")

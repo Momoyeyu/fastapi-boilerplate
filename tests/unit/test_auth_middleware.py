@@ -9,6 +9,15 @@ from user import handler as user_handler
 from user.model import User
 
 
+def async_return(value):
+    """Create an async function that returns the given value."""
+
+    async def _inner(*args, **kwargs):
+        return value
+
+    return _inner
+
+
 def test_jwt_middleware_returns_unauthorized_when_missing_authorization_header():
     auth.EXEMPT_PATHS.clear()
     app = FastAPI()
@@ -87,7 +96,9 @@ def test_setup_jwt_middleware_freezes_route_registration():
             return {"ok": True}
 
 
-def test_get_username_returns_username_from_request_state_when_middleware_installed(monkeypatch: pytest.MonkeyPatch):
+async def test_get_username_returns_username_from_request_state_when_middleware_installed(
+    monkeypatch: pytest.MonkeyPatch,
+):
     auth.EXEMPT_PATHS.clear()
     app = FastAPI()
 
@@ -99,20 +110,18 @@ def test_get_username_returns_username_from_request_state_when_middleware_instal
     client = TestClient(app)
 
     # Mock refresh token creation to avoid database dependency
-    monkeypatch.setattr(
-        auth_token,
-        "create_refresh_token",
-        lambda user_id, username: type("MockToken", (), {"token": "mock-refresh"})(),
-        raising=True,
-    )
+    mock_token = type("MockToken", (), {"token": "mock-refresh"})()
+    monkeypatch.setattr(auth_token, "create_refresh_token", async_return(mock_token), raising=True)
 
-    token_pair = auth_token.create_token(User(id=1, username="alice", password="x"))
+    token_pair = await auth_token.create_token(User(id=1, username="alice", password="x"))
     resp = client.get("/me", headers={"Authorization": f"Bearer {token_pair.access_token}"})
     assert resp.status_code == 200
     assert resp.json() == {"username": "alice"}
 
 
-def test_get_username_can_parse_username_from_authorization_header_without_middleware(monkeypatch: pytest.MonkeyPatch):
+async def test_get_username_can_parse_username_from_authorization_header_without_middleware(
+    monkeypatch: pytest.MonkeyPatch,
+):
     app = FastAPI()
 
     @app.get("/me")
@@ -122,20 +131,16 @@ def test_get_username_can_parse_username_from_authorization_header_without_middl
     client = TestClient(app)
 
     # Mock refresh token creation to avoid database dependency
-    monkeypatch.setattr(
-        auth_token,
-        "create_refresh_token",
-        lambda user_id, username: type("MockToken", (), {"token": "mock-refresh"})(),
-        raising=True,
-    )
+    mock_token = type("MockToken", (), {"token": "mock-refresh"})()
+    monkeypatch.setattr(auth_token, "create_refresh_token", async_return(mock_token), raising=True)
 
-    token_pair = auth_token.create_token(User(id=2, username="bob", password="x"))
+    token_pair = await auth_token.create_token(User(id=2, username="bob", password="x"))
     resp = client.get("/me", headers={"Authorization": f"Bearer {token_pair.access_token}"})
     assert resp.status_code == 200
     assert resp.json() == {"username": "bob"}
 
 
-def test_user_whoami_returns_username_from_token(monkeypatch: pytest.MonkeyPatch):
+async def test_user_whoami_returns_username_from_token(monkeypatch: pytest.MonkeyPatch):
     auth.EXEMPT_PATHS.clear()
     app = FastAPI()
     app.include_router(user_handler.router)
@@ -143,21 +148,17 @@ def test_user_whoami_returns_username_from_token(monkeypatch: pytest.MonkeyPatch
     client = TestClient(app)
 
     # Mock refresh token creation to avoid database dependency
-    monkeypatch.setattr(
-        auth_token,
-        "create_refresh_token",
-        lambda user_id, username: type("MockToken", (), {"token": "mock-refresh"})(),
-        raising=True,
-    )
+    mock_token = type("MockToken", (), {"token": "mock-refresh"})()
+    monkeypatch.setattr(auth_token, "create_refresh_token", async_return(mock_token), raising=True)
 
-    token_pair = auth_token.create_token(User(id=1, username="alice", password="x"))
+    token_pair = await auth_token.create_token(User(id=1, username="alice", password="x"))
     resp = client.get("/user/whoami", headers={"Authorization": f"Bearer {token_pair.access_token}"})
     assert resp.status_code == 200
     assert resp.json()["code"] == Code.OK
     assert resp.json()["data"]["username"] == "alice"
 
 
-def test_user_me_uses_get_username_to_fetch_profile(monkeypatch: pytest.MonkeyPatch):
+async def test_user_me_uses_get_username_to_fetch_profile(monkeypatch: pytest.MonkeyPatch):
     auth.EXEMPT_PATHS.clear()
     app = FastAPI()
     app.include_router(user_handler.router)
@@ -166,7 +167,7 @@ def test_user_me_uses_get_username_to_fetch_profile(monkeypatch: pytest.MonkeyPa
 
     captured: dict[str, str] = {}
 
-    def _get_user_profile(username: str) -> User:
+    async def _get_user_profile(username: str) -> User:
         captured["username"] = username
         return User(
             id=1,
@@ -182,28 +183,24 @@ def test_user_me_uses_get_username_to_fetch_profile(monkeypatch: pytest.MonkeyPa
     monkeypatch.setattr(user_handler.profile, "get_user_profile", _get_user_profile, raising=True)
 
     # Mock refresh token creation to avoid database dependency
-    monkeypatch.setattr(
-        auth_token,
-        "create_refresh_token",
-        lambda user_id, username: type("MockToken", (), {"token": "mock-refresh"})(),
-        raising=True,
-    )
+    mock_token = type("MockToken", (), {"token": "mock-refresh"})()
+    monkeypatch.setattr(auth_token, "create_refresh_token", async_return(mock_token), raising=True)
 
-    token_pair = auth_token.create_token(User(id=1, username="alice", password="x"))
+    token_pair = await auth_token.create_token(User(id=1, username="alice", password="x"))
     resp = client.get("/user/me", headers={"Authorization": f"Bearer {token_pair.access_token}"})
     assert resp.status_code == 200
     assert captured["username"] == "alice"
     assert resp.json()["data"]["username"] == "alice"
 
 
-def test_user_me_post_updates_profile(monkeypatch: pytest.MonkeyPatch):
+async def test_user_me_post_updates_profile(monkeypatch: pytest.MonkeyPatch):
     auth.EXEMPT_PATHS.clear()
     app = FastAPI()
     app.include_router(user_handler.router)
     auth.setup_auth_middleware(app)
     client = TestClient(app)
 
-    def _update_my_profile(username: str, *, nickname: str | None, avatar_url: str | None) -> User:
+    async def _update_my_profile(username: str, *, nickname: str | None, avatar_url: str | None) -> User:
         return User(
             id=1,
             username=username,
@@ -218,14 +215,10 @@ def test_user_me_post_updates_profile(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(user_handler.profile, "update_my_profile", _update_my_profile, raising=True)
 
     # Mock refresh token creation to avoid database dependency
-    monkeypatch.setattr(
-        auth_token,
-        "create_refresh_token",
-        lambda user_id, username: type("MockToken", (), {"token": "mock-refresh"})(),
-        raising=True,
-    )
+    mock_token = type("MockToken", (), {"token": "mock-refresh"})()
+    monkeypatch.setattr(auth_token, "create_refresh_token", async_return(mock_token), raising=True)
 
-    token_pair = auth_token.create_token(User(id=1, username="alice", password="x", email="alice@test.com"))
+    token_pair = await auth_token.create_token(User(id=1, username="alice", password="x", email="alice@test.com"))
     resp = client.post(
         "/user/me",
         headers={"Authorization": f"Bearer {token_pair.access_token}"},

@@ -22,7 +22,7 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     yield
     logger.info("Application shutdown")
     close_redis()
-    close_db()
+    await close_db()
 
 
 def init_routers(_app: FastAPI) -> None:
