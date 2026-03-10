@@ -61,7 +61,7 @@ class TestErrorResponseFormat:
         register_and_verify("fmt_login@example.com", "right")
         resp = client.post(
             "/auth/login",
-            data={"username": "fmt_login@example.com", "password": "wrong"},
+            json={"identifier": "fmt_login@example.com", "password": "wrong"},
         )
         assert resp.status_code == 401
         body = resp.json()
@@ -97,7 +97,7 @@ class TestSuccessResponseFormat:
         register_and_verify("fmt_login_ok@example.com", "pass")
         resp = client.post(
             "/auth/login",
-            data={"username": "fmt_login_ok@example.com", "password": "pass"},
+            json={"identifier": "fmt_login_ok@example.com", "password": "pass"},
         )
         assert resp.status_code == 200
         body = resp.json()

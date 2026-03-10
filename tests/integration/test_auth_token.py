@@ -6,7 +6,7 @@ from common.resp import Code
 
 
 class TestAuthLogin:
-    """Tests for POST /auth/login endpoint."""
+    """Tests for POST /auth/login endpoint (JSON body)."""
 
     def test_login_success(self, client: TestClient, register_and_verify):
         """Test successful login returns token data in envelope."""
@@ -14,7 +14,7 @@ class TestAuthLogin:
 
         response = client.post(
             "/auth/login",
-            data={"username": "login@example.com", "password": "secret123"},
+            json={"identifier": "login@example.com", "password": "secret123"},
         )
         assert response.status_code == 200
         body = response.json()
@@ -35,7 +35,7 @@ class TestAuthLogin:
 
         response = client.post(
             "/auth/login",
-            data={"username": "username_test", "password": "secret123"},
+            json={"identifier": "username_test", "password": "secret123"},
         )
         assert response.status_code == 200
         assert response.json()["code"] == Code.OK
@@ -46,7 +46,7 @@ class TestAuthLogin:
 
         response = client.post(
             "/auth/login",
-            data={"username": "wrongpass@example.com", "password": "wrong_pass"},
+            json={"identifier": "wrongpass@example.com", "password": "wrong_pass"},
         )
         assert response.status_code == 401
         assert response.json()["code"] == Code.UNAUTHORIZED
@@ -55,7 +55,7 @@ class TestAuthLogin:
         """Test login fails for non-existent user."""
         response = client.post(
             "/auth/login",
-            data={"username": "nonexistent@example.com", "password": "anypass"},
+            json={"identifier": "nonexistent@example.com", "password": "anypass"},
         )
         assert response.status_code == 401
         assert response.json()["code"] == Code.UNAUTHORIZED

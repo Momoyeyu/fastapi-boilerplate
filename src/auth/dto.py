@@ -21,6 +21,11 @@ class TokenData(BaseModel):
     refresh_token_expires_in: int
 
 
+class LoginRequest(BaseModel):
+    identifier: str  # email or username
+    password: str
+
+
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
 
