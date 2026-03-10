@@ -207,6 +207,88 @@ class TestLogout:
         assert response.json()["code"] == Code.OK
 
 
+class TestEmailVerification:
+    """Tests for email sending during auth flows."""
+
+    def test_register_sends_verification_email(self, client: TestClient, mock_email: list):
+        """Verify registration triggers email with correct purpose and 6-digit code."""
+        client.post("/auth/register", json={"email": "emailtest@example.com", "password": "pass123"})
+        assert len(mock_email) == 1
+        assert mock_email[0]["email"] == "emailtest@example.com"
+        assert mock_email[0]["purpose"] == "register"
+        assert len(mock_email[0]["code"]) == 6
+
+    def test_password_forgot_sends_email(self, client: TestClient, mock_email: list):
+        """Verify password forgot sends email with reset_password purpose."""
+        register_and_verify(client, "forgotemail@example.com", "pass123")
+        mock_email.clear()
+
+        client.post("/auth/password/forgot", json={"email": "forgotemail@example.com"})
+        assert len(mock_email) == 1
+        assert mock_email[0]["email"] == "forgotemail@example.com"
+        assert mock_email[0]["purpose"] == "reset_password"
+
+    def test_password_forgot_no_email_for_nonexistent(self, client: TestClient, mock_email: list):
+        """Verify no email sent for non-existent user (anti-enumeration)."""
+        client.post("/auth/password/forgot", json={"email": "nobody@example.com"})
+        assert len(mock_email) == 0
+
+
+class TestVerificationCode:
+    """Tests for verification code edge cases."""
+
+    def test_register_wrong_code_fails(self, client: TestClient):
+        """Test registration fails with wrong verification code."""
+        client.post("/auth/register", json={"email": "wrongcode@example.com", "password": "pass123"})
+        response = client.post(
+            "/auth/register/verify",
+            json={"email": "wrongcode@example.com", "code": "000000", "password": "pass123"},
+        )
+        assert response.json()["code"] == Code.BAD_REQUEST
+
+    def test_register_code_consumed_after_use(self, client: TestClient):
+        """Test verification code is consumed and can't be reused."""
+        from conf.redis import get_redis
+
+        register_and_verify(client, "consumed@example.com", "pass123")
+        key = "verification:consumed@example.com:register"
+        assert get_redis().get(key) is None
+
+    def test_password_reset_wrong_code_fails(self, client: TestClient):
+        """Test password reset fails with wrong code."""
+        register_and_verify(client, "resetwrong@example.com", "pass123")
+        client.post("/auth/password/forgot", json={"email": "resetwrong@example.com"})
+        response = client.post(
+            "/auth/password/reset",
+            json={"email": "resetwrong@example.com", "code": "000000", "new_password": "newpass"},
+        )
+        assert response.json()["code"] == Code.BAD_REQUEST
+
+    def test_password_reset_code_consumed(self, client: TestClient):
+        """Test password reset code is consumed and can't be reused."""
+        from conf.redis import get_redis
+
+        register_and_verify(client, "resetonce@example.com", "pass123")
+        client.post("/auth/password/forgot", json={"email": "resetonce@example.com"})
+
+        key = "verification:resetonce@example.com:reset_password"
+        code = get_redis().get(key)
+
+        # First reset succeeds
+        resp1 = client.post(
+            "/auth/password/reset",
+            json={"email": "resetonce@example.com", "code": code, "new_password": "newpass"},
+        )
+        assert resp1.json()["code"] == Code.OK
+
+        # Second reset with same code fails
+        resp2 = client.post(
+            "/auth/password/reset",
+            json={"email": "resetonce@example.com", "code": code, "new_password": "newpass2"},
+        )
+        assert resp2.json()["code"] == Code.BAD_REQUEST
+
+
 class TestPasswordReset:
     """Tests for password reset endpoints."""
 

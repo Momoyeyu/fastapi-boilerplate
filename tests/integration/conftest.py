@@ -91,6 +91,23 @@ def redis_test_db(monkeypatch):
     monkeypatch.setattr(redis_module, "_client", None)
 
 
+@pytest.fixture(autouse=True)
+def mock_email(monkeypatch):
+    """Mock email sending to avoid consuming real Resend quota."""
+    sent_emails: list[dict[str, str]] = []
+
+    def fake_send(email, code, purpose):
+        sent_emails.append({"email": email, "code": code, "purpose": purpose})
+        return True
+
+    from auth import password as password_module
+    from auth import register as register_module
+
+    monkeypatch.setattr(register_module, "send_verification_email", fake_send)
+    monkeypatch.setattr(password_module, "send_verification_email", fake_send)
+    return sent_emails
+
+
 @pytest.fixture(scope="function")
 def session(test_engine) -> Generator[Session, None, None]:
     """Create a database session for direct database operations in tests."""
