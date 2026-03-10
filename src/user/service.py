@@ -1,7 +1,6 @@
 from auth.service import get_password_hash
 from common import erri
-from conf.config import settings
-from user.model import User, create_user, get_user, update_user_password, update_user_profile
+from user.model import User, get_user, update_user_password, update_user_profile
 
 
 def get_user_profile(username: str) -> User:
@@ -29,12 +28,3 @@ def change_password(username: str, old_password: str, new_password: str) -> bool
 
     encrypted_new = get_password_hash(new_password)
     return update_user_password(username, encrypted_new)
-
-
-def ensure_admin_user() -> None:
-    """Ensure the admin user exists, create if not."""
-    if get_user(settings.admin_username):
-        return
-    encrypted_password = get_password_hash(settings.admin_password)
-    admin_email = f"{settings.admin_username}@admin.local"
-    create_user(settings.admin_username, encrypted_password, admin_email, role="admin")

@@ -43,9 +43,5 @@ class Settings(BaseSettings):
     # Invitation code
     require_invitation_code: bool = False
 
-    # Admin account
-    admin_username: str = "admin"
-    admin_password: str = "admin"
-
 
 settings = Settings()

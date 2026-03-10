@@ -85,8 +85,6 @@ jobs:
           JWT_SECRET=${{ secrets.JWT_SECRET }}
           JWT_ALGORITHM=${{ secrets.JWT_ALGORITHM }}
           JWT_EXPIRE_SECONDS=${{ secrets.JWT_EXPIRE_SECONDS }}
-          ADMIN_USERNAME=${{ secrets.ADMIN_USERNAME }}
-          ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
           DEBUG=false
           DOCKER_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           ENVFILE
