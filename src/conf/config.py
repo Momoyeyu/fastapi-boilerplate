@@ -13,6 +13,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    app_name: str = "FastAPI Boilerplate"
     debug: bool = False
 
     # Database configuration
