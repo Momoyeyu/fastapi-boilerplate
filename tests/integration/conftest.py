@@ -5,16 +5,19 @@ Uses a temporary SQLite database to isolate tests from the real database.
 """
 
 import tempfile
-from collections.abc import Generator
+from collections.abc import AsyncGenerator
 from pathlib import Path
 
 import pytest
+import pytest_asyncio
 from fastapi.testclient import TestClient
-from sqlmodel import Session, SQLModel, create_engine
+from sqlalchemy import create_engine as create_sync_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from auth import model as auth_model
 from conf import db as db_module
 from conf import redis as redis_module
+from conf.db import Base
 from invitation import model as invitation_model
 from user import model as user_model
 
@@ -22,34 +25,45 @@ from user import model as user_model
 @pytest.fixture(scope="function")
 def test_engine():
     """Create a fresh temporary SQLite database for each test."""
-    # Use a temporary file instead of in-memory to avoid connection issues
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
         db_path = f.name
 
-    sqlite_url = f"sqlite:///{db_path}"
-    engine = create_engine(
-        sqlite_url,
+    # Create tables using sync engine (DDL doesn't need async)
+    sync_engine = create_sync_engine(
+        f"sqlite:///{db_path}",
         connect_args={"check_same_thread": False},
     )
-    SQLModel.metadata.create_all(engine)
+    Base.metadata.create_all(sync_engine)
+    sync_engine.dispose()
+
+    # Create async engine for runtime use
+    engine = create_async_engine(
+        f"sqlite+aiosqlite:///{db_path}",
+        connect_args={"check_same_thread": False},
+    )
     yield engine
-    engine.dispose()
-    # Clean up the temporary file
+    engine.sync_engine.dispose()
     Path(db_path).unlink(missing_ok=True)
 
 
 @pytest.fixture(scope="function")
-def client(test_engine, monkeypatch) -> Generator[TestClient, None, None]:
+def test_session_local(test_engine):
+    """Create an async session factory bound to the test engine."""
+    return async_sessionmaker(bind=test_engine, class_=AsyncSession, expire_on_commit=False)
+
+
+@pytest.fixture(scope="function")
+def client(test_engine, test_session_local, monkeypatch) -> TestClient:
     """
     Create a TestClient with the test database engine.
 
-    Patches the engine in both db and model modules.
+    Patches the engine and session factory in both db and model modules.
     """
-    # Patch the engine in all modules that use it
     monkeypatch.setattr(db_module, "engine", test_engine)
-    monkeypatch.setattr(user_model, "engine", test_engine)
-    monkeypatch.setattr(auth_model, "engine", test_engine)
-    monkeypatch.setattr(invitation_model, "engine", test_engine)
+    monkeypatch.setattr(db_module, "AsyncSessionLocal", test_session_local)
+    monkeypatch.setattr(user_model, "AsyncSessionLocal", test_session_local)
+    monkeypatch.setattr(auth_model, "AsyncSessionLocal", test_session_local)
+    monkeypatch.setattr(invitation_model, "AsyncSessionLocal", test_session_local)
 
     # Import create_app after patching to ensure patches are in effect
     from main import create_app
@@ -141,8 +155,8 @@ def auth_header(register_and_verify):
     return _do
 
 
-@pytest.fixture(scope="function")
-def session(test_engine) -> Generator[Session, None, None]:
+@pytest_asyncio.fixture(scope="function")
+async def session(test_session_local) -> AsyncGenerator[AsyncSession, None]:
     """Create a database session for direct database operations in tests."""
-    with Session(test_engine) as session:
+    async with test_session_local() as session:
         yield session

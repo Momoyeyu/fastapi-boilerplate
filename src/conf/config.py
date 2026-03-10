@@ -25,6 +25,12 @@ class Settings(BaseSettings):
     @computed_field  # type: ignore[prop-decorator]
     @property
     def database_url(self) -> str:
+        return f"postgresql+asyncpg://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def sync_database_url(self) -> str:
+        """Synchronous database URL for Alembic migrations."""
         return f"postgresql+psycopg://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
 
     # Redis configuration

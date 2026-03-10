@@ -9,6 +9,15 @@ from common.resp import Code
 from user.model import User
 
 
+def async_return(value):
+    """Create an async function that returns the given value."""
+
+    async def _inner(*args, **kwargs):
+        return value
+
+    return _inner
+
+
 @pytest.fixture
 def mock_settings(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     """Create a mock settings object with default test values."""
@@ -19,32 +28,32 @@ def mock_settings(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     return mock
 
 
-def test_login_user_user_not_found(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(token, "get_user_by_identifier", lambda identifier: None, raising=True)
+async def test_login_user_user_not_found(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(token, "get_user_by_identifier", async_return(None), raising=True)
     with pytest.raises(erri.BusinessError) as exc:
-        token.login_user("alice", "pw")
+        await token.login_user("alice", "pw")
     assert exc.value.code == Code.UNAUTHORIZED
 
 
-def test_login_user_password_mismatch(monkeypatch: pytest.MonkeyPatch, mock_settings: MagicMock):
+async def test_login_user_password_mismatch(monkeypatch: pytest.MonkeyPatch, mock_settings: MagicMock):
     user = User(id=1, username="alice", email="alice@test.com", password=password.get_password_hash("correct"))
-    monkeypatch.setattr(token, "get_user_by_identifier", lambda identifier: user, raising=True)
+    monkeypatch.setattr(token, "get_user_by_identifier", async_return(user), raising=True)
     with pytest.raises(erri.BusinessError) as exc:
-        token.login_user("alice", "wrong")
+        await token.login_user("alice", "wrong")
     assert exc.value.code == Code.UNAUTHORIZED
 
 
-def test_login_user_user_without_id(monkeypatch: pytest.MonkeyPatch, mock_settings: MagicMock):
+async def test_login_user_user_without_id(monkeypatch: pytest.MonkeyPatch, mock_settings: MagicMock):
     user = User(id=None, username="alice", email="alice@test.com", password=password.get_password_hash("pw"))
-    monkeypatch.setattr(token, "get_user_by_identifier", lambda identifier: user, raising=True)
+    monkeypatch.setattr(token, "get_user_by_identifier", async_return(user), raising=True)
     with pytest.raises(erri.BusinessError) as exc:
-        token.login_user("alice", "pw")
+        await token.login_user("alice", "pw")
     assert exc.value.code == Code.UNAUTHORIZED
 
 
-def test_login_user_success_creates_token(monkeypatch: pytest.MonkeyPatch, mock_settings: MagicMock):
+async def test_login_user_success_creates_token(monkeypatch: pytest.MonkeyPatch, mock_settings: MagicMock):
     user = User(id=7, username="alice", email="alice@test.com", password=password.get_password_hash("pw"))
-    monkeypatch.setattr(token, "get_user_by_identifier", lambda identifier: user, raising=True)
+    monkeypatch.setattr(token, "get_user_by_identifier", async_return(user), raising=True)
 
     captured: dict[str, object] = {}
     mock_token_pair = TokenPair(
@@ -54,21 +63,21 @@ def test_login_user_success_creates_token(monkeypatch: pytest.MonkeyPatch, mock_
         refresh_token_expires_in=604800,
     )
 
-    def _create_token(passed_user: object):
+    async def _create_token(passed_user: object):
         captured["user"] = passed_user
         return mock_token_pair
 
     monkeypatch.setattr(token, "create_token", _create_token, raising=True)
 
-    token_pair = token.login_user("alice", "pw")
+    token_pair = await token.login_user("alice", "pw")
     assert token_pair.access_token == "token-123"
     assert token_pair.refresh_token == "refresh-456"
     assert captured["user"] is user
 
 
-def test_login_user_with_email(monkeypatch: pytest.MonkeyPatch, mock_settings: MagicMock):
+async def test_login_user_with_email(monkeypatch: pytest.MonkeyPatch, mock_settings: MagicMock):
     user = User(id=7, username="alice", email="alice@test.com", password=password.get_password_hash("pw"))
-    monkeypatch.setattr(token, "get_user_by_identifier", lambda identifier: user, raising=True)
+    monkeypatch.setattr(token, "get_user_by_identifier", async_return(user), raising=True)
 
     mock_token_pair = TokenPair(
         access_token="token-123",
@@ -76,7 +85,7 @@ def test_login_user_with_email(monkeypatch: pytest.MonkeyPatch, mock_settings: M
         expires_in=3600,
         refresh_token_expires_in=604800,
     )
-    monkeypatch.setattr(token, "create_token", lambda _: mock_token_pair, raising=True)
+    monkeypatch.setattr(token, "create_token", async_return(mock_token_pair), raising=True)
 
-    token_pair = token.login_user("alice@test.com", "pw")
+    token_pair = await token.login_user("alice@test.com", "pw")
     assert token_pair.access_token == "token-123"

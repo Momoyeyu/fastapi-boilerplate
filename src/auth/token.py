@@ -39,7 +39,7 @@ def create_access_token(username: str) -> tuple[str, int]:
     return token, expires_in
 
 
-def create_token(user: User) -> TokenPair:
+async def create_token(user: User) -> TokenPair:
     """Create access and refresh tokens for the user.
 
     Returns:
@@ -49,7 +49,7 @@ def create_token(user: User) -> TokenPair:
         raise erri.internal("User ID is required for token creation")
 
     access_token, expires_in = create_access_token(user.username)
-    refresh_token_obj = create_refresh_token(user.id, user.username)
+    refresh_token_obj = await create_refresh_token(user.id, user.username)
 
     return TokenPair(
         access_token=access_token,
@@ -59,7 +59,7 @@ def create_token(user: User) -> TokenPair:
     )
 
 
-def refresh_tokens(refresh_token: str) -> TokenPair:
+async def refresh_tokens(refresh_token: str) -> TokenPair:
     """Refresh the access token using a refresh token.
 
     Implements Token Rotation: the old refresh token is revoked and a new one is issued.
@@ -71,7 +71,7 @@ def refresh_tokens(refresh_token: str) -> TokenPair:
     Raises:
         BusinessError: If the refresh token is invalid, expired, or revoked.
     """
-    new_refresh_token = rotate_refresh_token(refresh_token)
+    new_refresh_token = await rotate_refresh_token(refresh_token)
     if not new_refresh_token:
         raise erri.unauthorized("Invalid or expired refresh token")
 
@@ -85,16 +85,16 @@ def refresh_tokens(refresh_token: str) -> TokenPair:
     )
 
 
-def revoke_token(refresh_token: str) -> bool:
+async def revoke_token(refresh_token: str) -> bool:
     """Revoke a refresh token.
 
     Returns:
         True if the token was revoked, False if it was not found.
     """
-    return revoke_refresh_token(refresh_token)
+    return await revoke_refresh_token(refresh_token)
 
 
-def login_user(identifier: str, password: str) -> TokenPair:
+async def login_user(identifier: str, password: str) -> TokenPair:
     """Authenticate user and create tokens.
 
     Args:
@@ -104,8 +104,8 @@ def login_user(identifier: str, password: str) -> TokenPair:
     Returns:
         A TokenPair containing access_token, refresh_token, and expiration info.
     """
-    user = get_user_by_identifier(identifier)
+    user = await get_user_by_identifier(identifier)
     encrypted_password = get_password_hash(password)
     if not user or user.password != encrypted_password or user.id is None:
         raise erri.unauthorized("Invalid credentials")
-    return create_token(user)
+    return await create_token(user)

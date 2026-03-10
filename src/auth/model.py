@@ -1,22 +1,23 @@
 import secrets
 from datetime import UTC, datetime, timedelta
 
-from sqlmodel import Field, Session, SQLModel, select
+from sqlalchemy import DateTime, String, select
+from sqlalchemy.orm import Mapped, mapped_column
 
 from conf.config import settings
-from conf.db import engine
+from conf.db import AsyncSessionLocal, Base
 
 
-class RefreshToken(SQLModel, table=True):
+class RefreshToken(Base):
     __tablename__ = "refresh_token"
 
-    id: int | None = Field(default=None, primary_key=True)
-    token: str = Field(unique=True, index=True)
-    user_id: int = Field(index=True)
-    username: str
-    expires_at: datetime
-    revoked: bool = Field(default=False)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    id: Mapped[int] = mapped_column(primary_key=True)
+    token: Mapped[str] = mapped_column(String, unique=True, index=True)
+    user_id: Mapped[int] = mapped_column(index=True)
+    username: Mapped[str] = mapped_column(String)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revoked: Mapped[bool] = mapped_column(default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
 
 def generate_refresh_token() -> str:
@@ -24,7 +25,7 @@ def generate_refresh_token() -> str:
     return secrets.token_urlsafe(32)
 
 
-def create_refresh_token(user_id: int, username: str) -> RefreshToken:
+async def create_refresh_token(user_id: int, username: str) -> RefreshToken:
     """Create and store a new refresh token for the user."""
     token = generate_refresh_token()
     expires_at = datetime.now(UTC) + timedelta(seconds=settings.refresh_token_expire_seconds)
@@ -36,96 +37,43 @@ def create_refresh_token(user_id: int, username: str) -> RefreshToken:
         expires_at=expires_at,
     )
 
-    with Session(engine) as session:
+    async with AsyncSessionLocal() as session:
         session.add(refresh_token)
-        session.commit()
-        session.refresh(refresh_token)
+        await session.commit()
+        await session.refresh(refresh_token)
 
     return refresh_token
 
 
-def get_refresh_token(token: str) -> RefreshToken | None:
-    """Get a refresh token by its token string."""
-    with Session(engine) as session:
-        return session.exec(select(RefreshToken).where(RefreshToken.token == token)).one_or_none()
-
-
-def validate_refresh_token(token: str) -> RefreshToken | None:
-    """Validate a refresh token and return it if valid.
-
-    Returns None if the token is invalid, expired, or revoked.
-    """
-    refresh_token = get_refresh_token(token)
-    if not refresh_token:
-        return None
-
-    if refresh_token.revoked:
-        return None
-
-    # Check expiration (ensure both datetimes are timezone-aware for comparison)
-    now = datetime.now(UTC)
-    expires_at = (
-        refresh_token.expires_at.replace(tzinfo=UTC)
-        if refresh_token.expires_at.tzinfo is None
-        else refresh_token.expires_at
-    )
-    if expires_at < now:
-        return None
-
-    return refresh_token
-
-
-def revoke_refresh_token(token: str) -> bool:
+async def revoke_refresh_token(token: str) -> bool:
     """Revoke a refresh token.
 
     Returns True if the token was found and revoked, False otherwise.
     """
-    with Session(engine) as session:
-        refresh_token = session.exec(select(RefreshToken).where(RefreshToken.token == token)).one_or_none()
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(select(RefreshToken).where(RefreshToken.token == token))
+        refresh_token = result.scalars().one_or_none()
 
         if not refresh_token:
             return False
 
         refresh_token.revoked = True
         session.add(refresh_token)
-        session.commit()
+        await session.commit()
 
     return True
 
 
-def revoke_all_user_tokens(user_id: int) -> int:
-    """Revoke all refresh tokens for a user.
-
-    Returns the number of tokens revoked.
-    """
-    with Session(engine) as session:
-        tokens = session.exec(
-            select(RefreshToken).where(
-                RefreshToken.user_id == user_id,
-                RefreshToken.revoked == False,  # noqa: E712
-            )
-        ).all()
-
-        count = 0
-        for token in tokens:
-            token.revoked = True
-            session.add(token)
-            count += 1
-
-        session.commit()
-
-    return count
-
-
-def rotate_refresh_token(old_token: str) -> RefreshToken | None:
+async def rotate_refresh_token(old_token: str) -> RefreshToken | None:
     """Atomically rotate a refresh token.
 
     Validates, revokes the old token, and creates a new one in a single transaction.
     Returns None if the old token is invalid/expired/revoked.
     """
-    with Session(engine) as session:
+    async with AsyncSessionLocal() as session:
         # Query within the transaction
-        token_obj = session.exec(select(RefreshToken).where(RefreshToken.token == old_token)).one_or_none()
+        result = await session.execute(select(RefreshToken).where(RefreshToken.token == old_token))
+        token_obj = result.scalars().one_or_none()
 
         if not token_obj or token_obj.revoked:
             return None
@@ -153,7 +101,7 @@ def rotate_refresh_token(old_token: str) -> RefreshToken | None:
         )
         session.add(new_refresh_token)
 
-        session.commit()
-        session.refresh(new_refresh_token)
+        await session.commit()
+        await session.refresh(new_refresh_token)
 
         return new_refresh_token
