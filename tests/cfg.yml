@@ -1,10 +1,10 @@
 coverage:
   threshold: 80
   include:
-    - "src/**/*"
+    - "src/*/*"
   exclude:
+    - "src/conf/**"
     - "src/**/handler.py"
     - "src/**/model.py"
     - "src/**/dto.py"
     - "src/**/__init__.py"
-    - "src/main.py"

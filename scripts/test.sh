@@ -9,6 +9,7 @@ export PYTHONPATH="${PYTHONPATH:-$ROOT_DIR/src}"
 
 OUTPUT_DIR="$ROOT_DIR/output"
 mkdir -p "$OUTPUT_DIR"
+export COVERAGE_FILE="$OUTPUT_DIR/.coverage"
 
 # Helper function to calculate success rate
 calc_success_rate() {
