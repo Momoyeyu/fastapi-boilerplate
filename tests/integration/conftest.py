@@ -247,11 +247,11 @@ def register_and_verify(client):
         body: dict = {"email": email, "password": password}
         if invitation_code is not None:
             body["invitation_code"] = invitation_code
-        client.post("/auth/register", json=body)
+        client.post("/api/v1/auth/register", json=body)
         key = f"verification:{email.lower()}:register"
         code = get_redis().get(key)
         response = client.post(
-            "/auth/register/verify",
+            "/api/v1/auth/register/verify",
             json={"email": email, "code": code, "password": password},
         )
         return response.json()

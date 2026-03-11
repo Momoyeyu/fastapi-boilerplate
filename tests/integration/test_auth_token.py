@@ -13,7 +13,7 @@ class TestAuthLogin:
         register_and_verify("login@example.com", "Secret12")
 
         response = client.post(
-            "/auth/login",
+            "/api/v1/auth/login",
             json={"identifier": "login@example.com", "password": "Secret12"},
         )
         assert response.status_code == 200
@@ -34,7 +34,7 @@ class TestAuthLogin:
         register_and_verify("username_test@example.com", "Secret12")
 
         response = client.post(
-            "/auth/login",
+            "/api/v1/auth/login",
             json={"identifier": "username_test", "password": "Secret12"},
         )
         assert response.status_code == 200
@@ -45,7 +45,7 @@ class TestAuthLogin:
         register_and_verify("wrongpass@example.com", "correct_pass")
 
         response = client.post(
-            "/auth/login",
+            "/api/v1/auth/login",
             json={"identifier": "wrongpass@example.com", "password": "wrong_pass"},
         )
         assert response.status_code == 401
@@ -54,7 +54,7 @@ class TestAuthLogin:
     def test_login_nonexistent_user(self, client: TestClient):
         """Test login fails for non-existent user."""
         response = client.post(
-            "/auth/login",
+            "/api/v1/auth/login",
             json={"identifier": "nonexistent@example.com", "password": "anypass"},
         )
         assert response.status_code == 401
@@ -70,7 +70,7 @@ class TestRefreshToken:
         refresh_token = body["data"]["refresh_token"]
 
         response = client.post(
-            "/auth/token/refresh",
+            "/api/v1/auth/token/refresh",
             json={"refresh_token": refresh_token},
         )
         assert response.status_code == 200
@@ -85,7 +85,7 @@ class TestRefreshToken:
     def test_refresh_with_invalid_token(self, client: TestClient):
         """Test refresh fails with invalid token."""
         response = client.post(
-            "/auth/token/refresh",
+            "/api/v1/auth/token/refresh",
             json={"refresh_token": "invalid-token"},
         )
         assert response.status_code == 401
@@ -98,14 +98,14 @@ class TestRefreshToken:
 
         # First refresh should succeed
         first_refresh = client.post(
-            "/auth/token/refresh",
+            "/api/v1/auth/token/refresh",
             json={"refresh_token": refresh_token},
         )
         assert first_refresh.json()["code"] == Code.OK
 
         # Second refresh with same token should fail (Token Rotation)
         second_refresh = client.post(
-            "/auth/token/refresh",
+            "/api/v1/auth/token/refresh",
             json={"refresh_token": refresh_token},
         )
         assert second_refresh.json()["code"] == Code.UNAUTHORIZED
@@ -120,7 +120,7 @@ class TestLogout:
         refresh_token = body["data"]["refresh_token"]
 
         response = client.post(
-            "/auth/logout",
+            "/api/v1/auth/logout",
             json={"refresh_token": refresh_token},
         )
         assert response.status_code == 200
@@ -129,7 +129,7 @@ class TestLogout:
 
         # Try to use the revoked refresh token
         refresh_response = client.post(
-            "/auth/token/refresh",
+            "/api/v1/auth/token/refresh",
             json={"refresh_token": refresh_token},
         )
         assert refresh_response.json()["code"] == Code.UNAUTHORIZED
@@ -137,7 +137,7 @@ class TestLogout:
     def test_logout_with_invalid_token(self, client: TestClient):
         """Test logout with invalid token still returns success (idempotent)."""
         response = client.post(
-            "/auth/logout",
+            "/api/v1/auth/logout",
             json={"refresh_token": "invalid-token"},
         )
         assert response.status_code == 200

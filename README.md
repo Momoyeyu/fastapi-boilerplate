@@ -97,7 +97,7 @@ raise erri.internal("...")      # 50000
 - JWT middleware (`src/middleware/auth.py`) validates tokens on all routes by default
 - `@auth.exempt` — skip auth for a handler
 - `auth.get_username(request)` — extract current user
-- Endpoints: `POST /auth/login`, `POST /auth/token/refresh`, `POST /auth/logout`
+- Endpoints: `POST /api/v1/auth/login`, `POST /api/v1/auth/token/refresh`, `POST /api/v1/auth/logout`
 
 ### Configuration
 

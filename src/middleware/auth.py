@@ -23,7 +23,7 @@ DEBUG_EXEMPT_PATHS = {
 }
 
 # 白名单路径，DEBUG 模式下包含 FastAPI 文档路径
-EXEMPT_PATHS: set[str] = {"/"}  # Root path for health check
+EXEMPT_PATHS: set[str] = {"/api/v1/"}  # Root path for health check
 _EXEMPT_ENDPOINT_ATTR = "__jwt_exempt__"
 _ROUTES_FROZEN_ATTR = "__jwt_routes_frozen__"
 _SETUP_ATTR = "__jwt_middleware_installed__"

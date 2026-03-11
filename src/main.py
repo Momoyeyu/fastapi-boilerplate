@@ -27,16 +27,16 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 def init_routers(_app: FastAPI) -> None:
-    root_router = APIRouter()
+    api_router = APIRouter(prefix="/api/v1")
 
-    @root_router.get("/")
+    @api_router.get("/")
     async def root() -> Response:
         return ok(message="Hello FastAPI + UV!")
 
-    _app.include_router(root_router)
-    _app.include_router(auth_router)
-    _app.include_router(user_router)
-    _app.include_router(tenant_router)
+    api_router.include_router(auth_router)
+    api_router.include_router(user_router)
+    api_router.include_router(tenant_router)
+    _app.include_router(api_router)
 
 
 def init_middlewares(_app: FastAPI) -> None:

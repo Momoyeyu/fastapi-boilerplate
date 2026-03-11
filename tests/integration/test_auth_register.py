@@ -16,7 +16,7 @@ def _initiate(client: TestClient, email: str, password: str, invitation_code: st
     body: dict = {"email": email, "password": password}
     if invitation_code is not None:
         body["invitation_code"] = invitation_code
-    return client.post("/auth/register", json=body)
+    return client.post("/api/v1/auth/register", json=body)
 
 
 class TestAuthRegister:
@@ -52,7 +52,7 @@ class TestAuthRegister:
     def test_register_wrong_code_fails(self, client: TestClient):
         _initiate(client, "wrongcode@example.com", "Pass1234")
         response = client.post(
-            "/auth/register/verify",
+            "/api/v1/auth/register/verify",
             json={"email": "wrongcode@example.com", "code": "000000", "password": "Pass1234"},
         )
         assert response.json()["code"] == Code.BAD_REQUEST
@@ -103,7 +103,7 @@ class TestInvitationRequired:
         # Step 2: Verify
         code = get_redis().get("verification:valid@example.com:register")
         verify_resp = client.post(
-            "/auth/register/verify",
+            "/api/v1/auth/register/verify",
             json={"email": "valid@example.com", "code": code, "password": "Pass1234"},
         )
         assert verify_resp.json()["code"] == Code.OK
@@ -180,7 +180,7 @@ class TestInvitationFullFlow:
 
         # Login with the registered account
         login_resp = client.post(
-            "/auth/login",
+            "/api/v1/auth/login",
             json={"identifier": "flow@example.com", "password": "Pass1234"},
         )
         assert login_resp.json()["code"] == Code.OK
@@ -199,7 +199,7 @@ class TestInvitationFullFlow:
         body = register_and_verify("profile@example.com", "Pass1234", "PROFILE")
         token = body["data"]["access_token"]
 
-        me_resp = client.get("/user/me", headers={"Authorization": f"Bearer {token}"})
+        me_resp = client.get("/api/v1/user/me", headers={"Authorization": f"Bearer {token}"})
         assert me_resp.json()["code"] == Code.OK
         assert me_resp.json()["data"]["email"] == "profile@example.com"
 
