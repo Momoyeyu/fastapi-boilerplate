@@ -38,6 +38,6 @@ ENV PYTHONPATH=/app/src:/app
 
 EXPOSE 8000
 
-HEALTHCHECK --interval=10s --timeout=3s --retries=6 CMD curl -fsS http://127.0.0.1:8000/ >/dev/null || exit 1
+HEALTHCHECK --interval=10s --timeout=3s --retries=6 CMD curl -fsS http://127.0.0.1:8000/api/v1/ >/dev/null || exit 1
 
 CMD ["sh", "-c", "migrate.sh && exec uvicorn main:app --app-dir src --host 0.0.0.0 --port 8000"]
