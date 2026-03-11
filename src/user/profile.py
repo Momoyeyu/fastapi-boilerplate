@@ -1,4 +1,4 @@
-from auth.password import get_password_hash, verify_password
+from auth.password import get_password_hash, validate_password, verify_password
 from common import erri
 from user.model import User, get_user, update_user_password, update_user_profile
 
@@ -25,6 +25,7 @@ async def change_password(username: str, old_password: str, new_password: str) -
     if not verify_password(old_password, user.hashed_password):
         raise erri.bad_request("Invalid old password")
 
+    validate_password(new_password)
     encrypted_new = get_password_hash(new_password)
     result = await update_user_password(username, encrypted_new)
 

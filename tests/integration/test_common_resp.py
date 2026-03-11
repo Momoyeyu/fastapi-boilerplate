@@ -17,7 +17,7 @@ class TestErrorResponseFormat:
 
     def test_business_error_envelope(self, client: TestClient, register_and_verify):
         """Duplicate registration triggers BusinessError → envelope."""
-        register_and_verify("fmt_dup@example.com", "pass")
+        register_and_verify("fmt_dup@example.com", "Pass1234")
         resp = client.post(
             "/auth/register",
             json={"email": "fmt_dup@example.com", "password": "x"},
@@ -58,7 +58,7 @@ class TestErrorResponseFormat:
 
     def test_login_wrong_password_envelope(self, client: TestClient, register_and_verify):
         """Wrong password → BusinessError → envelope."""
-        register_and_verify("fmt_login@example.com", "right")
+        register_and_verify("fmt_login@example.com", "Right123")
         resp = client.post(
             "/auth/login",
             json={"identifier": "fmt_login@example.com", "password": "wrong"},
@@ -86,7 +86,7 @@ class TestSuccessResponseFormat:
     def test_register_success_envelope(self, client: TestClient):
         resp = client.post(
             "/auth/register",
-            json={"email": "fmt_ok@example.com", "password": "pass"},
+            json={"email": "fmt_ok@example.com", "password": "Pass1234"},
         )
         assert resp.status_code == 200
         body = resp.json()
@@ -94,10 +94,10 @@ class TestSuccessResponseFormat:
         assert body["code"] == Code.OK
 
     def test_login_success_envelope(self, client: TestClient, register_and_verify):
-        register_and_verify("fmt_login_ok@example.com", "pass")
+        register_and_verify("fmt_login_ok@example.com", "Pass1234")
         resp = client.post(
             "/auth/login",
-            json={"identifier": "fmt_login_ok@example.com", "password": "pass"},
+            json={"identifier": "fmt_login_ok@example.com", "password": "Pass1234"},
         )
         assert resp.status_code == 200
         body = resp.json()
@@ -107,7 +107,7 @@ class TestSuccessResponseFormat:
         assert "refresh_token" in body["data"]
 
     def test_whoami_success_envelope(self, client: TestClient, register_and_verify):
-        data = register_and_verify("fmt_who@example.com", "pass")
+        data = register_and_verify("fmt_who@example.com", "Pass1234")
         resp = client.get(
             "/user/whoami",
             headers={"Authorization": f"Bearer {data['data']['access_token']}"},

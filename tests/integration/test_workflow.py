@@ -22,7 +22,7 @@ class TestNewUserOnboarding:
         # 1. Initiate registration
         resp = client.post(
             "/auth/register",
-            json={"email": "onboard@example.com", "password": "pass123"},
+            json={"email": "onboard@example.com", "password": "Pass1234"},
         )
         assert resp.json()["code"] == Code.OK
         assert len(mock_email) == 1
@@ -31,7 +31,7 @@ class TestNewUserOnboarding:
         code = get_redis().get("verification:onboard@example.com:register")
         resp = client.post(
             "/auth/register/verify",
-            json={"email": "onboard@example.com", "code": code, "password": "pass123"},
+            json={"email": "onboard@example.com", "code": code, "password": "Pass1234"},
         )
         assert resp.json()["code"] == Code.OK
         tokens = resp.json()["data"]
@@ -76,7 +76,7 @@ class TestNewUserOnboarding:
             "/auth/register",
             json={
                 "email": "invited@example.com",
-                "password": "pass123",
+                "password": "Pass1234",
                 "invitation_code": "WELCOME",
             },
         )
@@ -87,7 +87,7 @@ class TestNewUserOnboarding:
         code = get_redis().get("verification:invited@example.com:register")
         resp = client.post(
             "/auth/register/verify",
-            json={"email": "invited@example.com", "code": code, "password": "pass123"},
+            json={"email": "invited@example.com", "code": code, "password": "Pass1234"},
         )
         assert resp.json()["code"] == Code.OK
 
@@ -98,7 +98,7 @@ class TestNewUserOnboarding:
         # 4. Login with the new account
         resp = client.post(
             "/auth/login",
-            json={"identifier": "invited@example.com", "password": "pass123"},
+            json={"identifier": "invited@example.com", "password": "Pass1234"},
         )
         assert resp.json()["code"] == Code.OK
         headers = {"Authorization": f"Bearer {resp.json()['data']['access_token']}"}
@@ -114,7 +114,7 @@ class TestTokenLifecycle:
 
     def test_access_refresh_logout(self, client: TestClient, register_and_verify):
         """Register -> access API -> refresh -> access again -> logout -> verify revoked."""
-        body = register_and_verify("tokenlife@example.com", "pass123")
+        body = register_and_verify("tokenlife@example.com", "Pass1234")
         access_token = body["data"]["access_token"]
         refresh_token = body["data"]["refresh_token"]
 
@@ -171,12 +171,12 @@ class TestMultiSession:
 
     def test_two_sessions_independent_logout(self, client: TestClient, register_and_verify):
         """Login twice -> two sessions -> logout one -> other still works."""
-        register_and_verify("multi@example.com", "pass123")
+        register_and_verify("multi@example.com", "Pass1234")
 
         # Session 1: login
         resp = client.post(
             "/auth/login",
-            json={"identifier": "multi@example.com", "password": "pass123"},
+            json={"identifier": "multi@example.com", "password": "Pass1234"},
         )
         assert resp.json()["code"] == Code.OK
         s1_access = resp.json()["data"]["access_token"]
@@ -185,7 +185,7 @@ class TestMultiSession:
         # Session 2: login again (different device)
         resp = client.post(
             "/auth/login",
-            json={"identifier": "multi@example.com", "password": "pass123"},
+            json={"identifier": "multi@example.com", "password": "Pass1234"},
         )
         assert resp.json()["code"] == Code.OK
         s2_access = resp.json()["data"]["access_token"]
@@ -217,7 +217,7 @@ class TestPasswordLifecycle:
 
     def test_change_then_reset(self, client: TestClient, register_and_verify, mock_email: list):
         """Register -> change password -> logout -> login -> forgot -> reset -> login."""
-        body = register_and_verify("pwlife@example.com", "original")
+        body = register_and_verify("pwlife@example.com", "Original1")
         headers = {"Authorization": f"Bearer {body['data']['access_token']}"}
         refresh_token = body["data"]["refresh_token"]
 
@@ -225,7 +225,7 @@ class TestPasswordLifecycle:
         resp = client.post(
             "/user/password/change",
             headers=headers,
-            json={"old_password": "original", "new_password": "changed"},
+            json={"old_password": "Original1", "new_password": "Changed1"},
         )
         assert resp.json()["code"] == Code.OK
 
@@ -235,14 +235,14 @@ class TestPasswordLifecycle:
         # 3. Old password no longer works
         resp = client.post(
             "/auth/login",
-            json={"identifier": "pwlife@example.com", "password": "original"},
+            json={"identifier": "pwlife@example.com", "password": "Original1"},
         )
         assert resp.json()["code"] == Code.UNAUTHORIZED
 
         # 4. New password works
         resp = client.post(
             "/auth/login",
-            json={"identifier": "pwlife@example.com", "password": "changed"},
+            json={"identifier": "pwlife@example.com", "password": "Changed1"},
         )
         assert resp.json()["code"] == Code.OK
 
@@ -255,20 +255,20 @@ class TestPasswordLifecycle:
         code = get_redis().get("verification:pwlife@example.com:reset_password")
         resp = client.post(
             "/auth/password/reset",
-            json={"email": "pwlife@example.com", "code": code, "new_password": "reset"},
+            json={"email": "pwlife@example.com", "code": code, "new_password": "ResetPw1"},
         )
         assert resp.json()["code"] == Code.OK
 
         # 7. Login with reset password
         resp = client.post(
             "/auth/login",
-            json={"identifier": "pwlife@example.com", "password": "reset"},
+            json={"identifier": "pwlife@example.com", "password": "ResetPw1"},
         )
         assert resp.json()["code"] == Code.OK
 
     def test_change_password_revokes_refresh_tokens(self, client: TestClient, register_and_verify):
         """Changing password should revoke refresh tokens for security."""
-        body = register_and_verify("preserve@example.com", "pass123")
+        body = register_and_verify("preserve@example.com", "Pass1234")
         access_token = body["data"]["access_token"]
         refresh_token = body["data"]["refresh_token"]
         headers = {"Authorization": f"Bearer {access_token}"}
@@ -277,7 +277,7 @@ class TestPasswordLifecycle:
         resp = client.post(
             "/user/password/change",
             headers=headers,
-            json={"old_password": "pass123", "new_password": "newpass"},
+            json={"old_password": "Pass1234", "new_password": "NewPass1"},
         )
         assert resp.json()["code"] == Code.OK
 
@@ -295,7 +295,7 @@ class TestProfilePersistence:
 
     def test_profile_survives_relogin(self, client: TestClient, register_and_verify):
         """Update profile -> logout -> login again -> profile data persisted."""
-        body = register_and_verify("persist@example.com", "pass123")
+        body = register_and_verify("persist@example.com", "Pass1234")
         headers = {"Authorization": f"Bearer {body['data']['access_token']}"}
 
         # Update profile
@@ -312,7 +312,7 @@ class TestProfilePersistence:
         # Login again
         resp = client.post(
             "/auth/login",
-            json={"identifier": "persist@example.com", "password": "pass123"},
+            json={"identifier": "persist@example.com", "password": "Pass1234"},
         )
         new_token = resp.json()["data"]["access_token"]
 

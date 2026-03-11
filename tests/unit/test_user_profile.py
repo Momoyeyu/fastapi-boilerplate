@@ -48,7 +48,7 @@ async def test_update_my_profile_success(monkeypatch: pytest.MonkeyPatch):
 async def test_change_password_user_not_found(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(profile, "get_user", async_return(None), raising=True)
     with pytest.raises(erri.BusinessError) as exc:
-        await profile.change_password("alice", "old", "new")
+        await profile.change_password("alice", "old", "NewPass1")
     assert exc.value.code == Code.NOT_FOUND
 
 
@@ -58,7 +58,7 @@ async def test_change_password_wrong_old_password(monkeypatch: pytest.MonkeyPatc
     )
     monkeypatch.setattr(profile, "get_user", async_return(user), raising=True)
     with pytest.raises(erri.BusinessError) as exc:
-        await profile.change_password("alice", "wrong", "new")
+        await profile.change_password("alice", "wrong", "NewPass1")
     assert exc.value.code == Code.BAD_REQUEST
 
 
@@ -66,5 +66,5 @@ async def test_change_password_success(monkeypatch: pytest.MonkeyPatch):
     user = User(id=1, username="alice", email="alice@test.com", hashed_password=auth_password.get_password_hash("old"))
     monkeypatch.setattr(profile, "get_user", async_return(user), raising=True)
     monkeypatch.setattr(profile, "update_user_password", async_return(True), raising=True)
-    result = await profile.change_password("alice", "old", "new")
+    result = await profile.change_password("alice", "old", "NewPass1")
     assert result is True

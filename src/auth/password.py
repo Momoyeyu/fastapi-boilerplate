@@ -6,6 +6,18 @@ from common.email import send_verification_email
 from user.model import email_exists
 
 
+def validate_password(password: str) -> None:
+    """Validate password strength. Raises BusinessError if too weak."""
+    if len(password) < 8:
+        raise erri.bad_request("Password must be at least 8 characters")
+    if not any(c.isupper() for c in password):
+        raise erri.bad_request("Password must contain an uppercase letter")
+    if not any(c.islower() for c in password):
+        raise erri.bad_request("Password must contain a lowercase letter")
+    if not any(c.isdigit() for c in password):
+        raise erri.bad_request("Password must contain a digit")
+
+
 def get_password_hash(password: str) -> str:
     """Hash a password using bcrypt."""
     return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
@@ -48,6 +60,8 @@ async def reset_password(email: str, code: str, new_password: str) -> bool:
     """
     if not consume_verification_code(email, code, "reset_password"):
         raise erri.bad_request("Invalid or expired verification code")
+
+    validate_password(new_password)
 
     from auth.refresh_token import revoke_all_for_user
     from user.model import get_user_by_email, update_user_password

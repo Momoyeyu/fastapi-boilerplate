@@ -1,6 +1,28 @@
 import pytest
 
 from auth import password
+from common import erri
+from common.resp import Code
+
+
+def test_validate_password_success():
+    password.validate_password("Abcdefg1")  # should not raise
+
+
+@pytest.mark.parametrize(
+    "pw, expected_msg",
+    [
+        ("Short1A", "at least 8 characters"),
+        ("alllowercase1", "uppercase letter"),
+        ("ALLUPPERCASE1", "lowercase letter"),
+        ("NoDigitsHere", "digit"),
+    ],
+)
+def test_validate_password_rejects_weak(pw, expected_msg):
+    with pytest.raises(erri.BusinessError) as exc:
+        password.validate_password(pw)
+    assert exc.value.code == Code.BAD_REQUEST
+    assert expected_msg in exc.value.message
 
 
 def test_get_password_hash_returns_bcrypt_hash():

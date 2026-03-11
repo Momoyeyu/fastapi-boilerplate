@@ -30,7 +30,7 @@ def mock_settings(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
 async def test_initiate_registration_email_exists(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(register, "email_exists", async_return(True), raising=True)
     with pytest.raises(erri.BusinessError) as exc:
-        await register.initiate_registration("alice@test.com", "pw")
+        await register.initiate_registration("alice@test.com", "StrongPw1")
     assert exc.value.code == Code.CONFLICT
 
 
@@ -46,7 +46,7 @@ async def test_initiate_registration_success(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(register, "create_verification_code", mock_create_code, raising=True)
     monkeypatch.setattr(register, "send_verification_email", async_return(True), raising=True)
 
-    await register.initiate_registration("alice@test.com", "pw")
+    await register.initiate_registration("alice@test.com", "StrongPw1")
     assert code_created["email"] == "alice@test.com"
     assert code_created["purpose"] == "register"
 
@@ -54,7 +54,7 @@ async def test_initiate_registration_success(monkeypatch: pytest.MonkeyPatch):
 async def test_complete_registration_invalid_code(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(register, "consume_verification_code", lambda *args: False, raising=True)
     with pytest.raises(erri.BusinessError) as exc:
-        await register.complete_registration("alice@test.com", "wrong", "pw")
+        await register.complete_registration("alice@test.com", "wrong", "StrongPw1")
     assert exc.value.code == Code.BAD_REQUEST
 
 
@@ -85,7 +85,7 @@ async def test_complete_registration_success(monkeypatch: pytest.MonkeyPatch):
         async_return((user, MagicMock(), MagicMock())),
     )
 
-    result = await register.complete_registration("alice@test.com", "123456", "pw")
+    result = await register.complete_registration("alice@test.com", "123456", "StrongPw1")
     assert result.access_token == "token-123"
 
 
@@ -95,7 +95,7 @@ async def test_initiate_registration_requires_invitation_code(
     mock_settings.require_invitation_code = True
     monkeypatch.setattr(register, "email_exists", async_return(False), raising=True)
     with pytest.raises(erri.BusinessError) as exc:
-        await register.initiate_registration("alice@test.com", "pw")
+        await register.initiate_registration("alice@test.com", "StrongPw1")
     assert exc.value.code == Code.BAD_REQUEST
 
 
@@ -108,7 +108,7 @@ async def test_initiate_registration_invalid_invitation_code(monkeypatch: pytest
     monkeypatch.setattr(inv_model, "validate_invitation_code", async_return(None))
 
     with pytest.raises(erri.BusinessError) as exc:
-        await register.initiate_registration("alice@test.com", "pw", "BADCODE")
+        await register.initiate_registration("alice@test.com", "StrongPw1", "BADCODE")
     assert exc.value.code == Code.BAD_REQUEST
 
 
@@ -133,7 +133,7 @@ async def test_initiate_registration_valid_invitation_code(monkeypatch: pytest.M
         lambda email, inv_id: stored.update({"inv_id": inv_id}),  # type: ignore[func-returns-value]
     )
 
-    await register.initiate_registration("alice@test.com", "pw", "VALID")
+    await register.initiate_registration("alice@test.com", "StrongPw1", "VALID")
     assert stored["inv_id"] == 1
 
 
@@ -143,7 +143,7 @@ async def test_initiate_registration_skips_invitation_when_disabled(monkeypatch:
     monkeypatch.setattr(register, "send_verification_email", async_return(None))
 
     # Should succeed without invitation code validation
-    await register.initiate_registration("alice@test.com", "pw", "ANYCODE")
+    await register.initiate_registration("alice@test.com", "StrongPw1", "ANYCODE")
 
 
 async def test_complete_registration_with_invitation_context(monkeypatch: pytest.MonkeyPatch):
@@ -190,6 +190,6 @@ async def test_complete_registration_with_invitation_context(monkeypatch: pytest
 
     monkeypatch.setattr(tenant_service_mod, "create_tenant_for_user", async_return((MagicMock(), MagicMock())))
 
-    await register.complete_registration("alice@test.com", "123456", "pw")
+    await register.complete_registration("alice@test.com", "123456", "StrongPw1")
     assert captured_kwargs["invitation_code_id"] == 42
     assert incremented == [42]

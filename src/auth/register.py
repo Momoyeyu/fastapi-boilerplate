@@ -1,4 +1,4 @@
-from auth.password import get_password_hash
+from auth.password import get_password_hash, validate_password
 from auth.token import TokenPair, create_token
 from auth.verification import consume_verification_code, create_verification_code
 from common import erri
@@ -65,6 +65,7 @@ async def complete_registration(email: str, code: str, password: str) -> TokenPa
 
     invitation_code_id = consume_invitation_context(email)
 
+    validate_password(password)
     hashed = get_password_hash(password)
     username = email.split("@")[0]
     tenant_name = f"{username}'s workspace"

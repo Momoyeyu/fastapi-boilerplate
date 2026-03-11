@@ -10,7 +10,7 @@ class TestRegistrationCreatesTenant:
 
     def test_register_creates_default_tenant(self, client: TestClient, auth_header):
         """After registration, user should have a default tenant as owner."""
-        headers = auth_header("tenantuser@example.com", "pass123")
+        headers = auth_header("tenantuser@example.com", "Pass1234")
 
         # List tenants
         resp = client.get("/tenant", headers=headers)
@@ -28,7 +28,7 @@ class TestTenantCRUD:
     """Tests for tenant create, read, update, list endpoints."""
 
     def test_create_tenant(self, client: TestClient, auth_header):
-        headers = auth_header("creator@example.com", "pass123")
+        headers = auth_header("creator@example.com", "Pass1234")
         resp = client.post(
             "/tenant",
             headers=headers,
@@ -40,7 +40,7 @@ class TestTenantCRUD:
         assert data["status"] == "active"
 
     def test_get_tenant(self, client: TestClient, auth_header):
-        headers = auth_header("getter@example.com", "pass123")
+        headers = auth_header("getter@example.com", "Pass1234")
 
         # Create a tenant first
         create_resp = client.post("/tenant", headers=headers, json={"name": "Getter Org"})
@@ -52,7 +52,7 @@ class TestTenantCRUD:
         assert resp.json()["data"]["name"] == "Getter Org"
 
     def test_list_tenants(self, client: TestClient, auth_header):
-        headers = auth_header("lister@example.com", "pass123")
+        headers = auth_header("lister@example.com", "Pass1234")
 
         # Create extra tenants
         client.post("/tenant", headers=headers, json={"name": "Org A"})
@@ -64,7 +64,7 @@ class TestTenantCRUD:
         assert len(resp.json()["data"]) >= 3
 
     def test_update_tenant_as_owner(self, client: TestClient, auth_header):
-        headers = auth_header("owner@example.com", "pass123")
+        headers = auth_header("owner@example.com", "Pass1234")
 
         create_resp = client.post("/tenant", headers=headers, json={"name": "Update Me"})
         tenant_id = create_resp.json()["data"]["id"]
@@ -79,8 +79,8 @@ class TestTenantCRUD:
 
     def test_get_tenant_not_member(self, client: TestClient, auth_header):
         """User should not access a tenant they don't belong to."""
-        headers_a = auth_header("usera@example.com", "pass123")
-        headers_b = auth_header("userb@example.com", "pass123")
+        headers_a = auth_header("usera@example.com", "Pass1234")
+        headers_b = auth_header("userb@example.com", "Pass1234")
 
         # A creates a tenant
         create_resp = client.post("/tenant", headers=headers_a, json={"name": "Private Org"})
