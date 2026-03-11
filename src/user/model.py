@@ -1,7 +1,9 @@
 from datetime import UTC, datetime
+from uuid import UUID
 
-from sqlalchemy import DateTime, String, select
+from sqlalchemy import DateTime, String, Uuid, select
 from sqlalchemy.orm import Mapped, mapped_column
+from uuid6 import uuid7
 
 from conf.db import AsyncSessionLocal, Base
 
@@ -9,13 +11,13 @@ from conf.db import AsyncSessionLocal, Base
 class User(Base):
     __tablename__ = "user"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid7)
     username: Mapped[str] = mapped_column(String, unique=True, index=True)
     email: Mapped[str] = mapped_column(String, unique=True, index=True)
     hashed_password: Mapped[str] = mapped_column(String)
     avatar_url: Mapped[str | None] = mapped_column(String, default=None)
     is_active: Mapped[bool] = mapped_column(default=True)
-    invitation_code_id: Mapped[int | None] = mapped_column(default=None)
+    invitation_code_id: Mapped[UUID | None] = mapped_column(Uuid, default=None)
     is_deleted: Mapped[bool] = mapped_column(default=False)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
@@ -27,7 +29,7 @@ async def create_user(
     hashed_password: str,
     email: str,
     *,
-    invitation_code_id: int | None = None,
+    invitation_code_id: UUID | None = None,
 ) -> User | None:
     user = User(
         username=username,

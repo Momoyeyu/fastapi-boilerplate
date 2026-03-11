@@ -1,7 +1,9 @@
 from datetime import UTC, datetime
+from uuid import UUID
 
-from sqlalchemy import DateTime, String, select
+from sqlalchemy import DateTime, String, Uuid, select
 from sqlalchemy.orm import Mapped, mapped_column
+from uuid6 import uuid7
 
 from conf.db import AsyncSessionLocal, Base
 
@@ -9,7 +11,7 @@ from conf.db import AsyncSessionLocal, Base
 class InvitationCode(Base):
     __tablename__ = "invitation_code"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid7)
     code: Mapped[str] = mapped_column(String(50), unique=True, index=True)
     max_uses: Mapped[int] = mapped_column(default=0)  # 0 means unlimited
     used_count: Mapped[int] = mapped_column(default=0)
@@ -41,7 +43,7 @@ async def validate_invitation_code(code: str) -> InvitationCode | None:
     return invitation
 
 
-async def increment_used_count(code_id: int) -> bool:
+async def increment_used_count(code_id: UUID) -> bool:
     async with AsyncSessionLocal() as session:
         invitation = await session.get(InvitationCode, code_id)
         if not invitation:

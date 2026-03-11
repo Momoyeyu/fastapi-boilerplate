@@ -1,4 +1,5 @@
 from unittest.mock import patch
+from uuid import UUID
 
 import pytest
 
@@ -80,8 +81,9 @@ def test_create_verification_code_overwrites_previous(fake_redis):
 
 
 def test_store_and_consume_invitation_context(fake_redis):
-    store_invitation_context("Alice@Test.com", 42)
-    assert consume_invitation_context("Alice@Test.com") == 42
+    inv_id = UUID("01936b2a-7c00-7000-8000-0000000000a1")
+    store_invitation_context("Alice@Test.com", inv_id)
+    assert consume_invitation_context("Alice@Test.com") == inv_id
     # Should be deleted after consumption
     assert consume_invitation_context("Alice@Test.com") is None
 

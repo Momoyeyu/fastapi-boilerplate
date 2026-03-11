@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from common import erri
 from conf.db import AsyncSessionLocal
 from tenant.model import (
@@ -21,7 +23,7 @@ async def create_user_with_tenant(
     email: str,
     tenant_name: str,
     *,
-    invitation_code_id: int | None = None,
+    invitation_code_id: UUID | None = None,
 ) -> tuple[User, Tenant, UserTenant]:
     """Atomically create a user, a tenant, and assign the user as owner.
 
@@ -53,7 +55,7 @@ async def create_user_with_tenant(
         return user, tenant, user_tenant
 
 
-async def create_tenant_for_user(user_id: int, tenant_name: str) -> tuple[Tenant, UserTenant]:
+async def create_tenant_for_user(user_id: UUID, tenant_name: str) -> tuple[Tenant, UserTenant]:
     """Create a new tenant and assign the user as owner.
 
     Returns:
@@ -64,7 +66,7 @@ async def create_tenant_for_user(user_id: int, tenant_name: str) -> tuple[Tenant
     return tenant, user_tenant
 
 
-async def get_tenant_detail(user_id: int, tenant_id: int) -> Tenant:
+async def get_tenant_detail(user_id: UUID, tenant_id: UUID) -> Tenant:
     """Get a tenant that the user belongs to."""
     user_tenant = await get_user_tenant(user_id, tenant_id)
     if not user_tenant:
@@ -77,7 +79,7 @@ async def get_tenant_detail(user_id: int, tenant_id: int) -> Tenant:
 
 
 async def update_tenant_by_owner(
-    user_id: int, tenant_id: int, *, name: str | None = None, status: str | None = None
+    user_id: UUID, tenant_id: UUID, *, name: str | None = None, status: str | None = None
 ) -> Tenant:
     """Update tenant. Only the owner can update."""
     user_tenant = await get_user_tenant(user_id, tenant_id)
@@ -92,7 +94,7 @@ async def update_tenant_by_owner(
     return tenant
 
 
-async def list_tenants_for_user(user_id: int) -> list[dict]:
+async def list_tenants_for_user(user_id: UUID) -> list[dict]:
     """List all tenants the user belongs to, with role info."""
     user_tenants = await get_user_tenants(user_id)
     results = []

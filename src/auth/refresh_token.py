@@ -2,12 +2,13 @@
 Redis-based refresh token service.
 
 Key design:
-- refresh_token:{token} → JSON {"user_id": N, "username": "..."} with TTL
+- refresh_token:{token} → JSON {"user_id": "<uuid>", "username": "..."} with TTL
 - user_tokens:{user_id} → Redis SET of active token strings (for bulk revocation)
 """
 
 import json
 import secrets
+from uuid import UUID
 
 from conf.config import settings
 from conf.redis import get_redis
@@ -21,14 +22,14 @@ def generate_refresh_token() -> str:
     return secrets.token_urlsafe(32)
 
 
-def create_refresh_token(user_id: int, username: str) -> str:
+def create_refresh_token(user_id: UUID, username: str) -> str:
     """Create and store a new refresh token.
 
     Returns:
         The token string.
     """
     token = generate_refresh_token()
-    data = json.dumps({"user_id": user_id, "username": username})
+    data = json.dumps({"user_id": str(user_id), "username": username})
     ttl = settings.refresh_token_expire_seconds
     r = get_redis()
     r.set(f"{_REFRESH_PREFIX}{token}", data, ex=ttl)
@@ -44,7 +45,7 @@ def validate_refresh_token(token: str) -> dict | None:
     """Validate a refresh token.
 
     Returns:
-        Token data dict {"user_id": N, "username": "..."} if valid, None otherwise.
+        Token data dict {"user_id": "<uuid>", "username": "..."} if valid, None otherwise.
     """
     r = get_redis()
     data = r.get(f"{_REFRESH_PREFIX}{token}")
@@ -95,7 +96,7 @@ def rotate_refresh_token(old_token: str) -> tuple[str, dict] | None:
     return new_token, parsed
 
 
-def revoke_all_for_user(user_id: int) -> int:
+def revoke_all_for_user(user_id: UUID) -> int:
     """Revoke all refresh tokens for a user.
 
     Returns:
