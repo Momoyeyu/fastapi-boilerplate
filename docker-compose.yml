@@ -41,7 +41,6 @@ services:
       DB_USER: ${DB_USER:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-postgres}
       DB_NAME: ${DB_NAME:-fastapi-boilerplate}
-      PASSWORD_SALT: ${PASSWORD_SALT:-}
       JWT_SECRET: ${JWT_SECRET:-}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
       JWT_EXPIRE_SECONDS: ${JWT_EXPIRE_SECONDS:-3600}
