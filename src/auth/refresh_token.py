@@ -29,9 +29,14 @@ def create_refresh_token(user_id: int, username: str) -> str:
     """
     token = generate_refresh_token()
     data = json.dumps({"user_id": user_id, "username": username})
+    ttl = settings.refresh_token_expire_seconds
     r = get_redis()
-    r.set(f"{_REFRESH_PREFIX}{token}", data, ex=settings.refresh_token_expire_seconds)
-    r.sadd(f"{_USER_TOKENS_PREFIX}{user_id}", token)
+    r.set(f"{_REFRESH_PREFIX}{token}", data, ex=ttl)
+    user_set_key = f"{_USER_TOKENS_PREFIX}{user_id}"
+    r.sadd(user_set_key, token)
+    # Refresh TTL on user set so it doesn't grow unbounded.
+    # Set to 2x token TTL to cover tokens created at different times.
+    r.expire(user_set_key, ttl * 2)
     return token
 
 

@@ -191,6 +191,9 @@ class FakeRedis:
         self._store.clear()
         self._sets.clear()
 
+    def expire(self, key, ttl):
+        pass  # TTL not enforced in tests
+
     def pipeline(self):
         return FakePipeline(self)
 

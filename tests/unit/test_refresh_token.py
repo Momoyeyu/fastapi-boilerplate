@@ -72,6 +72,9 @@ class FakeRedis:
             for m in members:
                 self._sets[key].discard(m)
 
+    def expire(self, key, ttl):
+        pass  # TTL not enforced in tests
+
     def pipeline(self):
         return FakePipeline(self)
 
