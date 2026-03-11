@@ -66,5 +66,10 @@ async def test_change_password_success(monkeypatch: pytest.MonkeyPatch):
     user = User(id=1, username="alice", email="alice@test.com", hashed_password=auth_password.get_password_hash("old"))
     monkeypatch.setattr(profile, "get_user", async_return(user), raising=True)
     monkeypatch.setattr(profile, "update_user_password", async_return(True), raising=True)
+
+    import auth.refresh_token as refresh_token_mod
+
+    monkeypatch.setattr(refresh_token_mod, "revoke_all_for_user", lambda uid: 0)
+
     result = await profile.change_password("alice", "old", "NewPass1")
     assert result is True
