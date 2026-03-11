@@ -13,7 +13,7 @@ class TestRegistrationCreatesTenant:
         headers = auth_header("tenantuser@example.com", "Pass1234")
 
         # List tenants
-        resp = client.get("/tenant", headers=headers)
+        resp = client.get("/api/v1/tenant", headers=headers)
         assert resp.json()["code"] == Code.OK
         tenants = resp.json()["data"]
         assert len(tenants) >= 1
@@ -30,7 +30,7 @@ class TestTenantCRUD:
     def test_create_tenant(self, client: TestClient, auth_header):
         headers = auth_header("creator@example.com", "Pass1234")
         resp = client.post(
-            "/tenant",
+            "/api/v1/tenant",
             headers=headers,
             json={"name": "My New Org"},
         )
@@ -43,11 +43,11 @@ class TestTenantCRUD:
         headers = auth_header("getter@example.com", "Pass1234")
 
         # Create a tenant first
-        create_resp = client.post("/tenant", headers=headers, json={"name": "Getter Org"})
+        create_resp = client.post("/api/v1/tenant", headers=headers, json={"name": "Getter Org"})
         tenant_id = create_resp.json()["data"]["id"]
 
         # Get it
-        resp = client.get(f"/tenant/{tenant_id}", headers=headers)
+        resp = client.get(f"/api/v1/tenant/{tenant_id}", headers=headers)
         assert resp.json()["code"] == Code.OK
         assert resp.json()["data"]["name"] == "Getter Org"
 
@@ -55,10 +55,10 @@ class TestTenantCRUD:
         headers = auth_header("lister@example.com", "Pass1234")
 
         # Create extra tenants
-        client.post("/tenant", headers=headers, json={"name": "Org A"})
-        client.post("/tenant", headers=headers, json={"name": "Org B"})
+        client.post("/api/v1/tenant", headers=headers, json={"name": "Org A"})
+        client.post("/api/v1/tenant", headers=headers, json={"name": "Org B"})
 
-        resp = client.get("/tenant", headers=headers)
+        resp = client.get("/api/v1/tenant", headers=headers)
         assert resp.json()["code"] == Code.OK
         # Default tenant + 2 created = 3
         assert len(resp.json()["data"]) >= 3
@@ -66,11 +66,11 @@ class TestTenantCRUD:
     def test_update_tenant_as_owner(self, client: TestClient, auth_header):
         headers = auth_header("owner@example.com", "Pass1234")
 
-        create_resp = client.post("/tenant", headers=headers, json={"name": "Update Me"})
+        create_resp = client.post("/api/v1/tenant", headers=headers, json={"name": "Update Me"})
         tenant_id = create_resp.json()["data"]["id"]
 
         resp = client.put(
-            f"/tenant/{tenant_id}",
+            f"/api/v1/tenant/{tenant_id}",
             headers=headers,
             json={"name": "Updated Name"},
         )
@@ -83,9 +83,9 @@ class TestTenantCRUD:
         headers_b = auth_header("userb@example.com", "Pass1234")
 
         # A creates a tenant
-        create_resp = client.post("/tenant", headers=headers_a, json={"name": "Private Org"})
+        create_resp = client.post("/api/v1/tenant", headers=headers_a, json={"name": "Private Org"})
         tenant_id = create_resp.json()["data"]["id"]
 
         # B tries to access it
-        resp = client.get(f"/tenant/{tenant_id}", headers=headers_b)
+        resp = client.get(f"/api/v1/tenant/{tenant_id}", headers=headers_b)
         assert resp.json()["code"] == Code.NOT_FOUND

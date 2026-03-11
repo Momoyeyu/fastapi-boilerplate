@@ -21,7 +21,7 @@ class TestNewUserOnboarding:
         """Register -> verify email -> view profile -> update profile -> logout."""
         # 1. Initiate registration
         resp = client.post(
-            "/auth/register",
+            "/api/v1/auth/register",
             json={"email": "onboard@example.com", "password": "Pass1234"},
         )
         assert resp.json()["code"] == Code.OK
@@ -30,7 +30,7 @@ class TestNewUserOnboarding:
         # 2. Verify email
         code = get_redis().get("verification:onboard@example.com:register")
         resp = client.post(
-            "/auth/register/verify",
+            "/api/v1/auth/register/verify",
             json={"email": "onboard@example.com", "code": code, "password": "Pass1234"},
         )
         assert resp.json()["code"] == Code.OK
@@ -38,7 +38,7 @@ class TestNewUserOnboarding:
         headers = {"Authorization": f"Bearer {tokens['access_token']}"}
 
         # 3. View initial profile
-        resp = client.get("/user/me", headers=headers)
+        resp = client.get("/api/v1/user/me", headers=headers)
         assert resp.json()["code"] == Code.OK
         profile = resp.json()["data"]
         assert profile["email"] == "onboard@example.com"
@@ -46,7 +46,7 @@ class TestNewUserOnboarding:
 
         # 4. Update profile
         resp = client.post(
-            "/user/me",
+            "/api/v1/user/me",
             headers=headers,
             json={"avatar_url": "https://example.com/avatar.png"},
         )
@@ -55,7 +55,7 @@ class TestNewUserOnboarding:
 
         # 5. Logout
         resp = client.post(
-            "/auth/logout",
+            "/api/v1/auth/logout",
             json={"refresh_token": tokens["refresh_token"]},
         )
         assert resp.json()["code"] == Code.OK
@@ -73,7 +73,7 @@ class TestNewUserOnboarding:
 
         # 1. Register with invitation code
         resp = client.post(
-            "/auth/register",
+            "/api/v1/auth/register",
             json={
                 "email": "invited@example.com",
                 "password": "Pass1234",
@@ -86,7 +86,7 @@ class TestNewUserOnboarding:
         # 2. Verify email
         code = get_redis().get("verification:invited@example.com:register")
         resp = client.post(
-            "/auth/register/verify",
+            "/api/v1/auth/register/verify",
             json={"email": "invited@example.com", "code": code, "password": "Pass1234"},
         )
         assert resp.json()["code"] == Code.OK
@@ -97,14 +97,14 @@ class TestNewUserOnboarding:
 
         # 4. Login with the new account
         resp = client.post(
-            "/auth/login",
+            "/api/v1/auth/login",
             json={"identifier": "invited@example.com", "password": "Pass1234"},
         )
         assert resp.json()["code"] == Code.OK
         headers = {"Authorization": f"Bearer {resp.json()['data']['access_token']}"}
 
         # 5. Access profile
-        resp = client.get("/user/me", headers=headers)
+        resp = client.get("/api/v1/user/me", headers=headers)
         assert resp.json()["code"] == Code.OK
         assert resp.json()["data"]["email"] == "invited@example.com"
 
@@ -120,14 +120,14 @@ class TestTokenLifecycle:
 
         # 1. Access API with original access token
         resp = client.get(
-            "/user/whoami",
+            "/api/v1/user/whoami",
             headers={"Authorization": f"Bearer {access_token}"},
         )
         assert resp.json()["code"] == Code.OK
 
         # 2. Refresh to get new token pair
         resp = client.post(
-            "/auth/token/refresh",
+            "/api/v1/auth/token/refresh",
             json={"refresh_token": refresh_token},
         )
         assert resp.json()["code"] == Code.OK
@@ -138,7 +138,7 @@ class TestTokenLifecycle:
 
         # 3. Access API with NEW access token
         resp = client.get(
-            "/user/whoami",
+            "/api/v1/user/whoami",
             headers={"Authorization": f"Bearer {new_access}"},
         )
         assert resp.json()["code"] == Code.OK
@@ -146,21 +146,21 @@ class TestTokenLifecycle:
 
         # 4. Old refresh token is revoked (token rotation)
         resp = client.post(
-            "/auth/token/refresh",
+            "/api/v1/auth/token/refresh",
             json={"refresh_token": refresh_token},
         )
         assert resp.json()["code"] == Code.UNAUTHORIZED
 
         # 5. Logout with new refresh token
         resp = client.post(
-            "/auth/logout",
+            "/api/v1/auth/logout",
             json={"refresh_token": new_refresh},
         )
         assert resp.json()["code"] == Code.OK
 
         # 6. New refresh token is now revoked too
         resp = client.post(
-            "/auth/token/refresh",
+            "/api/v1/auth/token/refresh",
             json={"refresh_token": new_refresh},
         )
         assert resp.json()["code"] == Code.UNAUTHORIZED
@@ -175,7 +175,7 @@ class TestMultiSession:
 
         # Session 1: login
         resp = client.post(
-            "/auth/login",
+            "/api/v1/auth/login",
             json={"identifier": "multi@example.com", "password": "Pass1234"},
         )
         assert resp.json()["code"] == Code.OK
@@ -184,7 +184,7 @@ class TestMultiSession:
 
         # Session 2: login again (different device)
         resp = client.post(
-            "/auth/login",
+            "/api/v1/auth/login",
             json={"identifier": "multi@example.com", "password": "Pass1234"},
         )
         assert resp.json()["code"] == Code.OK
@@ -192,23 +192,23 @@ class TestMultiSession:
         s2_refresh = resp.json()["data"]["refresh_token"]
 
         # Both sessions can access API
-        resp = client.get("/user/whoami", headers={"Authorization": f"Bearer {s1_access}"})
+        resp = client.get("/api/v1/user/whoami", headers={"Authorization": f"Bearer {s1_access}"})
         assert resp.json()["code"] == Code.OK
-        resp = client.get("/user/whoami", headers={"Authorization": f"Bearer {s2_access}"})
+        resp = client.get("/api/v1/user/whoami", headers={"Authorization": f"Bearer {s2_access}"})
         assert resp.json()["code"] == Code.OK
 
         # Logout session 1
-        resp = client.post("/auth/logout", json={"refresh_token": s1_refresh})
+        resp = client.post("/api/v1/auth/logout", json={"refresh_token": s1_refresh})
         assert resp.json()["code"] == Code.OK
 
         # Session 1 refresh is revoked
-        resp = client.post("/auth/token/refresh", json={"refresh_token": s1_refresh})
+        resp = client.post("/api/v1/auth/token/refresh", json={"refresh_token": s1_refresh})
         assert resp.json()["code"] == Code.UNAUTHORIZED
 
         # Session 2 is unaffected
-        resp = client.get("/user/whoami", headers={"Authorization": f"Bearer {s2_access}"})
+        resp = client.get("/api/v1/user/whoami", headers={"Authorization": f"Bearer {s2_access}"})
         assert resp.json()["code"] == Code.OK
-        resp = client.post("/auth/token/refresh", json={"refresh_token": s2_refresh})
+        resp = client.post("/api/v1/auth/token/refresh", json={"refresh_token": s2_refresh})
         assert resp.json()["code"] == Code.OK
 
 
@@ -223,45 +223,45 @@ class TestPasswordLifecycle:
 
         # 1. Change password
         resp = client.post(
-            "/user/password/change",
+            "/api/v1/user/password/change",
             headers=headers,
             json={"old_password": "Original1", "new_password": "Changed1"},
         )
         assert resp.json()["code"] == Code.OK
 
         # 2. Logout
-        client.post("/auth/logout", json={"refresh_token": refresh_token})
+        client.post("/api/v1/auth/logout", json={"refresh_token": refresh_token})
 
         # 3. Old password no longer works
         resp = client.post(
-            "/auth/login",
+            "/api/v1/auth/login",
             json={"identifier": "pwlife@example.com", "password": "Original1"},
         )
         assert resp.json()["code"] == Code.UNAUTHORIZED
 
         # 4. New password works
         resp = client.post(
-            "/auth/login",
+            "/api/v1/auth/login",
             json={"identifier": "pwlife@example.com", "password": "Changed1"},
         )
         assert resp.json()["code"] == Code.OK
 
         # 5. Forgot password
         mock_email.clear()
-        client.post("/auth/password/forgot", json={"email": "pwlife@example.com"})
+        client.post("/api/v1/auth/password/forgot", json={"email": "pwlife@example.com"})
         assert len(mock_email) == 1
 
         # 6. Reset password
         code = get_redis().get("verification:pwlife@example.com:reset_password")
         resp = client.post(
-            "/auth/password/reset",
+            "/api/v1/auth/password/reset",
             json={"email": "pwlife@example.com", "code": code, "new_password": "ResetPw1"},
         )
         assert resp.json()["code"] == Code.OK
 
         # 7. Login with reset password
         resp = client.post(
-            "/auth/login",
+            "/api/v1/auth/login",
             json={"identifier": "pwlife@example.com", "password": "ResetPw1"},
         )
         assert resp.json()["code"] == Code.OK
@@ -275,18 +275,18 @@ class TestPasswordLifecycle:
 
         # Change password
         resp = client.post(
-            "/user/password/change",
+            "/api/v1/user/password/change",
             headers=headers,
             json={"old_password": "Pass1234", "new_password": "NewPass1"},
         )
         assert resp.json()["code"] == Code.OK
 
         # Access token still works (JWT is stateless, valid until expiry)
-        resp = client.get("/user/me", headers=headers)
+        resp = client.get("/api/v1/user/me", headers=headers)
         assert resp.json()["code"] == Code.OK
 
         # Refresh token is revoked
-        resp = client.post("/auth/token/refresh", json={"refresh_token": refresh_token})
+        resp = client.post("/api/v1/auth/token/refresh", json={"refresh_token": refresh_token})
         assert resp.json()["code"] == Code.UNAUTHORIZED
 
 
@@ -300,25 +300,25 @@ class TestProfilePersistence:
 
         # Update profile
         resp = client.post(
-            "/user/me",
+            "/api/v1/user/me",
             headers=headers,
             json={"avatar_url": "https://example.com/photo.jpg"},
         )
         assert resp.json()["code"] == Code.OK
 
         # Logout
-        client.post("/auth/logout", json={"refresh_token": body["data"]["refresh_token"]})
+        client.post("/api/v1/auth/logout", json={"refresh_token": body["data"]["refresh_token"]})
 
         # Login again
         resp = client.post(
-            "/auth/login",
+            "/api/v1/auth/login",
             json={"identifier": "persist@example.com", "password": "Pass1234"},
         )
         new_token = resp.json()["data"]["access_token"]
 
         # Profile data persisted
         resp = client.get(
-            "/user/me",
+            "/api/v1/user/me",
             headers={"Authorization": f"Bearer {new_token}"},
         )
         assert resp.json()["code"] == Code.OK
