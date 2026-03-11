@@ -65,9 +65,9 @@ async def complete_registration(email: str, code: str, password: str) -> TokenPa
 
     invitation_code_id = consume_invitation_context(email)
 
-    encrypted_password = get_password_hash(password)
+    hashed = get_password_hash(password)
     username = email.split("@")[0]
-    user = await create_user(username, encrypted_password, email, invitation_code_id=invitation_code_id)
+    user = await create_user(username, hashed, email, invitation_code_id=invitation_code_id)
     if not user or user.id is None:
         raise erri.internal("Create user failed")
 
@@ -76,4 +76,9 @@ async def complete_registration(email: str, code: str, password: str) -> TokenPa
 
         await increment_used_count(invitation_code_id)
 
-    return await create_token(user)
+    # Create default tenant for the new user
+    from tenant.service import create_tenant_for_user
+
+    await create_tenant_for_user(user.id, f"{user.username}'s workspace")
+
+    return create_token(user)

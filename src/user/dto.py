@@ -7,15 +7,12 @@ class UserWhoAmIResponse(BaseModel):
 
 class UserProfileResponse(BaseModel):
     username: str
-    nickname: str | None
     email: str
     avatar_url: str | None
-    role: str
     is_active: bool
 
 
 class UserProfileUpdateRequest(BaseModel):
-    nickname: str | None = None
     avatar_url: str | None = None
 
 

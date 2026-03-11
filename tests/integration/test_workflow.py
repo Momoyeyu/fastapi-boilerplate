@@ -43,16 +43,15 @@ class TestNewUserOnboarding:
         profile = resp.json()["data"]
         assert profile["email"] == "onboard@example.com"
         assert profile["username"] == "onboard"
-        assert profile["role"] == "user"
 
         # 4. Update profile
         resp = client.post(
             "/user/me",
             headers=headers,
-            json={"nickname": "Onboard User", "avatar_url": "https://example.com/avatar.png"},
+            json={"avatar_url": "https://example.com/avatar.png"},
         )
         assert resp.json()["code"] == Code.OK
-        assert resp.json()["data"]["nickname"] == "Onboard User"
+        assert resp.json()["data"]["avatar_url"] == "https://example.com/avatar.png"
 
         # 5. Logout
         resp = client.post(
@@ -134,8 +133,7 @@ class TestTokenLifecycle:
         assert resp.json()["code"] == Code.OK
         new_access = resp.json()["data"]["access_token"]
         new_refresh = resp.json()["data"]["refresh_token"]
-        # Refresh token must change (token rotation); access token may be identical
-        # within the same second since JWT iat has second-level precision
+        # Refresh token must change (token rotation)
         assert new_refresh != refresh_token
 
         # 3. Access API with NEW access token
@@ -304,7 +302,7 @@ class TestProfilePersistence:
         resp = client.post(
             "/user/me",
             headers=headers,
-            json={"nickname": "Persisted Nick", "avatar_url": "https://example.com/photo.jpg"},
+            json={"avatar_url": "https://example.com/photo.jpg"},
         )
         assert resp.json()["code"] == Code.OK
 
@@ -325,5 +323,4 @@ class TestProfilePersistence:
         )
         assert resp.json()["code"] == Code.OK
         data = resp.json()["data"]
-        assert data["nickname"] == "Persisted Nick"
         assert data["avatar_url"] == "https://example.com/photo.jpg"

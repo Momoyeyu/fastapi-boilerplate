@@ -2,7 +2,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from auth import password, register
+from auth import register
 from auth.token import TokenPair
 from common import erri
 from common.resp import Code
@@ -22,9 +22,7 @@ def async_return(value):
 def mock_settings(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     """Create a mock settings object with default test values."""
     mock = MagicMock()
-    mock.password_salt = "salt"
     mock.require_invitation_code = False
-    monkeypatch.setattr(password, "settings", mock)
     monkeypatch.setattr(register, "settings", mock)
     return mock
 
@@ -60,7 +58,7 @@ async def test_complete_registration_invalid_code(monkeypatch: pytest.MonkeyPatc
     assert exc.value.code == Code.BAD_REQUEST
 
 
-async def test_complete_registration_success(monkeypatch: pytest.MonkeyPatch, mock_settings: MagicMock):
+async def test_complete_registration_success(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(register, "consume_verification_code", lambda *args: True, raising=True)
     monkeypatch.setattr(register, "email_exists", async_return(False), raising=True)
 
@@ -68,7 +66,7 @@ async def test_complete_registration_success(monkeypatch: pytest.MonkeyPatch, mo
 
     monkeypatch.setattr(verification_mod, "consume_invitation_context", lambda email: None)
 
-    user = User(id=1, username="alice", email="alice@test.com", password="x")
+    user = User(id=1, username="alice", email="alice@test.com", hashed_password="x")
     monkeypatch.setattr(register, "create_user", async_return(user), raising=True)
 
     mock_token_pair = TokenPair(
@@ -77,7 +75,12 @@ async def test_complete_registration_success(monkeypatch: pytest.MonkeyPatch, mo
         expires_in=3600,
         refresh_token_expires_in=604800,
     )
-    monkeypatch.setattr(register, "create_token", async_return(mock_token_pair), raising=True)
+    monkeypatch.setattr(register, "create_token", lambda u: mock_token_pair, raising=True)
+
+    # Mock tenant creation
+    import tenant.service as tenant_service_mod
+
+    monkeypatch.setattr(tenant_service_mod, "create_tenant_for_user", async_return((MagicMock(), MagicMock())))
 
     result = await register.complete_registration("alice@test.com", "123456", "pw")
     assert result.access_token == "token-123"
@@ -140,7 +143,7 @@ async def test_initiate_registration_skips_invitation_when_disabled(monkeypatch:
     await register.initiate_registration("alice@test.com", "pw", "ANYCODE")
 
 
-async def test_complete_registration_with_invitation_context(monkeypatch: pytest.MonkeyPatch, mock_settings: MagicMock):
+async def test_complete_registration_with_invitation_context(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(register, "consume_verification_code", lambda *args: True, raising=True)
     monkeypatch.setattr(register, "email_exists", async_return(False), raising=True)
 
@@ -152,7 +155,7 @@ async def test_complete_registration_with_invitation_context(monkeypatch: pytest
 
     async def mock_create_user(*args, **kwargs):
         captured_kwargs.update(kwargs)
-        return User(id=1, username="alice", email="alice@test.com", password="x")
+        return User(id=1, username="alice", email="alice@test.com", hashed_password="x")
 
     monkeypatch.setattr(register, "create_user", mock_create_user, raising=True)
 
@@ -162,7 +165,7 @@ async def test_complete_registration_with_invitation_context(monkeypatch: pytest
         expires_in=3600,
         refresh_token_expires_in=604800,
     )
-    monkeypatch.setattr(register, "create_token", async_return(mock_token_pair), raising=True)
+    monkeypatch.setattr(register, "create_token", lambda u: mock_token_pair, raising=True)
 
     import invitation.model as inv_model
 
@@ -172,6 +175,11 @@ async def test_complete_registration_with_invitation_context(monkeypatch: pytest
         incremented.append(cid)
 
     monkeypatch.setattr(inv_model, "increment_used_count", mock_increment)
+
+    # Mock tenant creation
+    import tenant.service as tenant_service_mod
+
+    monkeypatch.setattr(tenant_service_mod, "create_tenant_for_user", async_return((MagicMock(), MagicMock())))
 
     await register.complete_registration("alice@test.com", "123456", "pw")
     assert captured_kwargs["invitation_code_id"] == 42

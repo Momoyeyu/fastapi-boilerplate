@@ -1,15 +1,19 @@
-import hashlib
+import bcrypt
 
 from auth.verification import consume_verification_code, create_verification_code
 from common import erri
 from common.email import send_verification_email
-from conf.config import settings
 from user.model import email_exists
 
 
 def get_password_hash(password: str) -> str:
-    """Hash a password with the configured salt."""
-    return hashlib.sha512((password + settings.password_salt).encode("utf-8")).hexdigest()
+    """Hash a password using bcrypt."""
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a password against its bcrypt hash."""
+    return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
 
 
 async def request_password_reset(email: str) -> None:
@@ -45,11 +49,17 @@ async def reset_password(email: str, code: str, new_password: str) -> bool:
     if not consume_verification_code(email, code, "reset_password"):
         raise erri.bad_request("Invalid or expired verification code")
 
+    from auth.refresh_token import revoke_all_for_user
     from user.model import get_user_by_email, update_user_password
 
     user = await get_user_by_email(email)
     if not user:
         raise erri.not_found("User not found")
 
-    encrypted_password = get_password_hash(new_password)
-    return await update_user_password(user.username, encrypted_password)
+    hashed = get_password_hash(new_password)
+    result = await update_user_password(user.username, hashed)
+
+    if result and user.id is not None:
+        revoke_all_for_user(user.id)
+
+    return result

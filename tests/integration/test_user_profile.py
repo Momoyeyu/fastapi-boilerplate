@@ -36,7 +36,6 @@ class TestUserProfile:
         data = response.json()["data"]
         assert data["username"] == "profile"
         assert data["email"] == "profile@example.com"
-        assert data["role"] == "user"
         assert data["is_active"] is True
 
     def test_update_me_success(self, client: TestClient, auth_header):
@@ -44,11 +43,10 @@ class TestUserProfile:
         response = client.post(
             "/user/me",
             headers=headers,
-            json={"nickname": "New Nick", "avatar_url": "https://example.com/avatar.png"},
+            json={"avatar_url": "https://example.com/avatar.png"},
         )
         assert response.json()["code"] == Code.OK
         data = response.json()["data"]
-        assert data["nickname"] == "New Nick"
         assert data["avatar_url"] == "https://example.com/avatar.png"
 
 

@@ -20,10 +20,8 @@ async def get_me(request: Request) -> Response:
     return ok(
         data=dto.UserProfileResponse(
             username=user.username,
-            nickname=user.nickname,
             email=user.email,
             avatar_url=user.avatar_url,
-            role=user.role,
             is_active=user.is_active,
         ).model_dump()
     )
@@ -34,16 +32,13 @@ async def update_me(request: Request, body: dto.UserProfileUpdateRequest) -> Res
     username = auth.get_username(request)
     user = await profile.update_my_profile(
         username,
-        nickname=body.nickname,
         avatar_url=body.avatar_url,
     )
     return ok(
         data=dto.UserProfileResponse(
             username=user.username,
-            nickname=user.nickname,
             email=user.email,
             avatar_url=user.avatar_url,
-            role=user.role,
             is_active=user.is_active,
         ).model_dump()
     )

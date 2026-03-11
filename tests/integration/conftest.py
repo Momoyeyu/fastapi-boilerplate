@@ -2,8 +2,10 @@
 Integration test fixtures.
 
 Uses a temporary SQLite database to isolate tests from the real database.
+Patches bcrypt with fast SHA-256 hashing for speed.
 """
 
+import hashlib
 import tempfile
 from collections.abc import AsyncGenerator
 from pathlib import Path
@@ -14,12 +16,50 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine as create_sync_engine
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from auth import model as auth_model
+from auth import password as password_module
 from conf import db as db_module
 from conf import redis as redis_module
 from conf.db import Base
 from invitation import model as invitation_model
+from tenant import model as tenant_model
 from user import model as user_model
+
+# ---------------------------------------------------------------------------
+# Fast password hashing (replaces bcrypt ~200ms/call with SHA256 <1ms/call)
+# ---------------------------------------------------------------------------
+
+_FAST_PREFIX = "$fast$"
+
+
+def _fast_hash(password: str) -> str:
+    return _FAST_PREFIX + hashlib.sha256(password.encode()).hexdigest()
+
+
+def _fast_verify(plain_password: str, hashed_password: str) -> bool:
+    return _fast_hash(plain_password) == hashed_password
+
+
+@pytest.fixture(autouse=True)
+def fast_password_hash(monkeypatch):
+    """Replace bcrypt with fast SHA-256 for integration test speed."""
+    # Patch in the definition module
+    monkeypatch.setattr(password_module, "get_password_hash", _fast_hash)
+    monkeypatch.setattr(password_module, "verify_password", _fast_verify)
+
+    # Patch in all modules that do `from auth.password import ...`
+    from auth import register as register_mod
+    from auth import token as token_mod
+    from user import profile as profile_mod
+
+    monkeypatch.setattr(register_mod, "get_password_hash", _fast_hash)
+    monkeypatch.setattr(token_mod, "verify_password", _fast_verify)
+    monkeypatch.setattr(profile_mod, "get_password_hash", _fast_hash)
+    monkeypatch.setattr(profile_mod, "verify_password", _fast_verify)
+
+
+# ---------------------------------------------------------------------------
+# Database fixtures
+# ---------------------------------------------------------------------------
 
 
 @pytest.fixture(scope="function")
@@ -62,8 +102,8 @@ def client(test_engine, test_session_local, monkeypatch) -> TestClient:
     monkeypatch.setattr(db_module, "engine", test_engine)
     monkeypatch.setattr(db_module, "AsyncSessionLocal", test_session_local)
     monkeypatch.setattr(user_model, "AsyncSessionLocal", test_session_local)
-    monkeypatch.setattr(auth_model, "AsyncSessionLocal", test_session_local)
     monkeypatch.setattr(invitation_model, "AsyncSessionLocal", test_session_local)
+    monkeypatch.setattr(tenant_model, "AsyncSessionLocal", test_session_local)
 
     # Import create_app after patching to ensure patches are in effect
     from main import create_app
@@ -74,13 +114,23 @@ def client(test_engine, test_session_local, monkeypatch) -> TestClient:
         yield test_client
 
 
+# ---------------------------------------------------------------------------
+# FakeRedis mock
+# ---------------------------------------------------------------------------
+
+
 class FakeRedis:
-    """In-memory Redis mock so tests run without a real Redis server."""
+    """In-memory Redis mock supporting string and set operations."""
 
     def __init__(self):
         self._store: dict[str, str] = {}
+        self._sets: dict[str, set[str]] = {}
 
+    # String operations
     def setex(self, key, ttl, value):
+        self._store[key] = value
+
+    def set(self, key, value, ex=None):
         self._store[key] = value
 
     def get(self, key):
@@ -88,9 +138,26 @@ class FakeRedis:
 
     def delete(self, key):
         self._store.pop(key, None)
+        self._sets.pop(key, None)
+
+    # Set operations
+    def sadd(self, key, *members):
+        if key not in self._sets:
+            self._sets[key] = set()
+        for m in members:
+            self._sets[key].add(m)
+
+    def smembers(self, key):
+        return self._sets.get(key, set()).copy()
+
+    def srem(self, key, *members):
+        if key in self._sets:
+            for m in members:
+                self._sets[key].discard(m)
 
     def flushdb(self):
         self._store.clear()
+        self._sets.clear()
 
     def close(self):
         pass
@@ -105,6 +172,11 @@ def redis_test_db(monkeypatch):
     monkeypatch.setattr(redis_module, "_client", None)
 
 
+# ---------------------------------------------------------------------------
+# Email mock
+# ---------------------------------------------------------------------------
+
+
 @pytest.fixture(autouse=True)
 def mock_email(monkeypatch):
     """Mock email sending to avoid consuming real Resend quota."""
@@ -114,12 +186,17 @@ def mock_email(monkeypatch):
         sent_emails.append({"email": email, "code": code, "purpose": purpose})
         return True
 
-    from auth import password as password_module
+    from auth import password as password_mod
     from auth import register as register_module
 
     monkeypatch.setattr(register_module, "send_verification_email", fake_send)
-    monkeypatch.setattr(password_module, "send_verification_email", fake_send)
+    monkeypatch.setattr(password_mod, "send_verification_email", fake_send)
     return sent_emails
+
+
+# ---------------------------------------------------------------------------
+# Auth helpers
+# ---------------------------------------------------------------------------
 
 
 @pytest.fixture
