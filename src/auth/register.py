@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from auth.password import get_password_hash, validate_password
 from auth.token import TokenPair, create_token
 from auth.verification import consume_verification_code, create_verification_code
@@ -21,7 +23,7 @@ async def initiate_registration(email: str, password: str, invitation_code: str 
     if await email_exists(email):
         raise erri.conflict("Email already registered")
 
-    invitation_code_id: int | None = None
+    invitation_code_id: UUID | None = None
     if settings.require_invitation_code:
         if not invitation_code:
             raise erri.bad_request("Invitation code is required")

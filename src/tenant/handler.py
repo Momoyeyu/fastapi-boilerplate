@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Request
 
 from common import erri
@@ -9,7 +11,7 @@ from user.model import get_user
 router = APIRouter(prefix="/tenant", tags=["tenant"])
 
 
-async def _get_user_id(request: Request) -> int:
+async def _get_user_id(request: Request) -> UUID:
     username = auth.get_username(request)
     user = await get_user(username)
     if not user or user.id is None:
@@ -40,7 +42,7 @@ async def list_tenants(request: Request) -> Response:
 
 
 @router.get("/{tenant_id}")
-async def get_tenant(request: Request, tenant_id: int) -> Response:
+async def get_tenant(request: Request, tenant_id: UUID) -> Response:
     """Get tenant details. User must be a member."""
     user_id = await _get_user_id(request)
     tenant = await service.get_tenant_detail(user_id, tenant_id)
@@ -54,7 +56,7 @@ async def get_tenant(request: Request, tenant_id: int) -> Response:
 
 
 @router.put("/{tenant_id}")
-async def update_tenant(request: Request, tenant_id: int, body: dto.TenantUpdateRequest) -> Response:
+async def update_tenant(request: Request, tenant_id: UUID, body: dto.TenantUpdateRequest) -> Response:
     """Update a tenant. Only the owner can update."""
     user_id = await _get_user_id(request)
     tenant = await service.update_tenant_by_owner(user_id, tenant_id, name=body.name, status=body.status)

@@ -1,6 +1,7 @@
 """Unit tests for Redis-based refresh token service."""
 
 from unittest.mock import patch
+from uuid import UUID
 
 import pytest
 
@@ -86,20 +87,24 @@ def fake_redis():
         yield fake
 
 
+_ALICE_ID = UUID("01936b2a-7c00-7000-8000-000000000001")
+_BOB_ID = UUID("01936b2a-7c00-7000-8000-000000000002")
+
+
 def test_create_refresh_token(fake_redis):
-    token = create_refresh_token(1, "alice")
+    token = create_refresh_token(_ALICE_ID, "alice")
     assert len(token) > 0
     # Token should be stored in Redis
     assert fake_redis.get(f"refresh_token:{token}") is not None
     # Token should be tracked in user set
-    assert token in fake_redis.smembers("user_tokens:1")
+    assert token in fake_redis.smembers(f"user_tokens:{_ALICE_ID}")
 
 
 def test_validate_refresh_token_success(fake_redis):
-    token = create_refresh_token(1, "alice")
+    token = create_refresh_token(_ALICE_ID, "alice")
     data = validate_refresh_token(token)
     assert data is not None
-    assert data["user_id"] == 1
+    assert data["user_id"] == str(_ALICE_ID)
     assert data["username"] == "alice"
 
 
@@ -108,10 +113,10 @@ def test_validate_refresh_token_invalid(fake_redis):
 
 
 def test_revoke_refresh_token_success(fake_redis):
-    token = create_refresh_token(1, "alice")
+    token = create_refresh_token(_ALICE_ID, "alice")
     assert revoke_refresh_token(token) is True
     assert validate_refresh_token(token) is None
-    assert token not in fake_redis.smembers("user_tokens:1")
+    assert token not in fake_redis.smembers(f"user_tokens:{_ALICE_ID}")
 
 
 def test_revoke_refresh_token_nonexistent(fake_redis):
@@ -119,13 +124,13 @@ def test_revoke_refresh_token_nonexistent(fake_redis):
 
 
 def test_rotate_refresh_token_success(fake_redis):
-    old_token = create_refresh_token(1, "alice")
+    old_token = create_refresh_token(_ALICE_ID, "alice")
     result = rotate_refresh_token(old_token)
 
     assert result is not None
     new_token, data = result
     assert new_token != old_token
-    assert data["user_id"] == 1
+    assert data["user_id"] == str(_ALICE_ID)
     assert data["username"] == "alice"
 
     # Old token revoked
@@ -139,11 +144,11 @@ def test_rotate_refresh_token_invalid(fake_redis):
 
 
 def test_revoke_all_for_user(fake_redis):
-    t1 = create_refresh_token(1, "alice")
-    t2 = create_refresh_token(1, "alice")
-    t3 = create_refresh_token(2, "bob")
+    t1 = create_refresh_token(_ALICE_ID, "alice")
+    t2 = create_refresh_token(_ALICE_ID, "alice")
+    t3 = create_refresh_token(_BOB_ID, "bob")
 
-    count = revoke_all_for_user(1)
+    count = revoke_all_for_user(_ALICE_ID)
     assert count == 2
 
     # Alice's tokens revoked

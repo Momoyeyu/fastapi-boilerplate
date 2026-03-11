@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from pydantic import BaseModel
 
 
@@ -11,12 +13,12 @@ class TenantUpdateRequest(BaseModel):
 
 
 class TenantResponse(BaseModel):
-    id: int
+    id: UUID
     name: str
     status: str
 
 
 class UserTenantResponse(BaseModel):
-    tenant_id: int
+    tenant_id: UUID
     tenant_name: str
     user_role: str

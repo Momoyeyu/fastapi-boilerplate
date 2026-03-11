@@ -1,7 +1,9 @@
 from datetime import UTC, datetime
+from uuid import UUID
 
-from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint, select
+from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint, Uuid, select
 from sqlalchemy.orm import Mapped, mapped_column
+from uuid6 import uuid7
 
 from conf.db import AsyncSessionLocal, Base
 
@@ -9,7 +11,7 @@ from conf.db import AsyncSessionLocal, Base
 class Tenant(Base):
     __tablename__ = "tenant"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid7)
     name: Mapped[str] = mapped_column(String, unique=True, index=True)
     status: Mapped[str] = mapped_column(String, default="active")  # active / disabled / suspended
     is_deleted: Mapped[bool] = mapped_column(default=False)
@@ -21,9 +23,9 @@ class Tenant(Base):
 class UserTenant(Base):
     __tablename__ = "user_tenant"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), index=True)
-    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenant.id"), index=True)
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid7)
+    user_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("user.id"), index=True)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("tenant.id"), index=True)
     user_role: Mapped[str] = mapped_column(String, default="member")  # owner / admin / member
     is_deleted: Mapped[bool] = mapped_column(default=False)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
@@ -43,7 +45,7 @@ async def create_tenant(name: str) -> Tenant:
     return tenant
 
 
-async def get_tenant(tenant_id: int) -> Tenant | None:
+async def get_tenant(tenant_id: UUID) -> Tenant | None:
     async with AsyncSessionLocal() as session:
         result = await session.execute(
             select(Tenant).where(Tenant.id == tenant_id, Tenant.is_deleted == False)  # noqa: E712
@@ -59,7 +61,7 @@ async def get_tenant_by_name(name: str) -> Tenant | None:
         return result.scalars().one_or_none()
 
 
-async def update_tenant(tenant_id: int, *, name: str | None = None, status: str | None = None) -> Tenant | None:
+async def update_tenant(tenant_id: UUID, *, name: str | None = None, status: str | None = None) -> Tenant | None:
     async with AsyncSessionLocal() as session:
         result = await session.execute(
             select(Tenant).where(Tenant.id == tenant_id, Tenant.is_deleted == False)  # noqa: E712
@@ -80,7 +82,7 @@ async def update_tenant(tenant_id: int, *, name: str | None = None, status: str 
         return tenant
 
 
-async def create_user_tenant(user_id: int, tenant_id: int, user_role: str = "member") -> UserTenant:
+async def create_user_tenant(user_id: UUID, tenant_id: UUID, user_role: str = "member") -> UserTenant:
     """Create a user-tenant association."""
     user_tenant = UserTenant(user_id=user_id, tenant_id=tenant_id, user_role=user_role)
     async with AsyncSessionLocal() as session:
@@ -90,7 +92,7 @@ async def create_user_tenant(user_id: int, tenant_id: int, user_role: str = "mem
     return user_tenant
 
 
-async def get_user_tenant(user_id: int, tenant_id: int) -> UserTenant | None:
+async def get_user_tenant(user_id: UUID, tenant_id: UUID) -> UserTenant | None:
     async with AsyncSessionLocal() as session:
         result = await session.execute(
             select(UserTenant).where(
@@ -102,7 +104,7 @@ async def get_user_tenant(user_id: int, tenant_id: int) -> UserTenant | None:
         return result.scalars().one_or_none()
 
 
-async def get_user_tenants(user_id: int) -> list[UserTenant]:
+async def get_user_tenants(user_id: UUID) -> list[UserTenant]:
     """Get all tenants for a user."""
     async with AsyncSessionLocal() as session:
         result = await session.execute(

@@ -1,4 +1,5 @@
 from unittest.mock import MagicMock
+from uuid import UUID
 
 import pytest
 
@@ -7,6 +8,9 @@ from auth.token import TokenPair
 from common import erri
 from common.resp import Code
 from user.model import User
+
+_ALICE_ID = UUID("01936b2a-7c00-7000-8000-000000000001")
+_INV_ID = UUID("01936b2a-7c00-7000-8000-0000000000a1")
 
 
 def async_return(value):
@@ -66,7 +70,7 @@ async def test_complete_registration_success(monkeypatch: pytest.MonkeyPatch):
 
     monkeypatch.setattr(verification_mod, "consume_invitation_context", lambda email: None)
 
-    user = User(id=1, username="alice", email="alice@test.com", hashed_password="x")
+    user = User(id=_ALICE_ID, username="alice", email="alice@test.com", hashed_password="x")
 
     mock_token_pair = TokenPair(
         access_token="token-123",
@@ -121,12 +125,12 @@ async def test_initiate_registration_valid_invitation_code(monkeypatch: pytest.M
     import invitation.model as inv_model
     from invitation.model import InvitationCode
 
-    mock_inv = InvitationCode(id=1, code="VALID", max_uses=10, used_count=0, is_active=True)
+    mock_inv = InvitationCode(id=_INV_ID, code="VALID", max_uses=10, used_count=0, is_active=True)
     monkeypatch.setattr(inv_model, "validate_invitation_code", async_return(mock_inv))
 
     import auth.verification as verification_mod
 
-    stored: dict[str, int] = {}
+    stored: dict[str, UUID] = {}
     monkeypatch.setattr(
         verification_mod,
         "store_invitation_context",
@@ -134,7 +138,7 @@ async def test_initiate_registration_valid_invitation_code(monkeypatch: pytest.M
     )
 
     await register.initiate_registration("alice@test.com", "StrongPw1", "VALID")
-    assert stored["inv_id"] == 1
+    assert stored["inv_id"] == _INV_ID
 
 
 async def test_initiate_registration_skips_invitation_when_disabled(monkeypatch: pytest.MonkeyPatch):
@@ -152,14 +156,14 @@ async def test_complete_registration_with_invitation_context(monkeypatch: pytest
 
     import auth.verification as verification_mod
 
-    monkeypatch.setattr(verification_mod, "consume_invitation_context", lambda email: 42)
+    monkeypatch.setattr(verification_mod, "consume_invitation_context", lambda email: _INV_ID)
 
     captured_kwargs: dict = {}
 
     async def mock_create_user_with_tenant(*args, **kwargs):
         captured_kwargs.update(kwargs)
         return (
-            User(id=1, username="alice", email="alice@test.com", hashed_password="x"),
+            User(id=_ALICE_ID, username="alice", email="alice@test.com", hashed_password="x"),
             MagicMock(),
             MagicMock(),
         )
@@ -178,7 +182,7 @@ async def test_complete_registration_with_invitation_context(monkeypatch: pytest
 
     import invitation.model as inv_model
 
-    incremented: list[int] = []
+    incremented: list[UUID] = []
 
     async def mock_increment(cid):
         incremented.append(cid)
@@ -191,5 +195,5 @@ async def test_complete_registration_with_invitation_context(monkeypatch: pytest
     monkeypatch.setattr(tenant_service_mod, "create_tenant_for_user", async_return((MagicMock(), MagicMock())))
 
     await register.complete_registration("alice@test.com", "123456", "StrongPw1")
-    assert captured_kwargs["invitation_code_id"] == 42
-    assert incremented == [42]
+    assert captured_kwargs["invitation_code_id"] == _INV_ID
+    assert incremented == [_INV_ID]
