@@ -58,11 +58,7 @@ async def _send(to_email: str, subject: str, html: str) -> bool:
 
 async def send_verification_email(email: str, code: str, purpose: str) -> bool:
     """Send a verification code email. Supports register / reset_password templates."""
+    logger.debug(f"Verification code for {email} ({purpose}): {code}")
     subject, title, message, footer = _TEMPLATES.get(purpose, _DEFAULT_TEMPLATE)
     prefix = f"{settings.app_name} - " if settings.app_name else ""
     return await _send(email, f"{prefix}{subject}", _build_html(code, title, message, footer))
-
-
-async def send_email(to_email: str, subject: str, html_content: str) -> bool:
-    """Send a custom HTML email."""
-    return await _send(to_email, subject, html_content)
