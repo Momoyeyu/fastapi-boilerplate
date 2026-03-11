@@ -1,10 +1,10 @@
-from auth.password import get_password_hash
+from auth.password import get_password_hash, validate_password
 from auth.token import TokenPair, create_token
 from auth.verification import consume_verification_code, create_verification_code
 from common import erri
 from common.email import send_verification_email
 from conf.config import settings
-from user.model import create_user, email_exists
+from user.model import email_exists
 
 
 async def initiate_registration(email: str, password: str, invitation_code: str | None = None) -> None:
@@ -65,10 +65,18 @@ async def complete_registration(email: str, code: str, password: str) -> TokenPa
 
     invitation_code_id = consume_invitation_context(email)
 
-    encrypted_password = get_password_hash(password)
+    validate_password(password)
+    hashed = get_password_hash(password)
     username = email.split("@")[0]
-    user = await create_user(username, encrypted_password, email, invitation_code_id=invitation_code_id)
-    if not user or user.id is None:
+    tenant_name = f"{username}'s workspace"
+
+    from tenant.service import create_user_with_tenant
+
+    try:
+        user, _, _ = await create_user_with_tenant(
+            username, hashed, email, tenant_name, invitation_code_id=invitation_code_id
+        )
+    except Exception:
         raise erri.internal("Create user failed")
 
     if invitation_code_id is not None:
@@ -76,4 +84,4 @@ async def complete_registration(email: str, code: str, password: str) -> TokenPa
 
         await increment_used_count(invitation_code_id)
 
-    return await create_token(user)
+    return create_token(user)

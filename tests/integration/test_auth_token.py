@@ -10,11 +10,11 @@ class TestAuthLogin:
 
     def test_login_success(self, client: TestClient, register_and_verify):
         """Test successful login returns token data in envelope."""
-        register_and_verify("login@example.com", "secret123")
+        register_and_verify("login@example.com", "Secret12")
 
         response = client.post(
             "/auth/login",
-            json={"identifier": "login@example.com", "password": "secret123"},
+            json={"identifier": "login@example.com", "password": "Secret12"},
         )
         assert response.status_code == 200
         body = response.json()
@@ -31,11 +31,11 @@ class TestAuthLogin:
 
     def test_login_with_username(self, client: TestClient, register_and_verify):
         """Test login with username instead of email."""
-        register_and_verify("username_test@example.com", "secret123")
+        register_and_verify("username_test@example.com", "Secret12")
 
         response = client.post(
             "/auth/login",
-            json={"identifier": "username_test", "password": "secret123"},
+            json={"identifier": "username_test", "password": "Secret12"},
         )
         assert response.status_code == 200
         assert response.json()["code"] == Code.OK
@@ -66,7 +66,7 @@ class TestRefreshToken:
 
     def test_refresh_success(self, client: TestClient, register_and_verify):
         """Test successful token refresh returns new token pair."""
-        body = register_and_verify("refresh@example.com", "secret123")
+        body = register_and_verify("refresh@example.com", "Secret12")
         refresh_token = body["data"]["refresh_token"]
 
         response = client.post(
@@ -93,7 +93,7 @@ class TestRefreshToken:
 
     def test_refresh_with_revoked_token(self, client: TestClient, register_and_verify):
         """Test refresh fails with already used (revoked) token."""
-        body = register_and_verify("revoked@example.com", "secret123")
+        body = register_and_verify("revoked@example.com", "Secret12")
         refresh_token = body["data"]["refresh_token"]
 
         # First refresh should succeed
@@ -116,7 +116,7 @@ class TestLogout:
 
     def test_logout_success(self, client: TestClient, register_and_verify):
         """Test successful logout revokes refresh token."""
-        body = register_and_verify("logout@example.com", "secret123")
+        body = register_and_verify("logout@example.com", "Secret12")
         refresh_token = body["data"]["refresh_token"]
 
         response = client.post(

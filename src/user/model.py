@@ -12,10 +12,8 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     username: Mapped[str] = mapped_column(String, unique=True, index=True)
     email: Mapped[str] = mapped_column(String, unique=True, index=True)
-    password: Mapped[str] = mapped_column(String)
-    nickname: Mapped[str | None] = mapped_column(String, default=None)
+    hashed_password: Mapped[str] = mapped_column(String)
     avatar_url: Mapped[str | None] = mapped_column(String, default=None)
-    role: Mapped[str] = mapped_column(String, default="user")
     is_active: Mapped[bool] = mapped_column(default=True)
     invitation_code_id: Mapped[int | None] = mapped_column(default=None)
     is_deleted: Mapped[bool] = mapped_column(default=False)
@@ -26,18 +24,15 @@ class User(Base):
 
 async def create_user(
     username: str,
-    password: str,
+    hashed_password: str,
     email: str,
     *,
-    role: str = "user",
     invitation_code_id: int | None = None,
 ) -> User | None:
     user = User(
         username=username,
-        password=password,
+        hashed_password=hashed_password,
         email=email,
-        nickname=username,
-        role=role,
         invitation_code_id=invitation_code_id,
     )
     async with AsyncSessionLocal() as session:
@@ -84,7 +79,6 @@ async def email_exists(email: str) -> bool:
 async def update_user_profile(
     username: str,
     *,
-    nickname: str | None = None,
     email: str | None = None,
     avatar_url: str | None = None,
 ) -> User | None:
@@ -96,8 +90,6 @@ async def update_user_profile(
         if not user:
             return None
 
-        if nickname is not None:
-            user.nickname = nickname
         if email is not None:
             user.email = email.lower()
         if avatar_url is not None:
@@ -119,7 +111,7 @@ async def update_user_password(username: str, new_password: str) -> bool:
         if not user:
             return False
 
-        user.password = new_password
+        user.hashed_password = new_password
         user.updated_at = datetime.now(UTC)
         session.add(user)
         await session.commit()

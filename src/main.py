@@ -13,6 +13,7 @@ from conf.openapi import setup_openapi
 from conf.redis import close_redis
 from middleware.auth import setup_auth_middleware
 from middleware.logging import setup_logging_middleware
+from tenant.handler import router as tenant_router
 from user.handler import router as user_router
 
 
@@ -35,6 +36,7 @@ def init_routers(_app: FastAPI) -> None:
     _app.include_router(root_router)
     _app.include_router(auth_router)
     _app.include_router(user_router)
+    _app.include_router(tenant_router)
 
 
 def init_middlewares(_app: FastAPI) -> None:

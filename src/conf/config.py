@@ -40,7 +40,6 @@ class Settings(BaseSettings):
     redis_db: int = 0
 
     # Security configuration
-    password_salt: str = "Momoyeyu"
     jwt_secret: str = "Momoyeyu"
     jwt_algorithm: str = "HS256"
     jwt_expire_seconds: int = 3600

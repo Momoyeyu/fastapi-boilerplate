@@ -8,13 +8,14 @@ from sqlalchemy import engine_from_config, pool
 from conf.config import settings
 from conf.db import Base
 
-from auth import model as auth_model
 from invitation import model as invitation_model
+from tenant import model as tenant_model
 from user import model as user_model
 
 _ = user_model.User
-_ = auth_model.RefreshToken
 _ = invitation_model.InvitationCode
+_ = tenant_model.Tenant
+_ = tenant_model.UserTenant
 
 alembic_config = context.config
 

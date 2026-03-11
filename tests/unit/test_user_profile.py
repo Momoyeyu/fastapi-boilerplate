@@ -1,5 +1,3 @@
-from unittest.mock import MagicMock
-
 import pytest
 
 from auth import password as auth_password
@@ -18,15 +16,6 @@ def async_return(value):
     return _inner
 
 
-@pytest.fixture
-def mock_settings(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
-    """Create a mock settings object with default test values."""
-    mock = MagicMock()
-    mock.password_salt = "salt"
-    monkeypatch.setattr(auth_password, "settings", mock)
-    return mock
-
-
 async def test_get_user_profile_not_found(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(profile, "get_user", async_return(None), raising=True)
     with pytest.raises(erri.BusinessError) as exc:
@@ -35,7 +24,7 @@ async def test_get_user_profile_not_found(monkeypatch: pytest.MonkeyPatch):
 
 
 async def test_get_user_profile_success(monkeypatch: pytest.MonkeyPatch):
-    user = User(id=1, username="alice", email="alice@test.com", password="x")
+    user = User(id=1, username="alice", email="alice@test.com", hashed_password="x")
     monkeypatch.setattr(profile, "get_user", async_return(user), raising=True)
     result = await profile.get_user_profile("alice")
     assert result.username == "alice"
@@ -45,35 +34,42 @@ async def test_get_user_profile_success(monkeypatch: pytest.MonkeyPatch):
 async def test_update_my_profile_not_found(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(profile, "update_user_profile", async_return(None), raising=True)
     with pytest.raises(erri.BusinessError) as exc:
-        await profile.update_my_profile("alice", nickname="Alice", avatar_url=None)
+        await profile.update_my_profile("alice", avatar_url=None)
     assert exc.value.code == Code.NOT_FOUND
 
 
 async def test_update_my_profile_success(monkeypatch: pytest.MonkeyPatch):
-    user = User(id=1, username="alice", email="alice@test.com", password="x", nickname="Alice")
+    user = User(id=1, username="alice", email="alice@test.com", hashed_password="x", avatar_url="http://img.png")
     monkeypatch.setattr(profile, "update_user_profile", async_return(user), raising=True)
-    result = await profile.update_my_profile("alice", nickname="Alice", avatar_url=None)
-    assert result.nickname == "Alice"
+    result = await profile.update_my_profile("alice", avatar_url="http://img.png")
+    assert result.avatar_url == "http://img.png"
 
 
 async def test_change_password_user_not_found(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(profile, "get_user", async_return(None), raising=True)
     with pytest.raises(erri.BusinessError) as exc:
-        await profile.change_password("alice", "old", "new")
+        await profile.change_password("alice", "old", "NewPass1")
     assert exc.value.code == Code.NOT_FOUND
 
 
-async def test_change_password_wrong_old_password(monkeypatch: pytest.MonkeyPatch, mock_settings: MagicMock):
-    user = User(id=1, username="alice", email="alice@test.com", password=auth_password.get_password_hash("correct"))
+async def test_change_password_wrong_old_password(monkeypatch: pytest.MonkeyPatch):
+    user = User(
+        id=1, username="alice", email="alice@test.com", hashed_password=auth_password.get_password_hash("correct")
+    )
     monkeypatch.setattr(profile, "get_user", async_return(user), raising=True)
     with pytest.raises(erri.BusinessError) as exc:
-        await profile.change_password("alice", "wrong", "new")
+        await profile.change_password("alice", "wrong", "NewPass1")
     assert exc.value.code == Code.BAD_REQUEST
 
 
-async def test_change_password_success(monkeypatch: pytest.MonkeyPatch, mock_settings: MagicMock):
-    user = User(id=1, username="alice", email="alice@test.com", password=auth_password.get_password_hash("old"))
+async def test_change_password_success(monkeypatch: pytest.MonkeyPatch):
+    user = User(id=1, username="alice", email="alice@test.com", hashed_password=auth_password.get_password_hash("old"))
     monkeypatch.setattr(profile, "get_user", async_return(user), raising=True)
     monkeypatch.setattr(profile, "update_user_password", async_return(True), raising=True)
-    result = await profile.change_password("alice", "old", "new")
+
+    import auth.refresh_token as refresh_token_mod
+
+    monkeypatch.setattr(refresh_token_mod, "revoke_all_for_user", lambda uid: 0)
+
+    result = await profile.change_password("alice", "old", "NewPass1")
     assert result is True

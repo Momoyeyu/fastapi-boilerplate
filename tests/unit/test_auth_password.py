@@ -1,51 +1,74 @@
-import hashlib
-from unittest.mock import MagicMock
-
 import pytest
 
 from auth import password
+from common import erri
+from common.resp import Code
 
 
-def async_return(value):
-    """Create an async function that returns the given value."""
-
-    async def _inner(*args, **kwargs):
-        return value
-
-    return _inner
+def test_validate_password_success():
+    password.validate_password("Abcdefg1")  # should not raise
 
 
-@pytest.fixture
-def mock_settings(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
-    """Create a mock settings object with default test values."""
-    mock = MagicMock()
-    mock.password_salt = "salt"
-    monkeypatch.setattr(password, "settings", mock)
-    return mock
+@pytest.mark.parametrize(
+    "pw, expected_msg",
+    [
+        ("Short1A", "at least 8 characters"),
+        ("alllowercase1", "uppercase letter"),
+        ("ALLUPPERCASE1", "lowercase letter"),
+        ("NoDigitsHere", "digit"),
+    ],
+)
+def test_validate_password_rejects_weak(pw, expected_msg):
+    with pytest.raises(erri.BusinessError) as exc:
+        password.validate_password(pw)
+    assert exc.value.code == Code.BAD_REQUEST
+    assert expected_msg in exc.value.message
 
 
-def test_get_password_hash_uses_salt(mock_settings: MagicMock):
-    pw = "pw"
-    expected = hashlib.sha512((pw + "salt").encode("utf-8")).hexdigest()
-    assert password.get_password_hash(pw) == expected
+def test_get_password_hash_returns_bcrypt_hash():
+    """Test that get_password_hash returns a valid bcrypt hash."""
+    hashed = password.get_password_hash("my_secret")
+    assert hashed.startswith("$2")
+    assert len(hashed) == 60
+
+
+def test_get_password_hash_different_each_time():
+    """Bcrypt generates random salt, so hashes differ."""
+    h1 = password.get_password_hash("same")
+    h2 = password.get_password_hash("same")
+    assert h1 != h2
+
+
+def test_verify_password_correct():
+    hashed = password.get_password_hash("secret")
+    assert password.verify_password("secret", hashed) is True
+
+
+def test_verify_password_incorrect():
+    hashed = password.get_password_hash("secret")
+    assert password.verify_password("wrong", hashed) is False
 
 
 async def test_request_password_reset_sends_code(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(password, "email_exists", async_return(True), raising=True)
+    monkeypatch.setattr(
+        password, "email_exists", lambda *a, **k: __import__("asyncio").coroutine(lambda: True)(), raising=True
+    )
     sent = {}
 
     monkeypatch.setattr(password, "create_verification_code", lambda email, purpose: "654321", raising=True)
 
-    def mock_send(email, code, purpose):
+    async def async_mock_send(email, code, purpose):
         sent["email"] = email
         sent["code"] = code
         sent["purpose"] = purpose
         return True
 
-    async def async_mock_send(email, code, purpose):
-        return mock_send(email, code, purpose)
-
     monkeypatch.setattr(password, "send_verification_email", async_mock_send, raising=True)
+
+    async def mock_email_exists(email):
+        return True
+
+    monkeypatch.setattr(password, "email_exists", mock_email_exists, raising=True)
 
     await password.request_password_reset("alice@test.com")
     assert sent["email"] == "alice@test.com"
