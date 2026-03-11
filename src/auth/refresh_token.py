@@ -2,7 +2,7 @@
 Redis-based refresh token service.
 
 Key design:
-- refresh_token:{token} → JSON {"user_id": N, "username": "..."} with TTL
+- refresh_token:{token} → JSON {"user_id": "<uuid>", "username": "..."} with TTL
 - user_tokens:{user_id} → Redis SET of active token strings (for bulk revocation)
 """
 
@@ -45,7 +45,7 @@ def validate_refresh_token(token: str) -> dict | None:
     """Validate a refresh token.
 
     Returns:
-        Token data dict {"user_id": N, "username": "..."} if valid, None otherwise.
+        Token data dict {"user_id": "<uuid>", "username": "..."} if valid, None otherwise.
     """
     r = get_redis()
     data = r.get(f"{_REFRESH_PREFIX}{token}")
