@@ -13,6 +13,31 @@ from auth.refresh_token import (
 )
 
 
+class FakePipeline:
+    """Minimal pipeline mock that buffers and executes commands."""
+
+    def __init__(self, redis):
+        self._redis = redis
+        self._commands = []
+
+    def set(self, key, value, ex=None):
+        self._commands.append(("set", key, value, ex))
+        return self
+
+    def srem(self, key, *members):
+        self._commands.append(("srem", key, *members))
+        return self
+
+    def sadd(self, key, *members):
+        self._commands.append(("sadd", key, *members))
+        return self
+
+    def execute(self):
+        for cmd in self._commands:
+            getattr(self._redis, cmd[0])(*cmd[1:])
+        self._commands.clear()
+
+
 class FakeRedis:
     """Minimal Redis mock for unit testing."""
 
@@ -25,6 +50,9 @@ class FakeRedis:
 
     def get(self, key):
         return self._store.get(key)
+
+    def getdel(self, key):
+        return self._store.pop(key, None)
 
     def delete(self, key):
         self._store.pop(key, None)
@@ -43,6 +71,9 @@ class FakeRedis:
         if key in self._sets:
             for m in members:
                 self._sets[key].discard(m)
+
+    def pipeline(self):
+        return FakePipeline(self)
 
 
 @pytest.fixture

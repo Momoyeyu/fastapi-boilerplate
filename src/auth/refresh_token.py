@@ -65,27 +65,27 @@ def revoke_refresh_token(token: str) -> bool:
 
 
 def rotate_refresh_token(old_token: str) -> tuple[str, dict] | None:
-    """Atomically rotate a refresh token.
-
-    Validates and revokes the old token, then creates a new one.
+    """Atomically rotate a refresh token using GETDEL + pipeline.
 
     Returns:
         A tuple of (new_token_string, user_data_dict) or None if invalid.
     """
     r = get_redis()
-    data = r.get(f"{_REFRESH_PREFIX}{old_token}")
+
+    # Atomically get-and-delete to prevent concurrent rotation
+    old_key = f"{_REFRESH_PREFIX}{old_token}"
+    data = r.getdel(old_key)
     if data is None:
         return None
     parsed = json.loads(data)
 
-    # Revoke old token
-    r.delete(f"{_REFRESH_PREFIX}{old_token}")
-    r.srem(f"{_USER_TOKENS_PREFIX}{parsed['user_id']}", old_token)
-
-    # Create new token
+    # Pipeline the remaining operations
     new_token = generate_refresh_token()
-    r.set(f"{_REFRESH_PREFIX}{new_token}", data, ex=settings.refresh_token_expire_seconds)
-    r.sadd(f"{_USER_TOKENS_PREFIX}{parsed['user_id']}", new_token)
+    pipe = r.pipeline()
+    pipe.srem(f"{_USER_TOKENS_PREFIX}{parsed['user_id']}", old_token)
+    pipe.set(f"{_REFRESH_PREFIX}{new_token}", data, ex=settings.refresh_token_expire_seconds)
+    pipe.sadd(f"{_USER_TOKENS_PREFIX}{parsed['user_id']}", new_token)
+    pipe.execute()
 
     return new_token, parsed
 

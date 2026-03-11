@@ -123,6 +123,31 @@ def client(test_engine, test_session_local, monkeypatch) -> TestClient:
 # ---------------------------------------------------------------------------
 
 
+class FakePipeline:
+    """Minimal pipeline mock that buffers and executes commands."""
+
+    def __init__(self, redis):
+        self._redis = redis
+        self._commands: list[tuple] = []
+
+    def set(self, key, value, ex=None):
+        self._commands.append(("set", key, value, ex))
+        return self
+
+    def srem(self, key, *members):
+        self._commands.append(("srem", key, *members))
+        return self
+
+    def sadd(self, key, *members):
+        self._commands.append(("sadd", key, *members))
+        return self
+
+    def execute(self):
+        for cmd in self._commands:
+            getattr(self._redis, cmd[0])(*cmd[1:])
+        self._commands.clear()
+
+
 class FakeRedis:
     """In-memory Redis mock supporting string and set operations."""
 
@@ -139,6 +164,9 @@ class FakeRedis:
 
     def get(self, key):
         return self._store.get(key)
+
+    def getdel(self, key):
+        return self._store.pop(key, None)
 
     def delete(self, key):
         self._store.pop(key, None)
@@ -162,6 +190,9 @@ class FakeRedis:
     def flushdb(self):
         self._store.clear()
         self._sets.clear()
+
+    def pipeline(self):
+        return FakePipeline(self)
 
     def close(self):
         pass
