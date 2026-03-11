@@ -28,7 +28,7 @@ def setup_openapi(app: FastAPI) -> None:
                 "type": "oauth2",
                 "flows": {
                     "password": {
-                        "tokenUrl": "/auth/swagger/login",
+                        "tokenUrl": "/api/v1/auth/swagger/login",
                         "scopes": {},
                     }
                 },
