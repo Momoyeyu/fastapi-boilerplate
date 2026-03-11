@@ -266,8 +266,8 @@ class TestPasswordLifecycle:
         )
         assert resp.json()["code"] == Code.OK
 
-    def test_change_password_preserves_active_tokens(self, client: TestClient, register_and_verify):
-        """Changing password should not invalidate existing access/refresh tokens."""
+    def test_change_password_revokes_refresh_tokens(self, client: TestClient, register_and_verify):
+        """Changing password should revoke refresh tokens for security."""
         body = register_and_verify("preserve@example.com", "pass123")
         access_token = body["data"]["access_token"]
         refresh_token = body["data"]["refresh_token"]
@@ -281,13 +281,13 @@ class TestPasswordLifecycle:
         )
         assert resp.json()["code"] == Code.OK
 
-        # Access token still works
+        # Access token still works (JWT is stateless, valid until expiry)
         resp = client.get("/user/me", headers=headers)
         assert resp.json()["code"] == Code.OK
 
-        # Refresh token still works
+        # Refresh token is revoked
         resp = client.post("/auth/token/refresh", json={"refresh_token": refresh_token})
-        assert resp.json()["code"] == Code.OK
+        assert resp.json()["code"] == Code.UNAUTHORIZED
 
 
 class TestProfilePersistence:

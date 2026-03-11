@@ -26,4 +26,11 @@ async def change_password(username: str, old_password: str, new_password: str) -
         raise erri.bad_request("Invalid old password")
 
     encrypted_new = get_password_hash(new_password)
-    return await update_user_password(username, encrypted_new)
+    result = await update_user_password(username, encrypted_new)
+
+    if result and user.id is not None:
+        from auth.refresh_token import revoke_all_for_user
+
+        revoke_all_for_user(user.id)
+
+    return result
