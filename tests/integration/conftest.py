@@ -105,6 +105,10 @@ def client(test_engine, test_session_local, monkeypatch) -> TestClient:
     monkeypatch.setattr(invitation_model, "AsyncSessionLocal", test_session_local)
     monkeypatch.setattr(tenant_model, "AsyncSessionLocal", test_session_local)
 
+    from tenant import service as tenant_service_mod
+
+    monkeypatch.setattr(tenant_service_mod, "AsyncSessionLocal", test_session_local)
+
     # Import create_app after patching to ensure patches are in effect
     from main import create_app
 

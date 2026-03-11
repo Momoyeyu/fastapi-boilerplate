@@ -67,7 +67,6 @@ async def test_complete_registration_success(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(verification_mod, "consume_invitation_context", lambda email: None)
 
     user = User(id=1, username="alice", email="alice@test.com", hashed_password="x")
-    monkeypatch.setattr(register, "create_user", async_return(user), raising=True)
 
     mock_token_pair = TokenPair(
         access_token="token-123",
@@ -77,10 +76,14 @@ async def test_complete_registration_success(monkeypatch: pytest.MonkeyPatch):
     )
     monkeypatch.setattr(register, "create_token", lambda u: mock_token_pair, raising=True)
 
-    # Mock tenant creation
+    # Mock atomic user+tenant creation
     import tenant.service as tenant_service_mod
 
-    monkeypatch.setattr(tenant_service_mod, "create_tenant_for_user", async_return((MagicMock(), MagicMock())))
+    monkeypatch.setattr(
+        tenant_service_mod,
+        "create_user_with_tenant",
+        async_return((user, MagicMock(), MagicMock())),
+    )
 
     result = await register.complete_registration("alice@test.com", "123456", "pw")
     assert result.access_token == "token-123"
@@ -153,11 +156,17 @@ async def test_complete_registration_with_invitation_context(monkeypatch: pytest
 
     captured_kwargs: dict = {}
 
-    async def mock_create_user(*args, **kwargs):
+    async def mock_create_user_with_tenant(*args, **kwargs):
         captured_kwargs.update(kwargs)
-        return User(id=1, username="alice", email="alice@test.com", hashed_password="x")
+        return (
+            User(id=1, username="alice", email="alice@test.com", hashed_password="x"),
+            MagicMock(),
+            MagicMock(),
+        )
 
-    monkeypatch.setattr(register, "create_user", mock_create_user, raising=True)
+    import tenant.service as tenant_service_mod
+
+    monkeypatch.setattr(tenant_service_mod, "create_user_with_tenant", mock_create_user_with_tenant)
 
     mock_token_pair = TokenPair(
         access_token="token-123",

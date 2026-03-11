@@ -4,7 +4,7 @@ from auth.verification import consume_verification_code, create_verification_cod
 from common import erri
 from common.email import send_verification_email
 from conf.config import settings
-from user.model import create_user, email_exists
+from user.model import email_exists
 
 
 async def initiate_registration(email: str, password: str, invitation_code: str | None = None) -> None:
@@ -67,18 +67,20 @@ async def complete_registration(email: str, code: str, password: str) -> TokenPa
 
     hashed = get_password_hash(password)
     username = email.split("@")[0]
-    user = await create_user(username, hashed, email, invitation_code_id=invitation_code_id)
-    if not user or user.id is None:
+    tenant_name = f"{username}'s workspace"
+
+    from tenant.service import create_user_with_tenant
+
+    try:
+        user, _, _ = await create_user_with_tenant(
+            username, hashed, email, tenant_name, invitation_code_id=invitation_code_id
+        )
+    except Exception:
         raise erri.internal("Create user failed")
 
     if invitation_code_id is not None:
         from invitation.model import increment_used_count
 
         await increment_used_count(invitation_code_id)
-
-    # Create default tenant for the new user
-    from tenant.service import create_tenant_for_user
-
-    await create_tenant_for_user(user.id, f"{user.username}'s workspace")
 
     return create_token(user)
