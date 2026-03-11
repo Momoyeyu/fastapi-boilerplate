@@ -97,7 +97,7 @@ raise erri.internal("...")      # 50000
 - JWT 中间件（`src/middleware/auth.py`）默认对所有路由进行 Token 校验
 - `@auth.exempt` — 跳过认证
 - `auth.get_username(request)` — 获取当前用户
-- 认证接口：`POST /auth/login`、`POST /auth/token/refresh`、`POST /auth/logout`
+- 认证接口：`POST /api/v1/auth/login`、`POST /api/v1/auth/token/refresh`、`POST /api/v1/auth/logout`
 
 ### 配置管理
 
