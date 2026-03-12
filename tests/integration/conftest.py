@@ -48,14 +48,14 @@ def fast_password_hash(monkeypatch):
     monkeypatch.setattr(utils_module, "verify_password", _fast_verify)
 
     # Patch in all modules that do `from common.utils import ...`
-    from tenant import invite as invite_mod
+    from tenant import service as tenant_service_mod
     from user import service as user_service_mod
 
     monkeypatch.setattr(service_module, "get_password_hash", _fast_hash)
     monkeypatch.setattr(service_module, "verify_password", _fast_verify)
     monkeypatch.setattr(user_service_mod, "get_password_hash", _fast_hash)
     monkeypatch.setattr(user_service_mod, "verify_password", _fast_verify)
-    monkeypatch.setattr(invite_mod, "get_password_hash", _fast_hash)
+    monkeypatch.setattr(tenant_service_mod, "get_password_hash", _fast_hash)
 
 
 # ---------------------------------------------------------------------------
@@ -227,7 +227,7 @@ def mock_email(monkeypatch):
 
     monkeypatch.setattr(service_module, "send_verification_email", fake_send)
 
-    from tenant import invite as invite_mod
+    from tenant import service as tenant_service_mod
 
     async def fake_send_invite(email, tenant_name, invite_url):
         sent_emails.append({"email": email, "tenant_name": tenant_name, "type": "invite"})
@@ -237,8 +237,8 @@ def mock_email(monkeypatch):
         sent_emails.append({"email": email, "tenant_name": tenant_name, "type": "added"})
         return True
 
-    monkeypatch.setattr(invite_mod, "_send_invite_email", fake_send_invite)
-    monkeypatch.setattr(invite_mod, "_send_added_email", fake_send_added)
+    monkeypatch.setattr(tenant_service_mod, "_send_invite_email", fake_send_invite)
+    monkeypatch.setattr(tenant_service_mod, "_send_added_email", fake_send_added)
     return sent_emails
 
 

@@ -6,7 +6,7 @@ from auth import dto as auth_dto
 from common import erri
 from common.resp import Response, ok
 from middleware import auth
-from tenant import dto, invite, service
+from tenant import dto, service
 from tenant import model as tenant_model
 from user.model import get_user
 
@@ -39,7 +39,7 @@ async def create_tenant(request: Request, body: dto.TenantCreateRequest) -> Resp
 @router.post("/invite/accept")
 async def accept_invite(body: dto.TenantInviteAcceptRequest) -> Response:
     """Accept a tenant invitation. Creates a new account and joins the tenant."""
-    token_pair = await invite.accept_invitation(body.token, body.password)
+    token_pair = await service.accept_invitation(body.token, body.password)
     return ok(
         data=auth_dto.TokenData(
             access_token=token_pair.access_token,
@@ -88,9 +88,9 @@ async def update_tenant(request: Request, tenant_id: UUID, body: dto.TenantUpdat
 
 @router.post("/{tenant_id}/invite")
 async def invite_to_tenant(request: Request, tenant_id: UUID, body: dto.TenantInviteRequest) -> Response:
-    """Invite a user to join the tenant by email. Only owner or admin can invite."""
+    """Invite a user to join the tenant by email. Only owner or admin can service."""
     user_id = await _get_user_id(request)
-    result = await invite.invite_user_to_tenant(user_id, tenant_id, body.email, body.role)
+    result = await service.invite_user_to_tenant(user_id, tenant_id, body.email, body.role)
     return ok(data=result)
 
 
