@@ -40,7 +40,7 @@ def _build_html(code: str, title: str, message: str, footer: str) -> str:
     """
 
 
-async def _send(to_email: str, subject: str, html: str) -> bool:
+async def send_email(to_email: str, subject: str, html: str) -> bool:
     key = settings.resend_api_key.get_secret_value()
     if not key:
         logger.warning("Resend API key not configured, skipping email send")
@@ -61,4 +61,4 @@ async def send_verification_email(email: str, code: str, purpose: str) -> bool:
     logger.debug(f"Verification code for {email} ({purpose}): {code}")
     subject, title, message, footer = _TEMPLATES.get(purpose, _DEFAULT_TEMPLATE)
     prefix = f"{settings.app_name} - " if settings.app_name else ""
-    return await _send(email, f"{prefix}{subject}", _build_html(code, title, message, footer))
+    return await send_email(email, f"{prefix}{subject}", _build_html(code, title, message, footer))

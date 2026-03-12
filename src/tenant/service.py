@@ -55,6 +55,37 @@ async def create_user_with_tenant(
         return user, tenant, user_tenant
 
 
+async def create_user_for_tenant(
+    username: str,
+    hashed_password: str,
+    email: str,
+    tenant_id: UUID,
+    role: str = "member",
+) -> tuple[User, UserTenant]:
+    """Atomically create a user and add them to an existing tenant.
+
+    All inserts happen in a single transaction.
+    """
+    async with AsyncSessionLocal() as session:
+        async with session.begin():
+            user = User(
+                username=username,
+                hashed_password=hashed_password,
+                email=email,
+            )
+            session.add(user)
+            await session.flush()
+
+            user_tenant = UserTenant(user_id=user.id, tenant_id=tenant_id, user_role=role)
+            session.add(user_tenant)
+            await session.flush()
+
+            await session.refresh(user)
+            await session.refresh(user_tenant)
+
+        return user, user_tenant
+
+
 async def create_tenant_for_user(user_id: UUID, tenant_name: str) -> tuple[Tenant, UserTenant]:
     """Create a new tenant and assign the user as owner.
 

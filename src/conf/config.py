@@ -53,5 +53,9 @@ class Settings(BaseSettings):
     # Invitation code
     require_invitation_code: bool = False
 
+    # Tenant invitation
+    invitation_token_expire_seconds: int = 604800  # 7 days
+    frontend_url: str = "http://localhost:3000"
+
 
 settings = Settings()
