@@ -2,12 +2,11 @@
 Auth service — consolidated business logic for authentication.
 
 Sections:
-1. Password utilities
-2. Verification codes (Redis)
-3. Refresh tokens (Redis)
-4. Token creation & login
-5. Registration
-6. Password reset
+1. Verification codes (Redis)
+2. Refresh tokens (Redis)
+3. Token creation & login
+4. Registration
+5. Password reset
 """
 
 import json
@@ -18,7 +17,6 @@ from secrets import randbelow
 from typing import Literal
 from uuid import UUID
 
-import bcrypt
 from jwt import PyJWT
 from uuid6 import uuid7
 
@@ -26,39 +24,14 @@ from auth.dto import TokenPair
 from auth.model import increment_used_count, validate_invitation_code
 from common import erri
 from common.email import send_verification_email
+from common.utils import get_password_hash, validate_password, verify_password
 from conf.config import settings
 from conf.redis import get_redis
+from tenant.service import create_user_with_tenant
 from user.model import User, email_exists, get_user_by_email, get_user_by_identifier, update_user_password
 
 # ---------------------------------------------------------------------------
-# 1. Password utilities
-# ---------------------------------------------------------------------------
-
-
-def validate_password(password: str) -> None:
-    """Validate password strength. Raises BusinessError if too weak."""
-    if len(password) < 8:
-        raise erri.bad_request("Password must be at least 8 characters")
-    if not any(c.isupper() for c in password):
-        raise erri.bad_request("Password must contain an uppercase letter")
-    if not any(c.islower() for c in password):
-        raise erri.bad_request("Password must contain a lowercase letter")
-    if not any(c.isdigit() for c in password):
-        raise erri.bad_request("Password must contain a digit")
-
-
-def get_password_hash(password: str) -> str:
-    """Hash a password using bcrypt."""
-    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
-
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against its bcrypt hash."""
-    return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
-
-
-# ---------------------------------------------------------------------------
-# 2. Verification codes (Redis)
+# 1. Verification codes (Redis)
 # ---------------------------------------------------------------------------
 
 PurposeType = Literal["register", "reset_password"]
@@ -110,7 +83,7 @@ def consume_invitation_context(email: str) -> UUID | None:
 
 
 # ---------------------------------------------------------------------------
-# 3. Refresh tokens (Redis)
+# 2. Refresh tokens (Redis)
 #
 # Key design:
 # - refresh_token:{token} -> JSON {"user_id": "<uuid>", "username": "..."} with TTL
@@ -215,7 +188,7 @@ def revoke_all_for_user(user_id: UUID) -> int:
 
 
 # ---------------------------------------------------------------------------
-# 4. Token creation & login
+# 3. Token creation & login
 # ---------------------------------------------------------------------------
 
 
@@ -309,7 +282,7 @@ async def login_user(identifier: str, password: str) -> TokenPair:
 
 
 # ---------------------------------------------------------------------------
-# 5. Registration
+# 4. Registration
 # ---------------------------------------------------------------------------
 
 
@@ -371,8 +344,6 @@ async def complete_registration(email: str, code: str, password: str) -> TokenPa
     username = f"user_{uuid7().hex[:12]}"
     tenant_name = f"workspace_{uuid7().hex[:12]}"
 
-    from tenant.service import create_user_with_tenant
-
     try:
         user, _, _ = await create_user_with_tenant(
             username, hashed, email, tenant_name, invitation_code_id=invitation_code_id
@@ -387,7 +358,7 @@ async def complete_registration(email: str, code: str, password: str) -> TokenPa
 
 
 # ---------------------------------------------------------------------------
-# 6. Password reset
+# 5. Password reset
 # ---------------------------------------------------------------------------
 
 

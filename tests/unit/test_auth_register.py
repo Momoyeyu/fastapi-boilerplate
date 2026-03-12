@@ -78,11 +78,8 @@ async def test_complete_registration_success(monkeypatch: pytest.MonkeyPatch):
     )
     monkeypatch.setattr(service, "create_token", lambda u: mock_token_pair, raising=True)
 
-    # Mock atomic user+tenant creation
-    import tenant.service as tenant_service_mod
-
     monkeypatch.setattr(
-        tenant_service_mod,
+        service,
         "create_user_with_tenant",
         async_return((user, MagicMock(), MagicMock())),
     )
@@ -155,9 +152,7 @@ async def test_complete_registration_with_invitation_context(monkeypatch: pytest
             MagicMock(),
         )
 
-    import tenant.service as tenant_service_mod
-
-    monkeypatch.setattr(tenant_service_mod, "create_user_with_tenant", mock_create_user_with_tenant)
+    monkeypatch.setattr(service, "create_user_with_tenant", mock_create_user_with_tenant)
 
     mock_token_pair = TokenPair(
         access_token="token-123",
@@ -173,9 +168,6 @@ async def test_complete_registration_with_invitation_context(monkeypatch: pytest
         incremented.append(cid)
 
     monkeypatch.setattr(service, "increment_used_count", mock_increment)
-
-    # Mock tenant creation
-    monkeypatch.setattr(tenant_service_mod, "create_tenant_for_user", async_return((MagicMock(), MagicMock())))
 
     await service.complete_registration("alice@test.com", "123456", "StrongPw1")
     assert captured_kwargs["invitation_code_id"] == _INV_ID
