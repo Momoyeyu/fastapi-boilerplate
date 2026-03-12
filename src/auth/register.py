@@ -1,5 +1,7 @@
 from uuid import UUID
 
+from uuid6 import uuid7
+
 from auth.password import get_password_hash, validate_password
 from auth.token import TokenPair, create_token
 from auth.verification import consume_verification_code, create_verification_code
@@ -69,17 +71,17 @@ async def complete_registration(email: str, code: str, password: str) -> TokenPa
 
     validate_password(password)
     hashed = get_password_hash(password)
-    username = email.split("@")[0]
-    tenant_name = f"{username}'s workspace"
 
     from tenant.service import create_user_with_tenant
 
+    username = f"user_{uuid7().hex[:12]}"
+    tenant_name = f"workspace_{uuid7().hex[:12]}"
     try:
         user, _, _ = await create_user_with_tenant(
             username, hashed, email, tenant_name, invitation_code_id=invitation_code_id
         )
     except Exception:
-        raise erri.internal("Create user failed")
+        raise erri.internal("Create user failed") from None
 
     if invitation_code_id is not None:
         from invitation.model import increment_used_count

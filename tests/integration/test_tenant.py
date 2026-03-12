@@ -21,7 +21,7 @@ class TestRegistrationCreatesTenant:
         # First tenant should be the auto-created one
         t = tenants[0]
         assert t["user_role"] == "owner"
-        assert "tenantuser" in t["tenant_name"]
+        assert t["tenant_name"].startswith("workspace_")
 
 
 class TestTenantCRUD:

@@ -34,15 +34,16 @@ async def test_get_user_profile_success(monkeypatch: pytest.MonkeyPatch):
 async def test_update_my_profile_not_found(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(profile, "update_user_profile", async_return(None), raising=True)
     with pytest.raises(erri.BusinessError) as exc:
-        await profile.update_my_profile("alice", avatar_url=None)
+        await profile.update_my_profile("alice")
     assert exc.value.code == Code.NOT_FOUND
 
 
 async def test_update_my_profile_success(monkeypatch: pytest.MonkeyPatch):
     user = User(id=1, username="alice", email="alice@test.com", hashed_password="x", avatar_url="http://img.png")
     monkeypatch.setattr(profile, "update_user_profile", async_return(user), raising=True)
-    result = await profile.update_my_profile("alice", avatar_url="http://img.png")
+    result, token_pair = await profile.update_my_profile("alice", avatar_url="http://img.png")
     assert result.avatar_url == "http://img.png"
+    assert token_pair is None
 
 
 async def test_change_password_user_not_found(monkeypatch: pytest.MonkeyPatch):

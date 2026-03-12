@@ -1,6 +1,13 @@
+import re
+
+from sqlalchemy.exc import IntegrityError
+
 from auth.password import get_password_hash, validate_password, verify_password
+from auth.token import TokenPair, create_token
 from common import erri
 from user.model import User, get_user, update_user_password, update_user_profile
+
+_USERNAME_RE = re.compile(r"^[a-zA-Z0-9_-]{3,30}$")
 
 
 async def get_user_profile(username: str) -> User:
@@ -10,11 +17,31 @@ async def get_user_profile(username: str) -> User:
     return user
 
 
-async def update_my_profile(username: str, *, avatar_url: str | None) -> User:
-    user = await update_user_profile(username, avatar_url=avatar_url)
+async def update_my_profile(
+    username: str, *, new_username: str | None = None, avatar_url: str | None = None
+) -> tuple[User, TokenPair | None]:
+    token_pair: TokenPair | None = None
+
+    if new_username is not None:
+        if not _USERNAME_RE.match(new_username):
+            raise erri.bad_request("Username must be 3-30 chars: letters, digits, underscore, hyphen")
+        if await get_user(new_username):
+            raise erri.conflict("Username already taken")
+
+    try:
+        user = await update_user_profile(username, new_username=new_username, avatar_url=avatar_url)
+    except IntegrityError:
+        raise erri.conflict("Username already taken") from None
     if not user:
         raise erri.not_found("User not found")
-    return user
+
+    if new_username is not None and user.id is not None:
+        from auth.refresh_token import revoke_all_for_user
+
+        revoke_all_for_user(user.id)
+        token_pair = create_token(user)
+
+    return user, token_pair
 
 
 async def change_password(username: str, old_password: str, new_password: str) -> bool:

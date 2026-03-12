@@ -185,14 +185,17 @@ def test_user_me_post_updates_profile(monkeypatch: pytest.MonkeyPatch):
     auth.setup_auth_middleware(app)
     client = TestClient(app)
 
-    async def _update_my_profile(username: str, *, avatar_url: str | None) -> User:
-        return User(
-            id=1,
-            username=username,
-            hashed_password="x",
-            email="alice@test.com",
-            avatar_url=avatar_url,
-            is_active=True,
+    async def _update_my_profile(username: str, *, new_username=None, avatar_url=None):
+        return (
+            User(
+                id=1,
+                username=new_username or username,
+                hashed_password="x",
+                email="alice@test.com",
+                avatar_url=avatar_url,
+                is_active=True,
+            ),
+            None,
         )
 
     monkeypatch.setattr(user_handler.profile, "update_my_profile", _update_my_profile, raising=True)

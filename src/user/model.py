@@ -81,6 +81,7 @@ async def email_exists(email: str) -> bool:
 async def update_user_profile(
     username: str,
     *,
+    new_username: str | None = None,
     email: str | None = None,
     avatar_url: str | None = None,
 ) -> User | None:
@@ -92,6 +93,8 @@ async def update_user_profile(
         if not user:
             return None
 
+        if new_username is not None:
+            user.username = new_username
         if email is not None:
             user.email = email.lower()
         if avatar_url is not None:
