@@ -1,8 +1,8 @@
 import pytest
 
-from auth import password as auth_password
 from common import erri
 from common.resp import Code
+from common.utils import get_password_hash
 from user import profile
 from user.model import User
 
@@ -54,9 +54,7 @@ async def test_change_password_user_not_found(monkeypatch: pytest.MonkeyPatch):
 
 
 async def test_change_password_wrong_old_password(monkeypatch: pytest.MonkeyPatch):
-    user = User(
-        id=1, username="alice", email="alice@test.com", hashed_password=auth_password.get_password_hash("correct")
-    )
+    user = User(id=1, username="alice", email="alice@test.com", hashed_password=get_password_hash("correct"))
     monkeypatch.setattr(profile, "get_user", async_return(user), raising=True)
     with pytest.raises(erri.BusinessError) as exc:
         await profile.change_password("alice", "wrong", "NewPass1")
@@ -64,13 +62,11 @@ async def test_change_password_wrong_old_password(monkeypatch: pytest.MonkeyPatc
 
 
 async def test_change_password_success(monkeypatch: pytest.MonkeyPatch):
-    user = User(id=1, username="alice", email="alice@test.com", hashed_password=auth_password.get_password_hash("old"))
+    user = User(id=1, username="alice", email="alice@test.com", hashed_password=get_password_hash("old"))
     monkeypatch.setattr(profile, "get_user", async_return(user), raising=True)
     monkeypatch.setattr(profile, "update_user_password", async_return(True), raising=True)
 
-    import auth.refresh_token as refresh_token_mod
-
-    monkeypatch.setattr(refresh_token_mod, "revoke_all_for_user", lambda uid: 0)
+    monkeypatch.setattr(profile, "revoke_all_for_user", lambda uid: 0)
 
     result = await profile.change_password("alice", "old", "NewPass1")
     assert result is True

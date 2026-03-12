@@ -1,6 +1,6 @@
 import pytest
 
-from auth import password
+from auth import service as password
 from common import erri
 from common.resp import Code
 

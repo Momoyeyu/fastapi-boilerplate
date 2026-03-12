@@ -5,7 +5,7 @@ from uuid import UUID
 
 import pytest
 
-from auth.refresh_token import (
+from auth.service import (
     create_refresh_token,
     revoke_all_for_user,
     revoke_refresh_token,
@@ -83,7 +83,7 @@ class FakeRedis:
 @pytest.fixture
 def fake_redis():
     fake = FakeRedis()
-    with patch("auth.refresh_token.get_redis", return_value=fake):
+    with patch("auth.service.get_redis", return_value=fake):
         yield fake
 
 

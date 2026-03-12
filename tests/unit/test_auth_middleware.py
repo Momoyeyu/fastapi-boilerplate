@@ -2,7 +2,7 @@ import pytest
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.testclient import TestClient
 
-from auth import token as auth_token
+from auth import service as auth_service
 from common.resp import Code
 from middleware import auth
 from user import handler as user_handler
@@ -101,9 +101,9 @@ def test_get_username_returns_username_from_request_state_when_middleware_instal
     client = TestClient(app)
 
     # Mock refresh token creation (now returns a string)
-    monkeypatch.setattr(auth_token, "create_refresh_token", lambda uid, uname: "mock-refresh", raising=True)
+    monkeypatch.setattr(auth_service, "create_refresh_token", lambda uid, uname: "mock-refresh", raising=True)
 
-    token_pair = auth_token.create_token(User(id=1, username="alice", hashed_password="x"))
+    token_pair = auth_service.create_token(User(id=1, username="alice", hashed_password="x"))
     resp = client.get("/me", headers={"Authorization": f"Bearer {token_pair.access_token}"})
     assert resp.status_code == 200
     assert resp.json() == {"username": "alice"}
@@ -121,9 +121,9 @@ def test_get_username_can_parse_username_from_authorization_header_without_middl
     client = TestClient(app)
 
     # Mock refresh token creation (now returns a string)
-    monkeypatch.setattr(auth_token, "create_refresh_token", lambda uid, uname: "mock-refresh", raising=True)
+    monkeypatch.setattr(auth_service, "create_refresh_token", lambda uid, uname: "mock-refresh", raising=True)
 
-    token_pair = auth_token.create_token(User(id=2, username="bob", hashed_password="x"))
+    token_pair = auth_service.create_token(User(id=2, username="bob", hashed_password="x"))
     resp = client.get("/me", headers={"Authorization": f"Bearer {token_pair.access_token}"})
     assert resp.status_code == 200
     assert resp.json() == {"username": "bob"}
@@ -137,9 +137,9 @@ def test_user_whoami_returns_username_from_token(monkeypatch: pytest.MonkeyPatch
     client = TestClient(app)
 
     # Mock refresh token creation (now returns a string)
-    monkeypatch.setattr(auth_token, "create_refresh_token", lambda uid, uname: "mock-refresh", raising=True)
+    monkeypatch.setattr(auth_service, "create_refresh_token", lambda uid, uname: "mock-refresh", raising=True)
 
-    token_pair = auth_token.create_token(User(id=1, username="alice", hashed_password="x"))
+    token_pair = auth_service.create_token(User(id=1, username="alice", hashed_password="x"))
     resp = client.get("/user/whoami", headers={"Authorization": f"Bearer {token_pair.access_token}"})
     assert resp.status_code == 200
     assert resp.json()["code"] == Code.OK
@@ -169,9 +169,9 @@ def test_user_me_uses_get_username_to_fetch_profile(monkeypatch: pytest.MonkeyPa
     monkeypatch.setattr(user_handler.profile, "get_user_profile", _get_user_profile, raising=True)
 
     # Mock refresh token creation (now returns a string)
-    monkeypatch.setattr(auth_token, "create_refresh_token", lambda uid, uname: "mock-refresh", raising=True)
+    monkeypatch.setattr(auth_service, "create_refresh_token", lambda uid, uname: "mock-refresh", raising=True)
 
-    token_pair = auth_token.create_token(User(id=1, username="alice", hashed_password="x"))
+    token_pair = auth_service.create_token(User(id=1, username="alice", hashed_password="x"))
     resp = client.get("/user/me", headers={"Authorization": f"Bearer {token_pair.access_token}"})
     assert resp.status_code == 200
     assert captured["username"] == "alice"
@@ -201,9 +201,9 @@ def test_user_me_post_updates_profile(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(user_handler.profile, "update_my_profile", _update_my_profile, raising=True)
 
     # Mock refresh token creation (now returns a string)
-    monkeypatch.setattr(auth_token, "create_refresh_token", lambda uid, uname: "mock-refresh", raising=True)
+    monkeypatch.setattr(auth_service, "create_refresh_token", lambda uid, uname: "mock-refresh", raising=True)
 
-    token_pair = auth_token.create_token(User(id=1, username="alice", hashed_password="x", email="alice@test.com"))
+    token_pair = auth_service.create_token(User(id=1, username="alice", hashed_password="x", email="alice@test.com"))
     resp = client.post(
         "/user/me",
         headers={"Authorization": f"Bearer {token_pair.access_token}"},

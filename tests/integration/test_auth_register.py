@@ -5,10 +5,10 @@ from datetime import datetime, timedelta
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from auth.model import InvitationCode
 from common.resp import Code
 from conf import config as config_module
 from conf.redis import get_redis
-from invitation.model import InvitationCode
 
 
 def _initiate(client: TestClient, email: str, password: str, invitation_code: str | None = None):
