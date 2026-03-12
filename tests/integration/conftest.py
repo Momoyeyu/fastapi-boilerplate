@@ -49,12 +49,12 @@ def fast_password_hash(monkeypatch):
 
     # Patch in all modules that do `from common.utils import ...`
     from tenant import invite as invite_mod
-    from user import profile as profile_mod
+    from user import service as user_service_mod
 
     monkeypatch.setattr(service_module, "get_password_hash", _fast_hash)
     monkeypatch.setattr(service_module, "verify_password", _fast_verify)
-    monkeypatch.setattr(profile_mod, "get_password_hash", _fast_hash)
-    monkeypatch.setattr(profile_mod, "verify_password", _fast_verify)
+    monkeypatch.setattr(user_service_mod, "get_password_hash", _fast_hash)
+    monkeypatch.setattr(user_service_mod, "verify_password", _fast_verify)
     monkeypatch.setattr(invite_mod, "get_password_hash", _fast_hash)
 
 
