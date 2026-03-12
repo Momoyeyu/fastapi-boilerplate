@@ -3,7 +3,7 @@ from uuid import UUID
 
 import pytest
 
-from auth.verification import (
+from auth.service import (
     consume_invitation_context,
     consume_verification_code,
     create_verification_code,
@@ -31,7 +31,7 @@ class FakeRedis:
 @pytest.fixture
 def fake_redis():
     fake = FakeRedis()
-    with patch("auth.verification.get_redis", return_value=fake):
+    with patch("auth.service.get_redis", return_value=fake):
         yield fake
 
 

@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 from pydantic import BaseModel, EmailStr
 
 
@@ -38,3 +40,13 @@ class PasswordResetRequest(BaseModel):
     email: EmailStr
     code: str
     new_password: str
+
+
+@dataclass
+class TokenPair:
+    """A pair of access and refresh tokens."""
+
+    access_token: str
+    refresh_token: str
+    expires_in: int
+    refresh_token_expires_in: int

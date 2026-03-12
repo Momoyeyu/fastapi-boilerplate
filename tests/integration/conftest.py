@@ -16,11 +16,12 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine as create_sync_engine
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from auth import password as password_module
+from auth import model as auth_model
+from auth import service as service_module
+from common import utils as utils_module
 from conf import db as db_module
 from conf import redis as redis_module
 from conf.db import Base
-from invitation import model as invitation_model
 from tenant import model as tenant_model
 from user import model as user_model
 
@@ -43,17 +44,15 @@ def _fast_verify(plain_password: str, hashed_password: str) -> bool:
 def fast_password_hash(monkeypatch):
     """Replace bcrypt with fast SHA-256 for integration test speed."""
     # Patch in the definition module
-    monkeypatch.setattr(password_module, "get_password_hash", _fast_hash)
-    monkeypatch.setattr(password_module, "verify_password", _fast_verify)
+    monkeypatch.setattr(utils_module, "get_password_hash", _fast_hash)
+    monkeypatch.setattr(utils_module, "verify_password", _fast_verify)
 
-    # Patch in all modules that do `from auth.password import ...`
-    from auth import register as register_mod
-    from auth import token as token_mod
+    # Patch in all modules that do `from common.utils import ...`
     from tenant import invite as invite_mod
     from user import profile as profile_mod
 
-    monkeypatch.setattr(register_mod, "get_password_hash", _fast_hash)
-    monkeypatch.setattr(token_mod, "verify_password", _fast_verify)
+    monkeypatch.setattr(service_module, "get_password_hash", _fast_hash)
+    monkeypatch.setattr(service_module, "verify_password", _fast_verify)
     monkeypatch.setattr(profile_mod, "get_password_hash", _fast_hash)
     monkeypatch.setattr(profile_mod, "verify_password", _fast_verify)
     monkeypatch.setattr(invite_mod, "get_password_hash", _fast_hash)
@@ -104,7 +103,7 @@ def client(test_engine, test_session_local, monkeypatch) -> TestClient:
     monkeypatch.setattr(db_module, "engine", test_engine)
     monkeypatch.setattr(db_module, "AsyncSessionLocal", test_session_local)
     monkeypatch.setattr(user_model, "AsyncSessionLocal", test_session_local)
-    monkeypatch.setattr(invitation_model, "AsyncSessionLocal", test_session_local)
+    monkeypatch.setattr(auth_model, "AsyncSessionLocal", test_session_local)
     monkeypatch.setattr(tenant_model, "AsyncSessionLocal", test_session_local)
 
     from tenant import service as tenant_service_mod
@@ -226,12 +225,9 @@ def mock_email(monkeypatch):
         sent_emails.append({"email": email, "code": code, "purpose": purpose})
         return True
 
-    from auth import password as password_mod
-    from auth import register as register_module
-    from tenant import invite as invite_mod
+    monkeypatch.setattr(service_module, "send_verification_email", fake_send)
 
-    monkeypatch.setattr(register_module, "send_verification_email", fake_send)
-    monkeypatch.setattr(password_mod, "send_verification_email", fake_send)
+    from tenant import invite as invite_mod
 
     async def fake_send_invite(email, tenant_name, invite_url):
         sent_emails.append({"email": email, "tenant_name": tenant_name, "type": "invite"})

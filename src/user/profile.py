@@ -2,9 +2,10 @@ import re
 
 from sqlalchemy.exc import IntegrityError
 
-from auth.password import get_password_hash, validate_password, verify_password
-from auth.token import TokenPair, create_token
+from auth.dto import TokenPair
+from auth.service import create_token, revoke_all_for_user
 from common import erri
+from common.utils import get_password_hash, validate_password, verify_password
 from user.model import User, get_user, update_user_password, update_user_profile
 
 _USERNAME_RE = re.compile(r"^[a-zA-Z0-9_-]{3,30}$")
@@ -36,8 +37,6 @@ async def update_my_profile(
         raise erri.not_found("User not found")
 
     if new_username is not None and user.id is not None:
-        from auth.refresh_token import revoke_all_for_user
-
         revoke_all_for_user(user.id)
         token_pair = create_token(user)
 
@@ -57,8 +56,6 @@ async def change_password(username: str, old_password: str, new_password: str) -
     result = await update_user_password(username, encrypted_new)
 
     if result and user.id is not None:
-        from auth.refresh_token import revoke_all_for_user
-
         revoke_all_for_user(user.id)
 
     return result

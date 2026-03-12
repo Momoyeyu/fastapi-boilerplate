@@ -8,10 +8,10 @@ API modules, verifying that the system works correctly as a whole.
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from auth.model import InvitationCode
 from common.resp import Code
 from conf import config as config_module
 from conf.redis import get_redis
-from invitation.model import InvitationCode
 
 
 class TestNewUserOnboarding:

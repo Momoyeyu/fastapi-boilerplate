@@ -8,12 +8,12 @@ from sqlalchemy import engine_from_config, pool
 from conf.config import settings
 from conf.db import Base
 
-from invitation import model as invitation_model
+from auth import model as auth_model
 from tenant import model as tenant_model
 from user import model as user_model
 
 _ = user_model.User
-_ = invitation_model.InvitationCode
+_ = auth_model.InvitationCode
 _ = tenant_model.Tenant
 _ = tenant_model.UserTenant
 _ = tenant_model.TenantInvitation

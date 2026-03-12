@@ -4,7 +4,7 @@ from uuid import UUID
 
 import pytest
 
-from auth.token import TokenPair
+from auth.dto import TokenPair
 from common import erri
 from common.resp import Code
 from tenant import invite
