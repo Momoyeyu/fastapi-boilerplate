@@ -16,7 +16,7 @@ class TestProtectedEndpoints:
         headers = auth_header("auth@example.com", "AuthPass1")
         response = client.get("/api/v1/user/whoami", headers=headers)
         assert response.json()["code"] == Code.OK
-        assert response.json()["data"]["username"] == "auth"
+        assert response.json()["data"]["username"].startswith("user_")
 
     def test_whoami_with_invalid_token(self, client: TestClient):
         response = client.get(
@@ -34,7 +34,7 @@ class TestUserProfile:
         response = client.get("/api/v1/user/me", headers=headers)
         assert response.json()["code"] == Code.OK
         data = response.json()["data"]
-        assert data["username"] == "profile"
+        assert data["username"].startswith("user_")
         assert data["email"] == "profile@example.com"
         assert data["is_active"] is True
 
@@ -48,6 +48,55 @@ class TestUserProfile:
         assert response.json()["code"] == Code.OK
         data = response.json()["data"]
         assert data["avatar_url"] == "https://example.com/avatar.png"
+
+
+class TestUsernameChange:
+    """Tests for username change via POST /user/me."""
+
+    def test_change_username_success(self, client: TestClient, auth_header):
+        headers = auth_header("rename@example.com", "Password1")
+        response = client.post(
+            "/api/v1/user/me",
+            headers=headers,
+            json={"username": "my-new-name"},
+        )
+        assert response.json()["code"] == Code.OK
+        data = response.json()["data"]
+        assert data["username"] == "my-new-name"
+        assert "access_token" in data
+        assert "refresh_token" in data
+
+        # Old token should fail (username in JWT is stale)
+        old_resp = client.get("/api/v1/user/me", headers=headers)
+        assert old_resp.json()["code"] != Code.OK
+
+        # New token should work
+        new_headers = {"Authorization": f"Bearer {data['access_token']}"}
+        new_resp = client.get("/api/v1/user/me", headers=new_headers)
+        assert new_resp.json()["code"] == Code.OK
+        assert new_resp.json()["data"]["username"] == "my-new-name"
+
+    def test_change_username_conflict(self, client: TestClient, auth_header):
+        headers_a = auth_header("usera@example.com", "Password1")
+        # Set user A's username to a known value
+        client.post("/api/v1/user/me", headers=headers_a, json={"username": "taken-name"})
+
+        headers_b = auth_header("userb@example.com", "Password1")
+        response = client.post(
+            "/api/v1/user/me",
+            headers=headers_b,
+            json={"username": "taken-name"},
+        )
+        assert response.json()["code"] == Code.CONFLICT
+
+    def test_change_username_invalid_format(self, client: TestClient, auth_header):
+        headers = auth_header("fmt@example.com", "Password1")
+        response = client.post(
+            "/api/v1/user/me",
+            headers=headers,
+            json={"username": "ab"},  # too short
+        )
+        assert response.json()["code"] == Code.BAD_REQUEST
 
 
 class TestPasswordChange:

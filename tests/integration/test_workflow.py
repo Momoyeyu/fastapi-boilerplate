@@ -42,7 +42,7 @@ class TestNewUserOnboarding:
         assert resp.json()["code"] == Code.OK
         profile = resp.json()["data"]
         assert profile["email"] == "onboard@example.com"
-        assert profile["username"] == "onboard"
+        assert profile["username"].startswith("user_")
 
         # 4. Update profile
         resp = client.post(
@@ -142,7 +142,7 @@ class TestTokenLifecycle:
             headers={"Authorization": f"Bearer {new_access}"},
         )
         assert resp.json()["code"] == Code.OK
-        assert resp.json()["data"]["username"] == "tokenlife"
+        assert resp.json()["data"]["username"].startswith("user_")
 
         # 4. Old refresh token is revoked (token rotation)
         resp = client.post(

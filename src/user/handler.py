@@ -30,18 +30,20 @@ async def get_me(request: Request) -> Response:
 @router.post("/me")
 async def update_me(request: Request, body: dto.UserProfileUpdateRequest) -> Response:
     username = auth.get_username(request)
-    user = await profile.update_my_profile(
+    user, token_pair = await profile.update_my_profile(
         username,
+        new_username=body.username,
         avatar_url=body.avatar_url,
     )
-    return ok(
-        data=dto.UserProfileResponse(
-            username=user.username,
-            email=user.email,
-            avatar_url=user.avatar_url,
-            is_active=user.is_active,
-        ).model_dump()
+    data = dto.UserProfileResponse(
+        username=user.username,
+        email=user.email,
+        avatar_url=user.avatar_url,
+        is_active=user.is_active,
+        access_token=token_pair.access_token if token_pair else None,
+        refresh_token=token_pair.refresh_token if token_pair else None,
     )
+    return ok(data=data.model_dump(exclude_none=True))
 
 
 @router.post("/password/change")

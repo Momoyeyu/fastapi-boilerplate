@@ -31,11 +31,14 @@ class TestAuthLogin:
 
     def test_login_with_username(self, client: TestClient, register_and_verify):
         """Test login with username instead of email."""
-        register_and_verify("username_test@example.com", "Secret12")
+        body = register_and_verify("username_test@example.com", "Secret12")
+        token = body["data"]["access_token"]
+        whoami = client.get("/api/v1/user/whoami", headers={"Authorization": f"Bearer {token}"})
+        username = whoami.json()["data"]["username"]
 
         response = client.post(
             "/api/v1/auth/login",
-            json={"identifier": "username_test", "password": "Secret12"},
+            json={"identifier": username, "password": "Secret12"},
         )
         assert response.status_code == 200
         assert response.json()["code"] == Code.OK
