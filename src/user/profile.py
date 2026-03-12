@@ -1,5 +1,7 @@
 import re
 
+from sqlalchemy.exc import IntegrityError
+
 from auth.password import get_password_hash, validate_password, verify_password
 from auth.token import TokenPair, create_token
 from common import erri
@@ -26,7 +28,10 @@ async def update_my_profile(
         if await get_user(new_username):
             raise erri.conflict("Username already taken")
 
-    user = await update_user_profile(username, new_username=new_username, avatar_url=avatar_url)
+    try:
+        user = await update_user_profile(username, new_username=new_username, avatar_url=avatar_url)
+    except IntegrityError:
+        raise erri.conflict("Username already taken") from None
     if not user:
         raise erri.not_found("User not found")
 

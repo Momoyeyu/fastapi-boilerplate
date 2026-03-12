@@ -23,7 +23,7 @@ async def get_me(request: Request) -> Response:
             email=user.email,
             avatar_url=user.avatar_url,
             is_active=user.is_active,
-        ).model_dump()
+        ).model_dump(exclude_none=True)
     )
 
 
