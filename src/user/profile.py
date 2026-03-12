@@ -2,6 +2,7 @@ import re
 
 from sqlalchemy.exc import IntegrityError
 
+from auth.dto import TokenPair
 from auth.service import create_token, revoke_all_for_user
 from common import erri
 from common.utils import get_password_hash, validate_password, verify_password
@@ -19,9 +20,7 @@ async def get_user_profile(username: str) -> User:
 
 async def update_my_profile(
     username: str, *, new_username: str | None = None, avatar_url: str | None = None
-) -> tuple[User, "TokenPair | None"]:
-    from auth.dto import TokenPair
-
+) -> tuple[User, TokenPair | None]:
     token_pair: TokenPair | None = None
 
     if new_username is not None:

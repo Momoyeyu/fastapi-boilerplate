@@ -7,9 +7,9 @@ from uuid6 import uuid7
 
 from auth.dto import TokenPair
 from auth.service import create_token
-from common.utils import get_password_hash, validate_password
 from common import erri
 from common.email import send_email
+from common.utils import get_password_hash, validate_password
 from conf.config import settings
 from tenant.model import (
     create_tenant_invitation,
