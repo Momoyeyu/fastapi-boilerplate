@@ -74,21 +74,14 @@ async def complete_registration(email: str, code: str, password: str) -> TokenPa
 
     from tenant.service import create_user_with_tenant
 
-    max_retries = 3
-    user = None
-    for _ in range(max_retries):
-        username = f"user_{uuid7().hex[:12]}"
-        tenant_name = f"workspace_{uuid7().hex[:12]}"
-        try:
-            user, _, _ = await create_user_with_tenant(
-                username, hashed, email, tenant_name, invitation_code_id=invitation_code_id
-            )
-            break
-        except Exception:
-            continue
-
-    if user is None:
-        raise erri.internal("Create user failed")
+    username = f"user_{uuid7().hex[:12]}"
+    tenant_name = f"workspace_{uuid7().hex[:12]}"
+    try:
+        user, _, _ = await create_user_with_tenant(
+            username, hashed, email, tenant_name, invitation_code_id=invitation_code_id
+        )
+    except Exception:
+        raise erri.internal("Create user failed") from None
 
     if invitation_code_id is not None:
         from invitation.model import increment_used_count
