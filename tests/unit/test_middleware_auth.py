@@ -166,7 +166,7 @@ def test_user_me_uses_get_username_to_fetch_profile(monkeypatch: pytest.MonkeyPa
             is_active=True,
         )
 
-    monkeypatch.setattr(user_handler.profile, "get_user_profile", _get_user_profile, raising=True)
+    monkeypatch.setattr(user_handler.service, "get_user_profile", _get_user_profile, raising=True)
 
     # Mock refresh token creation (now returns a string)
     monkeypatch.setattr(auth_service, "create_refresh_token", lambda uid, uname: "mock-refresh", raising=True)
@@ -198,7 +198,7 @@ def test_user_me_post_updates_profile(monkeypatch: pytest.MonkeyPatch):
             None,
         )
 
-    monkeypatch.setattr(user_handler.profile, "update_my_profile", _update_my_profile, raising=True)
+    monkeypatch.setattr(user_handler.service, "update_my_profile", _update_my_profile, raising=True)
 
     # Mock refresh token creation (now returns a string)
     monkeypatch.setattr(auth_service, "create_refresh_token", lambda uid, uname: "mock-refresh", raising=True)

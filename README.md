@@ -38,8 +38,8 @@ src/
 ├── common/                 # response envelope (resp.py), error factory (erri.py), exception handlers (trap.py)
 ├── middleware/              # JWT auth middleware + request/response logging
 ├── auth/                   # auth module (login, register, token, password, verification)
-├── user/                   # user module (profile)
-└── invitation/             # invitation code module
+├── user/                   # user module (profile management)
+└── tenant/                 # tenant module (CRUD, invitation)
 
 migration/                  # Alembic migrations (auto-run on `make run`)
 tests/
@@ -56,19 +56,19 @@ Every feature module follows a **4-layer pattern** under `src/{module}/`:
 |-------|------|----------------|
 | Model | `model.py` | SQLAlchemy ORM models + async DB query functions |
 | DTO | `dto.py` | Pydantic request/response schemas (no DB dependency) |
-| Service | `{domain}.py` | Business logic, validation, raises `BusinessError` |
+| Service | `service.py` | Business logic, validation, raises `BusinessError` |
 | Handler | `handler.py` | FastAPI `APIRouter`, calls service, returns `Response` |
 
 **Data flow**: Handler -> Service -> Model
 
-Service files are named by business domain (e.g., `token.py`, `password.py`), not a generic `service.py`. Reference: `src/user/` (minimal module), `src/auth/` (multi-service module).
+Reference: `src/user/` (single-service module), `src/auth/` (multi-service module — splits into `service.py` + domain helpers like `token.py`).
 
 ### Adding a New Module
 
-1. Create `src/{module}/` with `__init__.py`, `model.py`, `dto.py`, `{domain}.py`, `handler.py`
+1. Create `src/{module}/` with `__init__.py`, `model.py`, `dto.py`, `service.py`, `handler.py`
 2. `model.py` — define SQLAlchemy ORM model + async query functions (use `async with AsyncSessionLocal()` with try/commit/rollback pattern)
 3. `dto.py` — define Pydantic request/response schemas
-4. `{domain}.py` — implement async business logic, call model functions, raise `erri.*` on errors
+4. `service.py` — implement async business logic, call model functions, raise `erri.*` on errors
 5. `handler.py` — define `APIRouter` routes, `await` service calls, return `ok(data=...)`
 6. Register router in `src/main.py` `init_routers()`
 7. Import model in `migration/alembic/env.py` for auto-migration
@@ -124,7 +124,7 @@ PYTHONPATH="src:." uv run alembic -c migration/alembic.ini revision --autogenera
 
 ### Testing
 
-Tests follow `test_{module}_{domain}.py` naming, mirroring `src/{module}/{domain}.py`.
+Tests follow `test_{module}_{domain}.py` naming, mirroring `src/{module}/service.py`.
 
 | Layer | Purpose | Dependencies |
 |-------|---------|--------------|

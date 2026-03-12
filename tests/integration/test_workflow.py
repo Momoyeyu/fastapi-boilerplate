@@ -63,7 +63,7 @@ class TestNewUserOnboarding:
     async def test_invitation_onboarding(
         self, client: TestClient, session: AsyncSession, monkeypatch, mock_email: list
     ):
-        """Invitation code -> register -> verify -> login -> access profile."""
+        """Invitation code -> register -> verify -> login -> access service."""
         monkeypatch.setattr(config_module.settings, "require_invitation_code", True)
 
         inv = InvitationCode(code="WELCOME", max_uses=10, used_count=0, is_active=True)

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request
 
 from common.resp import Response, ok
 from middleware import auth
-from user import dto, profile
+from user import dto, service
 
 router = APIRouter(prefix="/user", tags=["user"])
 
@@ -16,7 +16,7 @@ async def whoami(request: Request) -> Response:
 @router.get("/me")
 async def get_me(request: Request) -> Response:
     username = auth.get_username(request)
-    user = await profile.get_user_profile(username)
+    user = await service.get_user_profile(username)
     return ok(
         data=dto.UserProfileResponse(
             username=user.username,
@@ -30,7 +30,7 @@ async def get_me(request: Request) -> Response:
 @router.post("/me")
 async def update_me(request: Request, body: dto.UserProfileUpdateRequest) -> Response:
     username = auth.get_username(request)
-    user, token_pair = await profile.update_my_profile(
+    user, token_pair = await service.update_my_profile(
         username,
         new_username=body.username,
         avatar_url=body.avatar_url,
@@ -49,5 +49,5 @@ async def update_me(request: Request, body: dto.UserProfileUpdateRequest) -> Res
 @router.post("/password/change")
 async def change_password(request: Request, body: dto.PasswordChangeRequest) -> Response:
     username = auth.get_username(request)
-    await profile.change_password(username, body.old_password, body.new_password)
+    await service.change_password(username, body.old_password, body.new_password)
     return ok(message="Password changed successfully")

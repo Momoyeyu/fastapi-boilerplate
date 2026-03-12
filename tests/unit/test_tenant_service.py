@@ -4,10 +4,11 @@ from uuid import UUID
 
 import pytest
 
+from auth import service as auth_service
 from auth.dto import TokenPair
 from common import erri
 from common.resp import Code
-from tenant import invite
+from tenant import service
 from tenant.model import TenantInvitation, UserTenant
 from user.model import User
 
@@ -70,7 +71,7 @@ def mock_settings(monkeypatch):
     mock.invitation_token_expire_seconds = 604800
     mock.frontend_url = "http://localhost:3000"
     mock.app_name = "Test"
-    monkeypatch.setattr(invite, "settings", mock)
+    monkeypatch.setattr(service, "settings", mock)
     return mock
 
 
@@ -81,36 +82,36 @@ def mock_settings(monkeypatch):
 
 class TestInviteUserToTenant:
     async def test_invalid_role(self, monkeypatch):
-        monkeypatch.setattr(invite, "get_user_tenant", async_return(_make_user_tenant("owner")))
+        monkeypatch.setattr(service, "get_user_tenant", async_return(_make_user_tenant("owner")))
         with pytest.raises(erri.BusinessError) as exc:
-            await invite.invite_user_to_tenant(_INVITER_ID, _TENANT_ID, "a@test.com", "superadmin")
+            await service.invite_user_to_tenant(_INVITER_ID, _TENANT_ID, "a@test.com", "superadmin")
         assert exc.value.code == Code.BAD_REQUEST
 
     async def test_inviter_not_member(self, monkeypatch):
-        monkeypatch.setattr(invite, "get_user_tenant", async_return(None))
+        monkeypatch.setattr(service, "get_user_tenant", async_return(None))
         with pytest.raises(erri.BusinessError) as exc:
-            await invite.invite_user_to_tenant(_INVITER_ID, _TENANT_ID, "a@test.com", "member")
+            await service.invite_user_to_tenant(_INVITER_ID, _TENANT_ID, "a@test.com", "member")
         assert exc.value.code == Code.NOT_FOUND
 
     async def test_inviter_not_owner_or_admin(self, monkeypatch):
-        monkeypatch.setattr(invite, "get_user_tenant", async_return(_make_user_tenant("member")))
+        monkeypatch.setattr(service, "get_user_tenant", async_return(_make_user_tenant("member")))
         with pytest.raises(erri.BusinessError) as exc:
-            await invite.invite_user_to_tenant(_INVITER_ID, _TENANT_ID, "a@test.com", "member")
+            await service.invite_user_to_tenant(_INVITER_ID, _TENANT_ID, "a@test.com", "member")
         assert exc.value.code == Code.FORBIDDEN
 
     async def test_tenant_not_found(self, monkeypatch):
-        monkeypatch.setattr(invite, "get_user_tenant", async_return(_make_user_tenant("owner")))
-        monkeypatch.setattr(invite, "get_tenant", async_return(None))
+        monkeypatch.setattr(service, "get_user_tenant", async_return(_make_user_tenant("owner")))
+        monkeypatch.setattr(service, "get_tenant", async_return(None))
         with pytest.raises(erri.BusinessError) as exc:
-            await invite.invite_user_to_tenant(_INVITER_ID, _TENANT_ID, "a@test.com", "member")
+            await service.invite_user_to_tenant(_INVITER_ID, _TENANT_ID, "a@test.com", "member")
         assert exc.value.code == Code.NOT_FOUND
 
     async def test_duplicate_pending_invitation(self, monkeypatch):
-        monkeypatch.setattr(invite, "get_user_tenant", async_return(_make_user_tenant("owner")))
-        monkeypatch.setattr(invite, "get_tenant", async_return(_make_tenant()))
-        monkeypatch.setattr(invite, "get_pending_invitation_by_email_and_tenant", async_return(_make_invitation()))
+        monkeypatch.setattr(service, "get_user_tenant", async_return(_make_user_tenant("owner")))
+        monkeypatch.setattr(service, "get_tenant", async_return(_make_tenant()))
+        monkeypatch.setattr(service, "get_pending_invitation_by_email_and_tenant", async_return(_make_invitation()))
         with pytest.raises(erri.BusinessError) as exc:
-            await invite.invite_user_to_tenant(_INVITER_ID, _TENANT_ID, "new@test.com", "member")
+            await service.invite_user_to_tenant(_INVITER_ID, _TENANT_ID, "new@test.com", "member")
         assert exc.value.code == Code.CONFLICT
 
     async def test_existing_user_already_member(self, monkeypatch):
@@ -125,13 +126,13 @@ class TestInviteUserToTenant:
                 return _make_user_tenant("owner")  # inviter check
             return ut  # existing user membership check
 
-        monkeypatch.setattr(invite, "get_user_tenant", side_effect_get_user_tenant)
-        monkeypatch.setattr(invite, "get_tenant", async_return(_make_tenant()))
-        monkeypatch.setattr(invite, "get_pending_invitation_by_email_and_tenant", async_return(None))
-        monkeypatch.setattr(invite, "get_user_by_email", async_return(user))
+        monkeypatch.setattr(service, "get_user_tenant", side_effect_get_user_tenant)
+        monkeypatch.setattr(service, "get_tenant", async_return(_make_tenant()))
+        monkeypatch.setattr(service, "get_pending_invitation_by_email_and_tenant", async_return(None))
+        monkeypatch.setattr(service, "get_user_by_email", async_return(user))
 
         with pytest.raises(erri.BusinessError) as exc:
-            await invite.invite_user_to_tenant(_INVITER_ID, _TENANT_ID, "existing@test.com", "member")
+            await service.invite_user_to_tenant(_INVITER_ID, _TENANT_ID, "existing@test.com", "member")
         assert exc.value.code == Code.CONFLICT
 
     async def test_existing_user_success(self, monkeypatch):
@@ -145,25 +146,25 @@ class TestInviteUserToTenant:
                 return _make_user_tenant("owner")  # inviter check
             return None  # existing user not yet member
 
-        monkeypatch.setattr(invite, "get_user_tenant", side_effect_get_user_tenant)
-        monkeypatch.setattr(invite, "get_tenant", async_return(_make_tenant()))
-        monkeypatch.setattr(invite, "get_pending_invitation_by_email_and_tenant", async_return(None))
-        monkeypatch.setattr(invite, "get_user_by_email", async_return(user))
-        monkeypatch.setattr(invite, "create_user_tenant", async_return(_make_user_tenant("member")))
-        monkeypatch.setattr(invite, "_send_added_email", async_return(True))
+        monkeypatch.setattr(service, "get_user_tenant", side_effect_get_user_tenant)
+        monkeypatch.setattr(service, "get_tenant", async_return(_make_tenant()))
+        monkeypatch.setattr(service, "get_pending_invitation_by_email_and_tenant", async_return(None))
+        monkeypatch.setattr(service, "get_user_by_email", async_return(user))
+        monkeypatch.setattr(service, "create_user_tenant", async_return(_make_user_tenant("member")))
+        monkeypatch.setattr(service, "_send_added_email", async_return(True))
 
-        result = await invite.invite_user_to_tenant(_INVITER_ID, _TENANT_ID, "existing@test.com", "member")
+        result = await service.invite_user_to_tenant(_INVITER_ID, _TENANT_ID, "existing@test.com", "member")
         assert result["flow"] == "existing_user"
 
     async def test_new_user_success(self, monkeypatch, mock_settings):
-        monkeypatch.setattr(invite, "get_user_tenant", async_return(_make_user_tenant("admin")))
-        monkeypatch.setattr(invite, "get_tenant", async_return(_make_tenant()))
-        monkeypatch.setattr(invite, "get_pending_invitation_by_email_and_tenant", async_return(None))
-        monkeypatch.setattr(invite, "get_user_by_email", async_return(None))
-        monkeypatch.setattr(invite, "create_tenant_invitation", async_return(_make_invitation()))
-        monkeypatch.setattr(invite, "_send_invite_email", async_return(True))
+        monkeypatch.setattr(service, "get_user_tenant", async_return(_make_user_tenant("admin")))
+        monkeypatch.setattr(service, "get_tenant", async_return(_make_tenant()))
+        monkeypatch.setattr(service, "get_pending_invitation_by_email_and_tenant", async_return(None))
+        monkeypatch.setattr(service, "get_user_by_email", async_return(None))
+        monkeypatch.setattr(service, "create_tenant_invitation", async_return(_make_invitation()))
+        monkeypatch.setattr(service, "_send_invite_email", async_return(True))
 
-        result = await invite.invite_user_to_tenant(_INVITER_ID, _TENANT_ID, "new@test.com", "member")
+        result = await service.invite_user_to_tenant(_INVITER_ID, _TENANT_ID, "new@test.com", "member")
         assert result["flow"] == "new_user"
 
 
@@ -174,34 +175,34 @@ class TestInviteUserToTenant:
 
 class TestAcceptInvitation:
     async def test_invalid_token(self, monkeypatch):
-        monkeypatch.setattr(invite, "get_invitation_by_token", async_return(None))
+        monkeypatch.setattr(service, "get_invitation_by_token", async_return(None))
         with pytest.raises(erri.BusinessError) as exc:
-            await invite.accept_invitation("bad-token", "StrongPw1")
+            await service.accept_invitation("bad-token", "StrongPw1")
         assert exc.value.code == Code.BAD_REQUEST
 
     async def test_expired_token(self, monkeypatch):
-        monkeypatch.setattr(invite, "get_invitation_by_token", async_return(_make_invitation(expired=True)))
+        monkeypatch.setattr(service, "get_invitation_by_token", async_return(_make_invitation(expired=True)))
         with pytest.raises(erri.BusinessError) as exc:
-            await invite.accept_invitation("expired-token", "StrongPw1")
+            await service.accept_invitation("expired-token", "StrongPw1")
         assert exc.value.code == Code.BAD_REQUEST
 
     async def test_email_already_registered(self, monkeypatch):
-        monkeypatch.setattr(invite, "get_invitation_by_token", async_return(_make_invitation()))
-        monkeypatch.setattr(invite, "email_exists", async_return(True))
+        monkeypatch.setattr(service, "get_invitation_by_token", async_return(_make_invitation()))
+        monkeypatch.setattr(service, "email_exists", async_return(True))
         with pytest.raises(erri.BusinessError) as exc:
-            await invite.accept_invitation("valid-token", "StrongPw1")
+            await service.accept_invitation("valid-token", "StrongPw1")
         assert exc.value.code == Code.CONFLICT
 
     async def test_weak_password(self, monkeypatch):
-        monkeypatch.setattr(invite, "get_invitation_by_token", async_return(_make_invitation()))
-        monkeypatch.setattr(invite, "email_exists", async_return(False))
+        monkeypatch.setattr(service, "get_invitation_by_token", async_return(_make_invitation()))
+        monkeypatch.setattr(service, "email_exists", async_return(False))
 
         def strict_validate(pw):
             raise erri.bad_request("Password too weak")
 
-        monkeypatch.setattr(invite, "validate_password", strict_validate)
+        monkeypatch.setattr(service, "validate_password", strict_validate)
         with pytest.raises(erri.BusinessError) as exc:
-            await invite.accept_invitation("valid-token", "weak")
+            await service.accept_invitation("valid-token", "weak")
         assert exc.value.code == Code.BAD_REQUEST
 
     async def test_success(self, monkeypatch):
@@ -209,14 +210,14 @@ class TestAcceptInvitation:
         user = _make_user("new@test.com")
         token_pair = TokenPair(access_token="at", refresh_token="rt", expires_in=3600, refresh_token_expires_in=604800)
 
-        monkeypatch.setattr(invite, "get_invitation_by_token", async_return(inv))
-        monkeypatch.setattr(invite, "email_exists", async_return(False))
-        monkeypatch.setattr(invite, "validate_password", lambda pw: None)
-        monkeypatch.setattr(invite, "get_password_hash", lambda pw: "hashed")
-        monkeypatch.setattr(invite, "create_user_for_tenant", async_return((user, _make_user_tenant("member"))))
-        monkeypatch.setattr(invite, "update_invitation_status", async_return(inv))
-        monkeypatch.setattr(invite, "create_token", lambda u: token_pair)
+        monkeypatch.setattr(service, "get_invitation_by_token", async_return(inv))
+        monkeypatch.setattr(service, "email_exists", async_return(False))
+        monkeypatch.setattr(service, "validate_password", lambda pw: None)
+        monkeypatch.setattr(service, "get_password_hash", lambda pw: "hashed")
+        monkeypatch.setattr(service, "create_user_for_tenant", async_return((user, _make_user_tenant("member"))))
+        monkeypatch.setattr(service, "update_invitation_status", async_return(inv))
+        monkeypatch.setattr(auth_service, "create_token", lambda u: token_pair)
 
-        result = await invite.accept_invitation("valid-token", "StrongPw1")
+        result = await service.accept_invitation("valid-token", "StrongPw1")
         assert result.access_token == "at"
         assert result.refresh_token == "rt"
