@@ -124,7 +124,7 @@ PYTHONPATH="src:." uv run alembic -c migration/alembic.ini revision --autogenera
 
 ### Testing
 
-Tests follow `test_{module}_{domain}.py` naming, mirroring `src/{module}/service.py`.
+Tests follow `test_{module}_{filename}.py` naming, mirroring `src/{module}/{filename}.py`.
 
 | Layer | Purpose | Dependencies |
 |-------|---------|--------------|

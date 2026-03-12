@@ -38,8 +38,8 @@ src/
 ├── common/                 # 响应信封 (resp.py)、错误工厂 (erri.py)、异常处理器 (trap.py)
 ├── middleware/              # JWT 认证中间件 + 请求/响应日志
 ├── auth/                   # 认证模块（登录、注册、Token、密码、验证码）
-├── user/                   # 用户模块（个人信息）
-└── invitation/             # 邀请码模块
+├── user/                   # 用户模块（个人信息管理）
+└── tenant/                 # 租户模块（CRUD、邀请）
 
 migration/                  # Alembic 迁移（`make run` 时自动执行）
 tests/
@@ -56,19 +56,19 @@ tests/
 |------|------|------|
 | Model | `model.py` | SQLAlchemy ORM 模型 + 异步数据库查询函数 |
 | DTO | `dto.py` | Pydantic 请求/响应模型（无数据库依赖） |
-| Service | `{domain}.py` | 业务逻辑、校验、抛出 `BusinessError` |
+| Service | `service.py` | 业务逻辑、校验、抛出 `BusinessError` |
 | Handler | `handler.py` | FastAPI `APIRouter`，调用 service，返回 `Response` |
 
 **数据流**: Handler -> Service -> Model
 
-Service 文件按业务领域命名（如 `token.py`、`password.py`），而非统一的 `service.py`。参考实现：`src/user/`（最小化模块）、`src/auth/`（多 service 模块）。
+参考实现：`src/user/`（单 service 模块）、`src/auth/`（多 service 模块 — 拆分为 `service.py` + 领域辅助文件如 `token.py`）。
 
 ### 添加新模块
 
-1. 创建 `src/{module}/` 目录，包含 `__init__.py`、`model.py`、`dto.py`、`{domain}.py`、`handler.py`
+1. 创建 `src/{module}/` 目录，包含 `__init__.py`、`model.py`、`dto.py`、`service.py`、`handler.py`
 2. `model.py` — 定义 SQLAlchemy ORM 模型 + 异步查询函数（使用 `async with AsyncSessionLocal()` 的 try/commit/rollback 模式）
 3. `dto.py` — 定义 Pydantic 请求/响应模型
-4. `{domain}.py` — 实现异步业务逻辑，调用 model 函数，出错时抛出 `erri.*`
+4. `service.py` — 实现异步业务逻辑，调用 model 函数，出错时抛出 `erri.*`
 5. `handler.py` — 定义 `APIRouter` 路由，`await` service 调用，返回 `ok(data=...)`
 6. 在 `src/main.py` 的 `init_routers()` 中注册路由
 7. 在 `migration/alembic/env.py` 中导入 model（用于自动迁移）
@@ -124,7 +124,7 @@ PYTHONPATH="src:." uv run alembic -c migration/alembic.ini revision --autogenera
 
 ### 测试
 
-测试遵循 `test_{module}_{domain}.py` 命名规范，与 `src/{module}/{domain}.py` 一一对应。
+测试遵循 `test_{module}_{filename}.py` 命名规范，与 `src/{module}/{filename}.py` 一一对应。
 
 | 层级 | 目的 | 依赖方式 |
 |------|------|----------|
