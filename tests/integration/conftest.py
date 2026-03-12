@@ -49,12 +49,14 @@ def fast_password_hash(monkeypatch):
     # Patch in all modules that do `from auth.password import ...`
     from auth import register as register_mod
     from auth import token as token_mod
+    from tenant import invite as invite_mod
     from user import profile as profile_mod
 
     monkeypatch.setattr(register_mod, "get_password_hash", _fast_hash)
     monkeypatch.setattr(token_mod, "verify_password", _fast_verify)
     monkeypatch.setattr(profile_mod, "get_password_hash", _fast_hash)
     monkeypatch.setattr(profile_mod, "verify_password", _fast_verify)
+    monkeypatch.setattr(invite_mod, "get_password_hash", _fast_hash)
 
 
 # ---------------------------------------------------------------------------
@@ -226,9 +228,21 @@ def mock_email(monkeypatch):
 
     from auth import password as password_mod
     from auth import register as register_module
+    from tenant import invite as invite_mod
 
     monkeypatch.setattr(register_module, "send_verification_email", fake_send)
     monkeypatch.setattr(password_mod, "send_verification_email", fake_send)
+
+    async def fake_send_invite(email, tenant_name, invite_url):
+        sent_emails.append({"email": email, "tenant_name": tenant_name, "type": "invite"})
+        return True
+
+    async def fake_send_added(email, tenant_name):
+        sent_emails.append({"email": email, "tenant_name": tenant_name, "type": "added"})
+        return True
+
+    monkeypatch.setattr(invite_mod, "_send_invite_email", fake_send_invite)
+    monkeypatch.setattr(invite_mod, "_send_added_email", fake_send_added)
     return sent_emails
 
 

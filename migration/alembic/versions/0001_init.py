@@ -1,4 +1,4 @@
-"""Create user, invitation_code, tenant, and user_tenant tables.
+"""Create user, invitation_code, tenant, user_tenant, and tenant_invitation tables.
 
 Revision ID: 0001
 Revises: -
@@ -117,8 +117,44 @@ def upgrade() -> None:
     op.create_index("ix_user_tenant_user_id", "user_tenant", ["user_id"])
     op.create_index("ix_user_tenant_tenant_id", "user_tenant", ["tenant_id"])
 
+    # 5. tenant_invitation
+    op.create_table(
+        "tenant_invitation",
+        sa.Column("id", sa.Uuid(), nullable=False),
+        sa.Column("tenant_id", sa.Uuid(), nullable=False),
+        sa.Column("email", sa.String(), nullable=False),
+        sa.Column("role", sa.String(), nullable=False, server_default=sa.text("'member'")),
+        sa.Column("invited_by", sa.Uuid(), nullable=False),
+        sa.Column("token", sa.String(), nullable=False),
+        sa.Column("status", sa.String(), nullable=False, server_default=sa.text("'pending'")),
+        sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+        ),
+        sa.PrimaryKeyConstraint("id"),
+        sa.ForeignKeyConstraint(["tenant_id"], ["tenant.id"]),
+        sa.ForeignKeyConstraint(["invited_by"], ["user.id"]),
+    )
+    op.create_index("ix_tenant_invitation_tenant_id", "tenant_invitation", ["tenant_id"])
+    op.create_index("ix_tenant_invitation_email", "tenant_invitation", ["email"])
+    op.create_index("ix_tenant_invitation_token", "tenant_invitation", ["token"], unique=True)
+
 
 def downgrade() -> None:
+    op.drop_index("ix_tenant_invitation_token", table_name="tenant_invitation")
+    op.drop_index("ix_tenant_invitation_email", table_name="tenant_invitation")
+    op.drop_index("ix_tenant_invitation_tenant_id", table_name="tenant_invitation")
+    op.drop_table("tenant_invitation")
+
     op.drop_index("ix_user_tenant_tenant_id", table_name="user_tenant")
     op.drop_index("ix_user_tenant_user_id", table_name="user_tenant")
     op.drop_table("user_tenant")

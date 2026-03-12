@@ -16,6 +16,7 @@ _ = user_model.User
 _ = invitation_model.InvitationCode
 _ = tenant_model.Tenant
 _ = tenant_model.UserTenant
+_ = tenant_model.TenantInvitation
 
 alembic_config = context.config
 

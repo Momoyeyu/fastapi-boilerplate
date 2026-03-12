@@ -114,3 +114,83 @@ async def get_user_tenants(user_id: UUID) -> list[UserTenant]:
             )
         )
         return list(result.scalars().all())
+
+
+class TenantInvitation(Base):
+    __tablename__ = "tenant_invitation"
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid7)
+    tenant_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("tenant.id"), index=True)
+    email: Mapped[str] = mapped_column(String, index=True)
+    role: Mapped[str] = mapped_column(String, default="member")  # member / admin
+    invited_by: Mapped[UUID] = mapped_column(Uuid, ForeignKey("user.id"))
+    token: Mapped[str] = mapped_column(String, unique=True, index=True)
+    status: Mapped[str] = mapped_column(String, default="pending")  # pending / accepted
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+
+
+async def create_tenant_invitation(
+    tenant_id: UUID, email: str, role: str, invited_by: UUID, token: str, expires_at: datetime
+) -> TenantInvitation:
+    invitation = TenantInvitation(
+        tenant_id=tenant_id,
+        email=email.lower(),
+        role=role,
+        invited_by=invited_by,
+        token=token,
+        expires_at=expires_at,
+    )
+    async with AsyncSessionLocal() as session:
+        session.add(invitation)
+        await session.commit()
+        await session.refresh(invitation)
+    return invitation
+
+
+async def get_invitation_by_token(token: str) -> TenantInvitation | None:
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(TenantInvitation).where(
+                TenantInvitation.token == token,
+                TenantInvitation.status == "pending",
+            )
+        )
+        return result.scalars().one_or_none()
+
+
+async def get_pending_invitations(tenant_id: UUID) -> list[TenantInvitation]:
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(TenantInvitation)
+            .where(TenantInvitation.tenant_id == tenant_id, TenantInvitation.status == "pending")
+            .order_by(TenantInvitation.created_at.desc())
+        )
+        return list(result.scalars().all())
+
+
+async def update_invitation_status(invitation_id: UUID, status: str) -> TenantInvitation | None:
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(select(TenantInvitation).where(TenantInvitation.id == invitation_id))
+        invitation = result.scalars().one_or_none()
+        if not invitation:
+            return None
+        invitation.status = status
+        invitation.updated_at = datetime.now(UTC)
+        session.add(invitation)
+        await session.commit()
+        await session.refresh(invitation)
+        return invitation
+
+
+async def get_pending_invitation_by_email_and_tenant(email: str, tenant_id: UUID) -> TenantInvitation | None:
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(TenantInvitation).where(
+                TenantInvitation.email == email.lower(),
+                TenantInvitation.tenant_id == tenant_id,
+                TenantInvitation.status == "pending",
+            )
+        )
+        return result.scalars().one_or_none()
