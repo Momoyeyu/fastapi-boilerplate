@@ -6,6 +6,8 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi[standard]>=0.128.0",
+    "langchain-openai>=0.3.0",
+    "langgraph>=1.1.2",
     "loguru>=0.7.0",
     "PyJWT>=2.9.0",
     "PyYAML>=6.0.0",
