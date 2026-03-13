@@ -78,6 +78,14 @@ async def invite_to_tenant(request: Request, tenant_id: UUID, body: dto.TenantIn
     return ok(data=result)
 
 
+@router.delete("/{tenant_id}/invitations/{invitation_id}")
+async def cancel_invitation(request: Request, tenant_id: UUID, invitation_id: UUID) -> Response:
+    """Cancel a pending invitation. Only owner or admin can cancel."""
+    user_id = await _get_user_id(request)
+    await service.cancel_invitation(user_id, tenant_id, invitation_id)
+    return ok(message="Invitation cancelled")
+
+
 @router.get("/{tenant_id}/invitations")
 async def list_invitations(request: Request, tenant_id: UUID) -> Response:
     """List pending invitations for a tenant. Only owner or admin can view."""

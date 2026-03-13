@@ -223,6 +223,100 @@ class TestTenantInvitePermissions:
         assert resp.json()["code"] == Code.FORBIDDEN
 
 
+class TestTenantInviteCancellation:
+    """Tests for cancelling invitations."""
+
+    def test_cancel_pending_invitation(self, client: TestClient, auth_header, session):
+        headers = auth_header("cancelhost@example.com", "Pass1234")
+
+        create_resp = client.post("/api/v1/tenant", headers=headers, json={"name": "Cancel Org"})
+        tenant_id = create_resp.json()["data"]["id"]
+
+        # Invite a new user
+        client.post(
+            f"/api/v1/tenant/{tenant_id}/invite",
+            headers=headers,
+            json={"email": "cancelled@example.com", "role": "member"},
+        )
+
+        # Get invitation id from list
+        list_resp = client.get(f"/api/v1/tenant/{tenant_id}/invitations", headers=headers)
+        invitation_id = list_resp.json()["data"][0]["id"]
+
+        # Cancel the invitation
+        resp = client.delete(f"/api/v1/tenant/{tenant_id}/invitations/{invitation_id}", headers=headers)
+        assert resp.json()["code"] == Code.OK
+
+        # Verify it no longer appears in pending list
+        list_resp2 = client.get(f"/api/v1/tenant/{tenant_id}/invitations", headers=headers)
+        assert len(list_resp2.json()["data"]) == 0
+
+    def test_member_cannot_cancel(self, client: TestClient, auth_header, register_and_verify):
+        owner_headers = auth_header("cancelowner@example.com", "Pass1234")
+        register_and_verify("cancelmember@example.com", "Pass1234")
+
+        create_resp = client.post("/api/v1/tenant", headers=owner_headers, json={"name": "Cancel Perm Org"})
+        tenant_id = create_resp.json()["data"]["id"]
+
+        # Add member
+        client.post(
+            f"/api/v1/tenant/{tenant_id}/invite",
+            headers=owner_headers,
+            json={"email": "cancelmember@example.com", "role": "member"},
+        )
+
+        # Invite someone else
+        client.post(
+            f"/api/v1/tenant/{tenant_id}/invite",
+            headers=owner_headers,
+            json={"email": "target@example.com", "role": "member"},
+        )
+
+        list_resp = client.get(f"/api/v1/tenant/{tenant_id}/invitations", headers=owner_headers)
+        invitation_id = list_resp.json()["data"][0]["id"]
+
+        # Member tries to cancel
+        login_resp = client.post(
+            "/api/v1/auth/login",
+            json={"identifier": "cancelmember@example.com", "password": "Pass1234"},
+        )
+        member_headers = {"Authorization": f"Bearer {login_resp.json()['data']['access_token']}"}
+
+        resp = client.delete(f"/api/v1/tenant/{tenant_id}/invitations/{invitation_id}", headers=member_headers)
+        assert resp.json()["code"] == Code.FORBIDDEN
+
+    def test_cancel_nonexistent_invitation(self, client: TestClient, auth_header):
+        headers = auth_header("cancelmiss@example.com", "Pass1234")
+        create_resp = client.post("/api/v1/tenant", headers=headers, json={"name": "Cancel Miss Org"})
+        tenant_id = create_resp.json()["data"]["id"]
+
+        fake_id = "019cdc15-79f5-7097-9939-415ca4826de7"
+        resp = client.delete(f"/api/v1/tenant/{tenant_id}/invitations/{fake_id}", headers=headers)
+        assert resp.json()["code"] == Code.NOT_FOUND
+
+    def test_cancel_already_cancelled(self, client: TestClient, auth_header):
+        headers = auth_header("canceltwice@example.com", "Pass1234")
+        create_resp = client.post("/api/v1/tenant", headers=headers, json={"name": "Cancel Twice Org"})
+        tenant_id = create_resp.json()["data"]["id"]
+
+        client.post(
+            f"/api/v1/tenant/{tenant_id}/invite",
+            headers=headers,
+            json={"email": "canceltwice_target@example.com", "role": "member"},
+        )
+
+        list_resp = client.get(f"/api/v1/tenant/{tenant_id}/invitations", headers=headers)
+        invitation_id = list_resp.json()["data"][0]["id"]
+
+        # First cancel succeeds
+        resp1 = client.delete(f"/api/v1/tenant/{tenant_id}/invitations/{invitation_id}", headers=headers)
+        assert resp1.json()["code"] == Code.OK
+
+        # Second cancel fails
+        resp2 = client.delete(f"/api/v1/tenant/{tenant_id}/invitations/{invitation_id}", headers=headers)
+        assert resp2.json()["code"] == Code.BAD_REQUEST
+
+
 class TestTenantInviteAcceptEdgeCases:
     """Edge cases for accepting invitations."""
 

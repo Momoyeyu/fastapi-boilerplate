@@ -273,3 +273,22 @@ async def accept_invitation(token: str, password: str):
 
     await update_invitation_status(invitation.id, "accepted")
     return create_token(user)
+
+
+async def cancel_invitation(user_id: UUID, tenant_id: UUID, invitation_id: UUID) -> None:
+    """Cancel a pending invitation. Only owner or admin can cancel."""
+    user_tenant = await get_user_tenant(user_id, tenant_id)
+    if not user_tenant:
+        raise erri.not_found("Not a member of this tenant")
+    if user_tenant.user_role not in ("owner", "admin"):
+        raise erri.forbidden("Only owner or admin can cancel invitations")
+
+    from tenant.model import get_invitation
+
+    invitation = await get_invitation(invitation_id)
+    if not invitation or invitation.tenant_id != tenant_id:
+        raise erri.not_found("Invitation not found")
+    if invitation.status != "pending":
+        raise erri.bad_request("Only pending invitations can be cancelled")
+
+    await update_invitation_status(invitation_id, "cancelled")

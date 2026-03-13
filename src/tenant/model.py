@@ -149,6 +149,12 @@ async def create_tenant_invitation(
     return invitation
 
 
+async def get_invitation(invitation_id: UUID) -> TenantInvitation | None:
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(select(TenantInvitation).where(TenantInvitation.id == invitation_id))
+        return result.scalars().one_or_none()
+
+
 async def get_invitation_by_token(token: str) -> TenantInvitation | None:
     async with AsyncSessionLocal() as session:
         result = await session.execute(
