@@ -312,9 +312,13 @@ def build_graph(client: LLMClient) -> StateGraph:
 # ---------------------------------------------------------------------------
 
 
+MAX_HISTORY = 20
+
+
 async def chat_loop() -> None:
     client = LLMClient()
     graph = build_graph(client)
+    history: list[BaseMessage] = []
 
     print(f"{BOLD}LangGraph Workflow Demo{RESET}")
     print(f"{DIM}{'─' * 60}{RESET}")
@@ -322,7 +326,7 @@ async def chat_loop() -> None:
     print(f"  {CYAN}translate{RESET} — plan → translate (per segment) → polish")
     print(f"  {MAGENTA}summarize{RESET} — summarize → extract keywords")
     print(f"{DIM}{'─' * 60}{RESET}")
-    print("  'quit' to exit\n")
+    print("  'quit' to exit, '/clear' to reset history\n")
 
     while True:
         try:
@@ -336,11 +340,15 @@ async def chat_loop() -> None:
             continue
         if user_input.lower() == "quit":
             break
+        if user_input == "/clear":
+            history.clear()
+            print(f"  {DIM}[cleared conversation history]{RESET}")
+            continue
 
         print(f"\n{DIM}{'═' * 60}{RESET}")
         result = await graph.ainvoke(
             {
-                "messages": [HumanMessage(content=user_input)],
+                "messages": history + [HumanMessage(content=user_input)],
                 "intent": "",
                 "translate_segments": [],
                 "translated_text": "",
@@ -349,8 +357,16 @@ async def chat_loop() -> None:
         )
         print(f"{DIM}{'═' * 60}{RESET}")
 
-        # Print the final answer
+        # Extract final AI answer and save to history
+        answer = ""
         for msg in reversed(result["messages"]):
             if isinstance(msg, AIMessage) and msg.content:
-                print(f"\n{GREEN}{BOLD}{msg.content}{RESET}\n")
+                answer = msg.content
+                print(f"\n{GREEN}{BOLD}{answer}{RESET}\n")
                 break
+
+        history.append(HumanMessage(content=user_input))
+        if answer:
+            history.append(AIMessage(content=answer))
+        if len(history) > MAX_HISTORY:
+            history = history[-MAX_HISTORY:]
