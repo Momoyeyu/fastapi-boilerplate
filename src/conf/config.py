@@ -57,5 +57,9 @@ class Settings(BaseSettings):
     invitation_token_expire_seconds: int = 604800  # 7 days
     frontend_url: str = "http://localhost:3000"
 
+    # Server configuration
+    server_host: str = "localhost"
+    server_port: int = 8000
+
 
 settings = Settings()
