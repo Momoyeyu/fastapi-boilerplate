@@ -8,6 +8,7 @@ from auth import service as auth_service
 from auth.dto import TokenPair
 from common import erri
 from common.resp import Code
+from tenant import model as tenant_model
 from tenant import service
 from tenant.model import TenantInvitation, UserTenant
 from user.model import User
@@ -221,3 +222,139 @@ class TestAcceptInvitation:
         result = await service.accept_invitation("valid-token", "StrongPw1")
         assert result.access_token == "at"
         assert result.refresh_token == "rt"
+
+    async def test_create_user_failure(self, monkeypatch):
+        inv = _make_invitation()
+        monkeypatch.setattr(service, "get_invitation_by_token", async_return(inv))
+        monkeypatch.setattr(service, "email_exists", async_return(False))
+        monkeypatch.setattr(service, "validate_password", lambda pw: None)
+        monkeypatch.setattr(service, "get_password_hash", lambda pw: "hashed")
+
+        async def fail(*args, **kwargs):
+            raise RuntimeError("DB error")
+
+        monkeypatch.setattr(service, "create_user_for_tenant", fail)
+        with pytest.raises(erri.BusinessError) as exc:
+            await service.accept_invitation("valid-token", "StrongPw1")
+        assert exc.value.code == Code.INTERNAL_ERROR
+
+
+# ---------------------------------------------------------------------------
+# cancel_invitation
+# ---------------------------------------------------------------------------
+
+
+class TestCancelInvitation:
+    async def test_not_member(self, monkeypatch):
+        monkeypatch.setattr(service, "get_user_tenant", async_return(None))
+        with pytest.raises(erri.BusinessError) as exc:
+            await service.cancel_invitation(_INVITER_ID, _TENANT_ID, _INVITATION_ID)
+        assert exc.value.code == Code.NOT_FOUND
+
+    async def test_member_forbidden(self, monkeypatch):
+        monkeypatch.setattr(service, "get_user_tenant", async_return(_make_user_tenant("member")))
+        with pytest.raises(erri.BusinessError) as exc:
+            await service.cancel_invitation(_INVITER_ID, _TENANT_ID, _INVITATION_ID)
+        assert exc.value.code == Code.FORBIDDEN
+
+    async def test_invitation_not_found(self, monkeypatch):
+        monkeypatch.setattr(service, "get_user_tenant", async_return(_make_user_tenant("owner")))
+        monkeypatch.setattr(tenant_model, "get_invitation", async_return(None))
+        with pytest.raises(erri.BusinessError) as exc:
+            await service.cancel_invitation(_INVITER_ID, _TENANT_ID, _INVITATION_ID)
+        assert exc.value.code == Code.NOT_FOUND
+
+    async def test_invitation_wrong_tenant(self, monkeypatch):
+        inv = _make_invitation()
+        inv.tenant_id = UUID("01936b2a-7c00-7000-8000-999999999999")
+        monkeypatch.setattr(service, "get_user_tenant", async_return(_make_user_tenant("owner")))
+        monkeypatch.setattr(tenant_model, "get_invitation", async_return(inv))
+        with pytest.raises(erri.BusinessError) as exc:
+            await service.cancel_invitation(_INVITER_ID, _TENANT_ID, _INVITATION_ID)
+        assert exc.value.code == Code.NOT_FOUND
+
+    async def test_not_pending(self, monkeypatch):
+        inv = _make_invitation()
+        inv.status = "accepted"
+        monkeypatch.setattr(service, "get_user_tenant", async_return(_make_user_tenant("owner")))
+        monkeypatch.setattr(tenant_model, "get_invitation", async_return(inv))
+        with pytest.raises(erri.BusinessError) as exc:
+            await service.cancel_invitation(_INVITER_ID, _TENANT_ID, _INVITATION_ID)
+        assert exc.value.code == Code.BAD_REQUEST
+
+    async def test_success(self, monkeypatch):
+        inv = _make_invitation()
+        monkeypatch.setattr(service, "get_user_tenant", async_return(_make_user_tenant("admin")))
+        monkeypatch.setattr(tenant_model, "get_invitation", async_return(inv))
+        monkeypatch.setattr(service, "update_invitation_status", async_return(inv))
+        await service.cancel_invitation(_INVITER_ID, _TENANT_ID, _INVITATION_ID)
+
+
+# ---------------------------------------------------------------------------
+# get_tenant_detail
+# ---------------------------------------------------------------------------
+
+
+class TestGetTenantDetail:
+    async def test_tenant_not_found(self, monkeypatch):
+        monkeypatch.setattr(service, "get_user_tenant", async_return(_make_user_tenant("member")))
+        monkeypatch.setattr(service, "get_tenant", async_return(None))
+        with pytest.raises(erri.BusinessError) as exc:
+            await service.get_tenant_detail(_USER_ID, _TENANT_ID)
+        assert exc.value.code == Code.NOT_FOUND
+
+
+# ---------------------------------------------------------------------------
+# update_tenant_by_owner
+# ---------------------------------------------------------------------------
+
+
+class TestUpdateTenantByOwner:
+    async def test_not_member(self, monkeypatch):
+        monkeypatch.setattr(service, "get_user_tenant", async_return(None))
+        with pytest.raises(erri.BusinessError) as exc:
+            await service.update_tenant_by_owner(_USER_ID, _TENANT_ID, name="New")
+        assert exc.value.code == Code.NOT_FOUND
+
+    async def test_not_owner(self, monkeypatch):
+        monkeypatch.setattr(service, "get_user_tenant", async_return(_make_user_tenant("admin")))
+        with pytest.raises(erri.BusinessError) as exc:
+            await service.update_tenant_by_owner(_USER_ID, _TENANT_ID, name="New")
+        assert exc.value.code == Code.FORBIDDEN
+
+    async def test_tenant_not_found(self, monkeypatch):
+        monkeypatch.setattr(service, "get_user_tenant", async_return(_make_user_tenant("owner")))
+        monkeypatch.setattr(service, "_update_tenant", async_return(None))
+        with pytest.raises(erri.BusinessError) as exc:
+            await service.update_tenant_by_owner(_USER_ID, _TENANT_ID, name="New")
+        assert exc.value.code == Code.NOT_FOUND
+
+
+# ---------------------------------------------------------------------------
+# email helpers
+# ---------------------------------------------------------------------------
+
+
+class TestEmailHelpers:
+    def test_build_invite_html(self):
+        html = service._build_invite_html("Test Org", "http://example.com/invite")
+        assert "Test Org" in html
+        assert "http://example.com/invite" in html
+        assert "Accept Invitation" in html
+
+    def test_build_added_html(self):
+        html = service._build_added_html("Test Org")
+        assert "Test Org" in html
+        assert "You've Been Added" in html
+
+    async def test_send_invite_email(self, monkeypatch):
+        monkeypatch.setattr(service, "send_email", async_return(True))
+        monkeypatch.setattr(service, "settings", MagicMock(app_name="App"))
+        result = await service._send_invite_email("a@test.com", "Org", "http://url")
+        assert result is True
+
+    async def test_send_added_email(self, monkeypatch):
+        monkeypatch.setattr(service, "send_email", async_return(True))
+        monkeypatch.setattr(service, "settings", MagicMock(app_name="App"))
+        result = await service._send_added_email("a@test.com", "Org")
+        assert result is True

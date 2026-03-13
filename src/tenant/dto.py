@@ -30,11 +30,6 @@ class TenantInviteRequest(BaseModel):
     role: str = "member"
 
 
-class TenantInviteAcceptRequest(BaseModel):
-    token: str
-    password: str
-
-
 class TenantInvitationResponse(BaseModel):
     id: UUID
     email: str

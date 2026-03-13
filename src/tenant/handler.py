@@ -2,7 +2,6 @@ from uuid import UUID
 
 from fastapi import APIRouter, Request
 
-from auth import dto as auth_dto
 from common import erri
 from common.resp import Response, ok
 from middleware import auth
@@ -31,21 +30,6 @@ async def create_tenant(request: Request, body: dto.TenantCreateRequest) -> Resp
             id=tenant.id,
             name=tenant.name,
             status=tenant.status,
-        ).model_dump()
-    )
-
-
-@auth.exempt
-@router.post("/invite/accept")
-async def accept_invite(body: dto.TenantInviteAcceptRequest) -> Response:
-    """Accept a tenant invitation. Creates a new account and joins the tenant."""
-    token_pair = await service.accept_invitation(body.token, body.password)
-    return ok(
-        data=auth_dto.TokenData(
-            access_token=token_pair.access_token,
-            refresh_token=token_pair.refresh_token,
-            expires_in=token_pair.expires_in,
-            refresh_token_expires_in=token_pair.refresh_token_expires_in,
         ).model_dump()
     )
 
@@ -92,6 +76,14 @@ async def invite_to_tenant(request: Request, tenant_id: UUID, body: dto.TenantIn
     user_id = await _get_user_id(request)
     result = await service.invite_user_to_tenant(user_id, tenant_id, body.email, body.role)
     return ok(data=result)
+
+
+@router.delete("/{tenant_id}/invitations/{invitation_id}")
+async def cancel_invitation(request: Request, tenant_id: UUID, invitation_id: UUID) -> Response:
+    """Cancel a pending invitation. Only owner or admin can cancel."""
+    user_id = await _get_user_id(request)
+    await service.cancel_invitation(user_id, tenant_id, invitation_id)
+    return ok(message="Invitation cancelled")
 
 
 @router.get("/{tenant_id}/invitations")

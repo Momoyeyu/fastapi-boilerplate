@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta, timezone
 from html import escape
 from uuid import UUID
 
+from loguru import logger
 from uuid6 import uuid7
 
 from common import erri
@@ -237,6 +238,7 @@ async def invite_user_to_tenant(inviter_id: UUID, tenant_id: UUID, email: str, r
     expires_at = datetime.now(UTC) + timedelta(seconds=settings.invitation_token_expire_seconds)
     await create_tenant_invitation(tenant_id, email, role, inviter_id, token, expires_at)
     invite_url = f"{settings.frontend_url}/invite/accept?token={token}"
+    logger.debug(f"Tenant invitation for {email} to '{tenant.name}': {invite_url}")
     await _send_invite_email(email, tenant.name, invite_url)
     return {"flow": "new_user"}
 
@@ -271,3 +273,22 @@ async def accept_invitation(token: str, password: str):
 
     await update_invitation_status(invitation.id, "accepted")
     return create_token(user)
+
+
+async def cancel_invitation(user_id: UUID, tenant_id: UUID, invitation_id: UUID) -> None:
+    """Cancel a pending invitation. Only owner or admin can cancel."""
+    user_tenant = await get_user_tenant(user_id, tenant_id)
+    if not user_tenant:
+        raise erri.not_found("Not a member of this tenant")
+    if user_tenant.user_role not in ("owner", "admin"):
+        raise erri.forbidden("Only owner or admin can cancel invitations")
+
+    from tenant.model import get_invitation
+
+    invitation = await get_invitation(invitation_id)
+    if not invitation or invitation.tenant_id != tenant_id:
+        raise erri.not_found("Invitation not found")
+    if invitation.status != "pending":
+        raise erri.bad_request("Only pending invitations can be cancelled")
+
+    await update_invitation_status(invitation_id, "cancelled")
