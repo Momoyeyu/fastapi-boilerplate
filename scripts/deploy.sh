@@ -5,7 +5,7 @@ set -euo pipefail
 # FastAPI Boilerplate - Deployment Script
 # ===========================================
 # This script handles the deployment process:
-# 1. Pull the latest Docker image
+# 1. Build the latest Docker image
 # 2. Stop existing containers
 # 3. Start new containers
 # 4. Health check
@@ -15,9 +15,17 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_DIR"
 
+# Source .env so shell variables (e.g. SERVER_PORT) match docker-compose
+if [[ -f ".env" ]]; then
+    set -a
+    # shellcheck disable=SC1091
+    source .env
+    set +a
+fi
+
 # Configuration
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}"
-HEALTH_CHECK_URL="${HEALTH_CHECK_URL:-http://127.0.0.1:${SERVER_PORT:-8000}/}"
+HEALTH_CHECK_URL="${HEALTH_CHECK_URL:-http://127.0.0.1:${SERVER_PORT:-8000}/api/v1/}"
 HEALTH_CHECK_TIMEOUT="${HEALTH_CHECK_TIMEOUT:-60}"
 HEALTH_CHECK_INTERVAL="${HEALTH_CHECK_INTERVAL:-5}"
 
@@ -49,11 +57,12 @@ check_env_file() {
     log_info ".env file found"
 }
 
-# Pull the latest Docker image
-pull_image() {
-    log_info "Pulling latest Docker image..."
-    docker compose -f "$COMPOSE_FILE" pull app || {
-        log_warn "Failed to pull image, will use local build"
+# Build the latest Docker image
+build_image() {
+    log_info "Building Docker image from latest code..."
+    docker compose -f "$COMPOSE_FILE" build app || {
+        log_error "Failed to build image"
+        exit 1
     }
 }
 
@@ -103,6 +112,8 @@ health_check() {
     done
     
     log_error "Health check failed after ${HEALTH_CHECK_TIMEOUT}s"
+    log_error "Container logs:"
+    docker compose -f "$COMPOSE_FILE" logs --tail=50 app 2>&1 || true
     return 1
 }
 
@@ -124,7 +135,8 @@ rollback() {
             exit 1
         fi
     else
-        log_error "No rollback image available. Manual intervention required."
+        log_warn "No rollback image available (first deployment?)."
+        log_warn "Please check container logs above and fix the issue manually."
         exit 1
     fi
 }
@@ -142,7 +154,7 @@ main() {
     log_info "=========================================="
     
     check_env_file
-    pull_image
+    build_image
     backup_state
     stop_containers
     start_containers
