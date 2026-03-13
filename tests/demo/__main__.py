@@ -12,7 +12,7 @@ def main():
 
         asyncio.run(Agent().chat_loop())
     elif choice == "langgraph":
-        from tests.demo.langgraph.graph import chat_loop
+        from tests.demo.graph.graph import chat_loop
 
         asyncio.run(chat_loop())
     else:
