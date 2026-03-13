@@ -42,6 +42,11 @@ class PasswordResetRequest(BaseModel):
     new_password: str
 
 
+class InviteAcceptRequest(BaseModel):
+    token: str
+    password: str
+
+
 @dataclass
 class TokenPair:
     """A pair of access and refresh tokens."""

@@ -116,7 +116,7 @@ class TestTenantInviteNewUser:
 
         # Accept the invitation
         accept_resp = client.post(
-            "/api/v1/tenant/invite/accept",
+            "/api/v1/auth/invite/accept",
             json={"token": token, "password": "NewPass1234"},
         )
         assert accept_resp.json()["code"] == Code.OK
@@ -228,7 +228,7 @@ class TestTenantInviteAcceptEdgeCases:
 
     def test_accept_invalid_token(self, client: TestClient):
         resp = client.post(
-            "/api/v1/tenant/invite/accept",
+            "/api/v1/auth/invite/accept",
             json={"token": "nonexistent-token", "password": "StrongPw1"},
         )
         assert resp.json()["code"] == Code.BAD_REQUEST
@@ -259,14 +259,14 @@ class TestTenantInviteAcceptEdgeCases:
 
         # First accept succeeds
         resp1 = client.post(
-            "/api/v1/tenant/invite/accept",
+            "/api/v1/auth/invite/accept",
             json={"token": token, "password": "StrongPw1"},
         )
         assert resp1.json()["code"] == Code.OK
 
         # Second accept fails (token already consumed)
         resp2 = client.post(
-            "/api/v1/tenant/invite/accept",
+            "/api/v1/auth/invite/accept",
             json={"token": token, "password": "StrongPw1"},
         )
         assert resp2.json()["code"] == Code.BAD_REQUEST

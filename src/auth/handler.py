@@ -5,6 +5,7 @@ from auth import dto, service
 from common.resp import Response, ok
 from conf.config import settings
 from middleware import auth
+from tenant import service as tenant_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -107,3 +108,18 @@ async def password_reset(body: dto.PasswordResetRequest) -> Response:
     """Reset password after email verification."""
     await service.reset_password(body.email, body.code, body.new_password)
     return ok(message="Password reset successfully")
+
+
+@auth.exempt
+@router.post("/invite/accept")
+async def accept_invite(body: dto.InviteAcceptRequest) -> Response:
+    """Accept a tenant invitation. Creates a new account and joins the tenant."""
+    token_pair = await tenant_service.accept_invitation(body.token, body.password)
+    return ok(
+        data=dto.TokenData(
+            access_token=token_pair.access_token,
+            refresh_token=token_pair.refresh_token,
+            expires_in=token_pair.expires_in,
+            refresh_token_expires_in=token_pair.refresh_token_expires_in,
+        ).model_dump()
+    )
