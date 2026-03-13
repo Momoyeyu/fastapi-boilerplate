@@ -57,6 +57,11 @@ class Settings(BaseSettings):
     invitation_token_expire_seconds: int = 604800  # 7 days
     frontend_url: str = "http://localhost:3000"
 
+    # LLM (OpenAI-compatible)
+    llm_api_key: SecretStr = SecretStr("")
+    llm_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    llm_model_name: str = "qwen-plus"
+
     # Server configuration
     server_host: str = "localhost"
     server_port: int = 8000
