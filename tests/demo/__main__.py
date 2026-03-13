@@ -1,4 +1,4 @@
-"""Entry point: PYTHONPATH=src uv run python -m tests.demo [react|langgraph]"""
+"""Entry point: PYTHONPATH=src uv run python -m tests.demo [react|graph]"""
 
 import asyncio
 import sys
@@ -11,15 +11,15 @@ def main():
         from tests.demo.react.loop import Agent
 
         asyncio.run(Agent().chat_loop())
-    elif choice == "langgraph":
+    elif choice == "graph":
         from tests.demo.graph.graph import chat_loop
 
         asyncio.run(chat_loop())
     else:
-        print("Usage: python -m tests.demo [react|langgraph]")
+        print("Usage: python -m tests.demo [react|graph]")
         print()
-        print("  react      - Manual ReACT agent loop (default)")
-        print("  langgraph  - LangGraph intent-routing workflow")
+        print("  react  - Manual ReACT agent loop (default)")
+        print("  graph  - LangGraph intent-routing workflow")
         sys.exit(1)
 
 
