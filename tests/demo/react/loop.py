@@ -66,7 +66,9 @@ class Agent:
 
             # Debug: show raw message fields for understanding model behavior
             raw = result.message
-            extra = {k: v for k, v in raw.additional_kwargs.items() if k not in ("tool_calls",)}
+            extra = {
+                k: v for k, v in raw.additional_kwargs.items() if k not in ("tool_calls", "refusal") and v is not None
+            }
             if extra:
                 print(f"{DIM}[Raw additional_kwargs] {json.dumps(extra, ensure_ascii=False, default=str)[:300]}{RESET}")
 
