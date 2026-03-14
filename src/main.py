@@ -5,6 +5,7 @@ from fastapi import APIRouter, FastAPI
 from loguru import logger
 
 from auth.handler import router as auth_router
+from auth.sso_handler import router as sso_router
 from common.resp import Response, ok
 from common.trap import setup_exception_handlers
 from conf import logging
@@ -34,6 +35,7 @@ def init_routers(_app: FastAPI) -> None:
         return ok(message="Hello FastAPI + UV!")
 
     api_router.include_router(auth_router)
+    api_router.include_router(sso_router)
     api_router.include_router(user_router)
     api_router.include_router(tenant_router)
     _app.include_router(api_router)
