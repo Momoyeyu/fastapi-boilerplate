@@ -66,9 +66,9 @@ def _get_scopes(provider: str) -> list[str]:
 
 
 def _callback_url(provider: str, *, link: bool = False) -> str:
-    base = settings.oauth_redirect_base_url or f"http://{settings.server_host}:{settings.server_port}"
-    suffix = "/link/callback" if link else "/callback"
-    return f"{base}/api/v1/auth/{provider}{suffix}"
+    base = settings.frontend_url
+    suffix = "/link/callback" if link else ""
+    return f"{base}/auth/callback/{provider}{suffix}"
 
 
 # ---------------------------------------------------------------------------

@@ -62,7 +62,6 @@ class Settings(BaseSettings):
     google_client_secret: SecretStr = SecretStr("")
     github_client_id: str = ""
     github_client_secret: SecretStr = SecretStr("")
-    oauth_redirect_base_url: str = ""  # e.g. https://api.example.com
 
     # LLM (OpenAI-compatible)
     llm_api_key: SecretStr = SecretStr("")

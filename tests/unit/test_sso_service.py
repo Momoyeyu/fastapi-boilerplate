@@ -83,54 +83,30 @@ def test_callback_url_default(monkeypatch):
     monkeypatch.setattr(
         sso_service,
         "settings",
-        type(
-            "S",
-            (),
-            {
-                "oauth_redirect_base_url": "",
-                "server_host": "localhost",
-                "server_port": 8000,
-            },
-        )(),
+        type("S", (), {"frontend_url": "http://localhost:3000"})(),
     )
     url = sso_service._callback_url("google")
-    assert url == "http://localhost:8000/api/v1/auth/google/callback"
+    assert url == "http://localhost:3000/auth/callback/google"
 
 
-def test_callback_url_with_base(monkeypatch):
+def test_callback_url_with_custom_frontend(monkeypatch):
     monkeypatch.setattr(
         sso_service,
         "settings",
-        type(
-            "S",
-            (),
-            {
-                "oauth_redirect_base_url": "https://api.example.com",
-                "server_host": "localhost",
-                "server_port": 8000,
-            },
-        )(),
+        type("S", (), {"frontend_url": "https://app.example.com"})(),
     )
     url = sso_service._callback_url("github")
-    assert url == "https://api.example.com/api/v1/auth/github/callback"
+    assert url == "https://app.example.com/auth/callback/github"
 
 
 def test_callback_url_link(monkeypatch):
     monkeypatch.setattr(
         sso_service,
         "settings",
-        type(
-            "S",
-            (),
-            {
-                "oauth_redirect_base_url": "https://api.example.com",
-                "server_host": "localhost",
-                "server_port": 8000,
-            },
-        )(),
+        type("S", (), {"frontend_url": "https://app.example.com"})(),
     )
     url = sso_service._callback_url("google", link=True)
-    assert url == "https://api.example.com/api/v1/auth/google/link/callback"
+    assert url == "https://app.example.com/auth/callback/google/link/callback"
 
 
 # ---------------------------------------------------------------------------
