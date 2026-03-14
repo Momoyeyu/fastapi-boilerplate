@@ -14,7 +14,7 @@ class User(Base):
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid7)
     username: Mapped[str] = mapped_column(String, unique=True, index=True)
     email: Mapped[str] = mapped_column(String, unique=True, index=True)
-    hashed_password: Mapped[str] = mapped_column(String)
+    hashed_password: Mapped[str | None] = mapped_column(String, nullable=True)
     avatar_url: Mapped[str | None] = mapped_column(String, default=None)
     is_active: Mapped[bool] = mapped_column(default=True)
     invitation_code_id: Mapped[UUID | None] = mapped_column(Uuid, default=None)
@@ -60,6 +60,14 @@ async def get_user_by_email(email: str) -> User | None:
     async with AsyncSessionLocal() as session:
         result = await session.execute(
             select(User).where(User.email == email.lower(), User.is_deleted == False)  # noqa: E712
+        )
+        return result.scalars().one_or_none()
+
+
+async def get_user_by_id(user_id: UUID) -> User | None:
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(User).where(User.id == user_id, User.is_deleted == False)  # noqa: E712
         )
         return result.scalars().one_or_none()
 

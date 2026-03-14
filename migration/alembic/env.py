@@ -5,15 +5,16 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
+from auth import model as auth_model
+from auth import oauth_model
 from conf.config import settings
 from conf.db import Base
-
-from auth import model as auth_model
 from tenant import model as tenant_model
 from user import model as user_model
 
 _ = user_model.User
 _ = auth_model.InvitationCode
+_ = oauth_model.OAuthAccount
 _ = tenant_model.Tenant
 _ = tenant_model.UserTenant
 _ = tenant_model.TenantInvitation

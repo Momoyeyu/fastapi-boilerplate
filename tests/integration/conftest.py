@@ -17,6 +17,7 @@ from sqlalchemy import create_engine as create_sync_engine
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from auth import model as auth_model
+from auth import oauth_model
 from auth import service as service_module
 from common import utils as utils_module
 from conf import db as db_module
@@ -36,7 +37,9 @@ def _fast_hash(password: str) -> str:
     return _FAST_PREFIX + hashlib.sha256(password.encode()).hexdigest()
 
 
-def _fast_verify(plain_password: str, hashed_password: str) -> bool:
+def _fast_verify(plain_password: str, hashed_password: str | None) -> bool:
+    if hashed_password is None:
+        return False
     return _fast_hash(plain_password) == hashed_password
 
 
@@ -105,6 +108,7 @@ def client(test_engine, test_session_local, monkeypatch) -> TestClient:
     monkeypatch.setattr(user_model, "AsyncSessionLocal", test_session_local)
     monkeypatch.setattr(auth_model, "AsyncSessionLocal", test_session_local)
     monkeypatch.setattr(tenant_model, "AsyncSessionLocal", test_session_local)
+    monkeypatch.setattr(oauth_model, "AsyncSessionLocal", test_session_local)
 
     from tenant import service as tenant_service_mod
 

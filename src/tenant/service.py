@@ -36,7 +36,7 @@ from user.model import User, email_exists, get_user_by_email
 
 async def create_user_with_tenant(
     username: str,
-    hashed_password: str,
+    hashed_password: str | None,
     email: str,
     tenant_name: str,
     *,

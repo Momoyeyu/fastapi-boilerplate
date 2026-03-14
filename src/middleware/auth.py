@@ -1,3 +1,4 @@
+import re
 from collections.abc import Awaitable, Callable
 from functools import cache
 from typing import Any, NoReturn
@@ -24,6 +25,7 @@ DEBUG_EXEMPT_PATHS = {
 
 # 白名单路径，DEBUG 模式下包含 FastAPI 文档路径
 EXEMPT_PATHS: set[str] = {"/api/v1", "/api/v1/"}  # Root path for health check
+EXEMPT_PATTERNS: list[re.Pattern[str]] = []  # Regex patterns for parameterized exempt paths
 _EXEMPT_ENDPOINT_ATTR = "__jwt_exempt__"
 _ROUTES_FROZEN_ATTR = "__jwt_routes_frozen__"
 _SETUP_ATTR = "__jwt_middleware_installed__"
@@ -34,13 +36,22 @@ def exempt[TFunc: Callable[..., Any]](fn: TFunc) -> TFunc:
     return fn
 
 
+def _path_to_regex(path: str) -> re.Pattern[str]:
+    """Convert a path template like /auth/{provider}/callback to a regex."""
+    pattern = re.sub(r"\{[^}]+\}", r"[^/]+", path)
+    return re.compile(f"^{pattern}$")
+
+
 def _build_exempt_paths(app: FastAPI) -> set[str]:
     paths: set[str] = set()
     for route in list(app.router.routes):
         if not isinstance(route, APIRoute):
             continue
         if getattr(route.endpoint, _EXEMPT_ENDPOINT_ATTR, False):
-            paths.add(route.path)
+            if "{" in route.path:
+                EXEMPT_PATTERNS.append(_path_to_regex(route.path))
+            else:
+                paths.add(route.path)
     return paths
 
 
@@ -100,7 +111,7 @@ def setup_auth_middleware(app: FastAPI) -> None:
     @app.middleware("http")
     async def jwt_middleware(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
         path = request.url.path
-        if path in EXEMPT_PATHS:
+        if path in EXEMPT_PATHS or any(p.match(path) for p in EXEMPT_PATTERNS):
             return await call_next(request)
 
         auth = request.headers.get("Authorization")
