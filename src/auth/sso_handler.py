@@ -33,9 +33,17 @@ async def sso_authorize(provider: str) -> Response:
 @auth.exempt
 @router.get("/{provider}/callback")
 async def sso_callback(provider: str, code: str, state: str) -> Response:
-    """Handle OAuth callback: exchange code, login or register user."""
+    """Handle OAuth callback for both login and account linking.
+
+    The state parameter determines the flow:
+    - No user_id in state → login/register, returns tokens
+    - user_id in state → account linking, returns success message
+    """
     _validate_provider(provider)
     token_pair = await sso_service.handle_sso_callback(provider, code, state)
+    if token_pair is None:
+        # Link flow
+        return ok(message=f"{provider.title()} account linked successfully")
     return ok(
         data=TokenData(
             access_token=token_pair.access_token,
@@ -61,15 +69,6 @@ async def sso_link(provider: str, request: Request) -> Response:
         raise erri.unauthorized("User not found")
     url = await sso_service.get_link_authorization_url(provider, user.id)
     return ok(data=sso_dto.OAuthAuthorizeResponse(authorization_url=url).model_dump())
-
-
-@router.get("/{provider}/link/callback")
-async def sso_link_callback(provider: str, code: str, state: str, request: Request) -> Response:
-    """Complete the linking flow."""
-    _validate_provider(provider)
-    username = auth.get_username(request)
-    await sso_service.handle_link_callback(provider, code, state, username)
-    return ok(message=f"{provider.title()} account linked successfully")
 
 
 @router.delete("/{provider}/unlink")

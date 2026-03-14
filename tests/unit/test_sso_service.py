@@ -101,14 +101,15 @@ def test_callback_url_override(monkeypatch):
     assert url == "https://custom.example.com/auth/callback/github"
 
 
-def test_callback_url_link(monkeypatch):
+def test_callback_url_same_for_login_and_link(monkeypatch):
+    """Login and link use the same callback URL — state distinguishes them."""
     monkeypatch.setattr(
         sso_service,
         "settings",
         type("S", (), {"oauth_callback_base_url": "", "frontend_url": "https://app.example.com"})(),
     )
-    url = sso_service._callback_url("google", link=True)
-    assert url == "https://app.example.com/auth/callback/google/link/callback"
+    url = sso_service._callback_url("google")
+    assert url == "https://app.example.com/auth/callback/google"
 
 
 # ---------------------------------------------------------------------------

@@ -73,10 +73,9 @@ def _get_scopes(provider: str) -> list[str]:
     return []
 
 
-def _callback_url(provider: str, *, link: bool = False) -> str:
+def _callback_url(provider: str) -> str:
     base = settings.oauth_callback_base_url or settings.frontend_url
-    suffix = "/link/callback" if link else ""
-    return f"{base}/auth/callback/{provider}{suffix}"
+    return f"{base}/auth/callback/{provider}"
 
 
 # ---------------------------------------------------------------------------
@@ -106,10 +105,10 @@ def _consume_state(state: str) -> dict | None:
 # ---------------------------------------------------------------------------
 
 
-async def get_authorization_url(provider: str, *, user_id: UUID | None = None, link: bool = False) -> str:
+async def get_authorization_url(provider: str, *, user_id: UUID | None = None) -> str:
     client = _get_client(provider)
     state = _store_state(provider, user_id=user_id)
-    redirect_uri = _callback_url(provider, link=link)
+    redirect_uri = _callback_url(provider)
     scopes = _get_scopes(provider)
     url = await client.get_authorization_url(redirect_uri, state=state, scope=scopes)
     return url
@@ -209,16 +208,8 @@ async def _create_sso_user_with_tenant(
     return user
 
 
-async def handle_sso_callback(provider: str, code: str, state: str) -> TokenPair:
-    """Handle the OAuth callback: exchange code, find/create user, issue tokens."""
-    # Validate state
-    state_data = _consume_state(state)
-    if state_data is None:
-        raise erri.bad_request("Invalid or expired OAuth state")
-    if state_data["provider"] != provider:
-        raise erri.bad_request("OAuth state provider mismatch")
-
-    # Exchange code for token
+async def _exchange_and_fetch(provider: str, code: str) -> dict:
+    """Exchange authorization code for token and fetch user info from provider."""
     client = _get_client(provider)
     redirect_uri = _callback_url(provider)
     try:
@@ -227,16 +218,37 @@ async def handle_sso_callback(provider: str, code: str, state: str) -> TokenPair
         logger.exception(f"Failed to exchange OAuth code for {provider}")
         raise erri.bad_request("Failed to exchange authorization code") from None
 
-    access_token = oauth2_token["access_token"]
-
-    # Fetch user info from provider
     try:
-        user_info = await _fetch_user_info(provider, access_token)
+        return await _fetch_user_info(provider, oauth2_token["access_token"])
     except Exception:
         logger.exception(f"Failed to fetch user info from {provider}")
         raise erri.internal("Failed to fetch user info from provider") from None
 
+
+async def handle_sso_callback(provider: str, code: str, state: str) -> TokenPair | None:
+    """Handle the OAuth callback for both login and link flows.
+
+    Uses state.user_id to distinguish:
+    - user_id is None → login/register flow, returns TokenPair
+    - user_id is set  → account linking flow, returns None
+    """
+    # Validate state
+    state_data = _consume_state(state)
+    if state_data is None:
+        raise erri.bad_request("Invalid or expired OAuth state")
+    if state_data["provider"] != provider:
+        raise erri.bad_request("OAuth state provider mismatch")
+
+    user_info = await _exchange_and_fetch(provider, code)
     provider_user_id = user_info["id"]
+
+    # --- Account linking flow (state has user_id) ---
+    link_user_id = state_data.get("user_id")
+    if link_user_id:
+        await _handle_link(UUID(link_user_id), provider, user_info)
+        return None
+
+    # --- Login / register flow ---
     provider_email = user_info.get("email")
     email_verified = user_info.get("email_verified", False)
 
@@ -295,48 +307,20 @@ async def handle_sso_callback(provider: str, code: str, state: str) -> TokenPair
 
 async def get_link_authorization_url(provider: str, user_id: UUID) -> str:
     """Generate authorization URL for linking a provider to an existing account."""
+    accounts = await get_oauth_accounts_for_user(user_id)
+    for acc in accounts:
+        if acc.provider == provider:
+            raise erri.conflict(f"Provider {provider} is already linked")
+    return await get_authorization_url(provider, user_id=user_id)
+
+
+async def _handle_link(user_id: UUID, provider: str, user_info: dict) -> None:
+    """Link an OAuth provider to an existing user."""
     # Check if already linked
     accounts = await get_oauth_accounts_for_user(user_id)
     for acc in accounts:
         if acc.provider == provider:
             raise erri.conflict(f"Provider {provider} is already linked")
-    return await get_authorization_url(provider, user_id=user_id, link=True)
-
-
-async def handle_link_callback(provider: str, code: str, state: str, username: str) -> None:
-    """Handle the link callback: exchange code, link provider to current user."""
-    state_data = _consume_state(state)
-    if state_data is None:
-        raise erri.bad_request("Invalid or expired OAuth state")
-    if state_data["provider"] != provider:
-        raise erri.bad_request("OAuth state provider mismatch")
-
-    user_id_str = state_data.get("user_id")
-    if not user_id_str:
-        raise erri.bad_request("Invalid link state: missing user context")
-    user_id = UUID(user_id_str)
-
-    # Verify the user making the request matches the state
-    user = await get_user_by_id(user_id)
-    if not user or user.username != username:
-        raise erri.forbidden("User mismatch in link flow")
-
-    # Check if already linked
-    accounts = await get_oauth_accounts_for_user(user_id)
-    for acc in accounts:
-        if acc.provider == provider:
-            raise erri.conflict(f"Provider {provider} is already linked")
-
-    # Exchange code
-    client = _get_client(provider)
-    redirect_uri = _callback_url(provider, link=True)
-    try:
-        oauth2_token = await client.get_access_token(code, redirect_uri)
-    except Exception:
-        raise erri.bad_request("Failed to exchange authorization code") from None
-
-    access_token = oauth2_token["access_token"]
-    user_info = await _fetch_user_info(provider, access_token)
 
     # Check this provider account isn't already linked to someone else
     existing = await get_oauth_account(provider, user_info["id"])
