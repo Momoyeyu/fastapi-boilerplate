@@ -79,31 +79,33 @@ def test_consume_invalid_state(fake_redis):
 # ---------------------------------------------------------------------------
 
 
-def test_callback_url_default(monkeypatch):
+def test_callback_url_defaults_to_frontend(monkeypatch):
     monkeypatch.setattr(
         sso_service,
         "settings",
-        type("S", (), {"frontend_url": "http://localhost:3000"})(),
+        type("S", (), {"oauth_callback_base_url": "", "frontend_url": "http://localhost:3000"})(),
     )
     url = sso_service._callback_url("google")
     assert url == "http://localhost:3000/auth/callback/google"
 
 
-def test_callback_url_with_custom_frontend(monkeypatch):
+def test_callback_url_override(monkeypatch):
     monkeypatch.setattr(
         sso_service,
         "settings",
-        type("S", (), {"frontend_url": "https://app.example.com"})(),
+        type(
+            "S", (), {"oauth_callback_base_url": "https://custom.example.com", "frontend_url": "http://localhost:3000"}
+        )(),
     )
     url = sso_service._callback_url("github")
-    assert url == "https://app.example.com/auth/callback/github"
+    assert url == "https://custom.example.com/auth/callback/github"
 
 
 def test_callback_url_link(monkeypatch):
     monkeypatch.setattr(
         sso_service,
         "settings",
-        type("S", (), {"frontend_url": "https://app.example.com"})(),
+        type("S", (), {"oauth_callback_base_url": "", "frontend_url": "https://app.example.com"})(),
     )
     url = sso_service._callback_url("google", link=True)
     assert url == "https://app.example.com/auth/callback/google/link/callback"

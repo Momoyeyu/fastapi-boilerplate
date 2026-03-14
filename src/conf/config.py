@@ -62,6 +62,7 @@ class Settings(BaseSettings):
     google_client_secret: SecretStr = SecretStr("")
     github_client_id: str = ""
     github_client_secret: SecretStr = SecretStr("")
+    oauth_callback_base_url: str = ""  # override base URL for OAuth callbacks; defaults to frontend_url
 
     # LLM (OpenAI-compatible)
     llm_api_key: SecretStr = SecretStr("")
