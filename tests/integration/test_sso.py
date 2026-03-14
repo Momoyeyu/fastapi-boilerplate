@@ -1,8 +1,16 @@
 """Integration tests for SSO endpoints."""
 
+import pytest
 from fastapi.testclient import TestClient
 
 from common.resp import Code
+from conf import config as config_module
+
+
+@pytest.fixture(autouse=True)
+def enable_sso(monkeypatch):
+    """Enable SSO for all tests in this module."""
+    monkeypatch.setattr(config_module.settings, "enable_sso", True)
 
 
 class TestSSOEndpoints:

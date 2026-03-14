@@ -58,6 +58,7 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:3000"
 
     # OAuth2 / SSO
+    enable_sso: bool = False
     google_client_id: str = ""
     google_client_secret: SecretStr = SecretStr("")
     github_client_id: str = ""
