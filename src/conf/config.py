@@ -57,6 +57,13 @@ class Settings(BaseSettings):
     invitation_token_expire_seconds: int = 604800  # 7 days
     frontend_url: str = "http://localhost:3000"
 
+    # OAuth2 / SSO
+    google_client_id: str = ""
+    google_client_secret: SecretStr = SecretStr("")
+    github_client_id: str = ""
+    github_client_secret: SecretStr = SecretStr("")
+    oauth_redirect_base_url: str = ""  # e.g. https://api.example.com
+
     # LLM (OpenAI-compatible)
     llm_api_key: SecretStr = SecretStr("")
     llm_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
