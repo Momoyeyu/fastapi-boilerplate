@@ -35,7 +35,7 @@ def init_routers(_app: FastAPI) -> None:
         return ok(message="Hello FastAPI + UV!")
 
     api_router.include_router(auth_router)
-    if settings.enable_sso:
+    if settings.enable_google_sso or settings.enable_github_sso:
         from auth.sso_handler import router as sso_router
 
         api_router.include_router(sso_router)

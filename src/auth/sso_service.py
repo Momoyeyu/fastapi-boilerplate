@@ -49,7 +49,15 @@ def _get_github_client() -> GitHubOAuth2:
     return GitHubOAuth2(settings.github_client_id, settings.github_client_secret.get_secret_value())
 
 
+def _ensure_provider_enabled(provider: str) -> None:
+    if provider == "google" and not settings.enable_google_sso:
+        raise erri.bad_request("Google SSO is not enabled")
+    if provider == "github" and not settings.enable_github_sso:
+        raise erri.bad_request("GitHub SSO is not enabled")
+
+
 def _get_client(provider: str):
+    _ensure_provider_enabled(provider)
     if provider == "google":
         return _get_google_client()
     elif provider == "github":

@@ -10,7 +10,8 @@ from conf import config as config_module
 @pytest.fixture(autouse=True)
 def enable_sso(monkeypatch):
     """Enable SSO for all tests in this module."""
-    monkeypatch.setattr(config_module.settings, "enable_sso", True)
+    monkeypatch.setattr(config_module.settings, "enable_google_sso", True)
+    monkeypatch.setattr(config_module.settings, "enable_github_sso", True)
 
 
 class TestSSOEndpoints:
