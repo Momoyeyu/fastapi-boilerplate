@@ -180,8 +180,8 @@ async def test_complete_registration_success(monkeypatch: pytest.MonkeyPatch):
 
     monkeypatch.setattr(
         service,
-        "create_user_with_tenant",
-        async_return((user, MagicMock(), MagicMock())),
+        "create_user",
+        async_return(user),
     )
 
     result = await service.complete_registration("alice@test.com", "123456", "StrongPw1")
@@ -244,15 +244,11 @@ async def test_complete_registration_with_invitation_context(monkeypatch: pytest
 
     captured_kwargs: dict = {}
 
-    async def mock_create_user_with_tenant(*args, **kwargs):
+    async def mock_create_user(*args, **kwargs):
         captured_kwargs.update(kwargs)
-        return (
-            User(id=_ALICE_ID, username="alice", email="alice@test.com", hashed_password="x"),
-            MagicMock(),
-            MagicMock(),
-        )
+        return User(id=_ALICE_ID, username="alice", email="alice@test.com", hashed_password="x")
 
-    monkeypatch.setattr(service, "create_user_with_tenant", mock_create_user_with_tenant)
+    monkeypatch.setattr(service, "create_user", mock_create_user)
 
     mock_token_pair = TokenPair(
         access_token="token-123",
@@ -287,7 +283,7 @@ async def test_login_user_user_not_found(monkeypatch: pytest.MonkeyPatch):
 
 
 async def test_login_user_password_mismatch(monkeypatch: pytest.MonkeyPatch):
-    user = User(id=1, username="alice", email="alice@test.com", hashed_password=get_password_hash("correct"))
+    user = User(id=_ALICE_ID, username="alice", email="alice@test.com", hashed_password=get_password_hash("correct"))
     monkeypatch.setattr(service, "get_user_by_identifier", async_return(user), raising=True)
     with pytest.raises(erri.BusinessError) as exc:
         await service.login_user("alice", "wrong")
@@ -303,7 +299,7 @@ async def test_login_user_user_without_id(monkeypatch: pytest.MonkeyPatch):
 
 
 async def test_login_user_success_creates_token(monkeypatch: pytest.MonkeyPatch):
-    user = User(id=7, username="alice", email="alice@test.com", hashed_password=get_password_hash("pw"))
+    user = User(id=_BOB_ID, username="alice", email="alice@test.com", hashed_password=get_password_hash("pw"))
     monkeypatch.setattr(service, "get_user_by_identifier", async_return(user), raising=True)
 
     captured: dict[str, object] = {}
@@ -327,7 +323,7 @@ async def test_login_user_success_creates_token(monkeypatch: pytest.MonkeyPatch)
 
 
 async def test_login_user_with_email(monkeypatch: pytest.MonkeyPatch):
-    user = User(id=7, username="alice", email="alice@test.com", hashed_password=get_password_hash("pw"))
+    user = User(id=_BOB_ID, username="alice", email="alice@test.com", hashed_password=get_password_hash("pw"))
     monkeypatch.setattr(service, "get_user_by_identifier", async_return(user), raising=True)
 
     mock_token_pair = TokenPair(

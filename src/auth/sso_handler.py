@@ -6,7 +6,7 @@ from auth.sso_dto import SUPPORTED_PROVIDERS
 from common import erri
 from common.resp import Response, ok
 from middleware import auth
-from user.model import get_user
+from middleware.auth import get_user_id
 
 router = APIRouter(prefix="/auth", tags=["auth-sso"])
 
@@ -63,11 +63,8 @@ async def sso_callback(provider: str, code: str, state: str) -> Response:
 async def sso_link(provider: str, request: Request) -> Response:
     """Start the linking flow for an authenticated user."""
     _validate_provider(provider)
-    username = auth.get_username(request)
-    user = await get_user(username)
-    if not user or user.id is None:
-        raise erri.unauthorized("User not found")
-    url = await sso_service.get_link_authorization_url(provider, user.id)
+    user_id = get_user_id(request)
+    url = await sso_service.get_link_authorization_url(provider, user_id)
     return ok(data=sso_dto.OAuthAuthorizeResponse(authorization_url=url).model_dump())
 
 
@@ -75,20 +72,14 @@ async def sso_link(provider: str, request: Request) -> Response:
 async def sso_unlink(provider: str, request: Request) -> Response:
     """Unlink a provider from the authenticated user."""
     _validate_provider(provider)
-    username = auth.get_username(request)
-    user = await get_user(username)
-    if not user or user.id is None:
-        raise erri.unauthorized("User not found")
-    await sso_service.unlink_provider(user.id, provider)
+    user_id = get_user_id(request)
+    await sso_service.unlink_provider(user_id, provider)
     return ok(message=f"{provider.title()} account unlinked successfully")
 
 
 @router.get("/providers")
 async def list_providers(request: Request) -> Response:
     """List linked providers for the authenticated user."""
-    username = auth.get_username(request)
-    user = await get_user(username)
-    if not user or user.id is None:
-        raise erri.unauthorized("User not found")
-    data = await sso_service.get_linked_providers(user.id)
+    user_id = get_user_id(request)
+    data = await sso_service.get_linked_providers(user_id)
     return ok(data=data)

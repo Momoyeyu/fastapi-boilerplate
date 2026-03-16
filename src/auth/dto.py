@@ -23,6 +23,15 @@ class TokenData(BaseModel):
     refresh_token_expires_in: int
 
 
+class OAuth2TokenResponse(BaseModel):
+    """RFC 6749 §5.1 compliant token response for Swagger UI OAuth2 flow."""
+
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+    refresh_token: str | None = None
+
+
 class LoginRequest(BaseModel):
     identifier: str  # email or username
     password: str

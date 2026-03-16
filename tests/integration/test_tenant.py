@@ -6,22 +6,17 @@ from common.resp import Code
 
 
 class TestRegistrationCreatesTenant:
-    """Verify that registration creates a default tenant."""
+    """Verify that registration does NOT create a default tenant after auth refactor."""
 
-    def test_register_creates_default_tenant(self, client: TestClient, auth_header):
-        """After registration, user should have a default tenant as owner."""
+    def test_register_creates_no_tenant(self, client: TestClient, auth_header):
+        """After registration, user should have zero tenants."""
         headers = auth_header("tenantuser@example.com", "Pass1234")
 
         # List tenants
         resp = client.get("/api/v1/tenant", headers=headers)
         assert resp.json()["code"] == Code.OK
         tenants = resp.json()["data"]
-        assert len(tenants) >= 1
-
-        # First tenant should be the auto-created one
-        t = tenants[0]
-        assert t["user_role"] == "owner"
-        assert t["tenant_name"].startswith("workspace_")
+        assert len(tenants) == 0
 
 
 class TestTenantCRUD:
@@ -60,8 +55,8 @@ class TestTenantCRUD:
 
         resp = client.get("/api/v1/tenant", headers=headers)
         assert resp.json()["code"] == Code.OK
-        # Default tenant + 2 created = 3
-        assert len(resp.json()["data"]) >= 3
+        # No default tenant; only the 2 explicitly created
+        assert len(resp.json()["data"]) >= 2
 
     def test_update_tenant_as_owner(self, client: TestClient, auth_header):
         headers = auth_header("owner@example.com", "Pass1234")

@@ -30,7 +30,6 @@ from common import erri
 from conf.config import settings
 from conf.db import AsyncSessionLocal
 from conf.redis import get_redis
-from tenant.model import Tenant, UserTenant
 from user.model import User, get_user_by_email, get_user_by_id
 
 # ---------------------------------------------------------------------------
@@ -168,30 +167,22 @@ async def _fetch_user_info(provider: str, access_token: str) -> dict:
     raise erri.bad_request(f"Unsupported provider: {provider}")
 
 
-async def _create_sso_user_with_tenant(
+async def _create_sso_user(
     *,
     username: str,
     email: str,
-    tenant_name: str,
     provider: str,
     provider_user_id: str,
     provider_email: str | None = None,
     provider_username: str | None = None,
     avatar_url: str | None = None,
 ) -> User:
-    """Atomically create user, tenant, user_tenant, and oauth_account in one transaction."""
+    """Atomically create user and oauth_account in one transaction."""
     async with AsyncSessionLocal() as session:
         async with session.begin():
             user = User(username=username, hashed_password=None, email=email)
             session.add(user)
             await session.flush()
-
-            tenant = Tenant(name=tenant_name)
-            session.add(tenant)
-            await session.flush()
-
-            user_tenant = UserTenant(user_id=user.id, tenant_id=tenant.id, user_role="owner")
-            session.add(user_tenant)
 
             oauth_acc = OAuthAccount(
                 user_id=user.id,
@@ -279,14 +270,12 @@ async def handle_sso_callback(provider: str, code: str, state: str) -> TokenPair
         raise erri.bad_request("Email not verified by provider. Please verify your email first.")
 
     username = f"user_{uuid7().hex[:12]}"
-    tenant_name = f"workspace_{uuid7().hex[:12]}"
     email = provider_email or f"{provider}_{provider_user_id}@oauth.local"
 
     try:
-        user = await _create_sso_user_with_tenant(
+        user = await _create_sso_user(
             username=username,
             email=email,
-            tenant_name=tenant_name,
             provider=provider,
             provider_user_id=provider_user_id,
             provider_email=provider_email,

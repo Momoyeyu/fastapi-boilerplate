@@ -2,6 +2,7 @@ import re
 from collections.abc import Awaitable, Callable
 from functools import cache
 from typing import Any, NoReturn
+from uuid import UUID
 
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
@@ -23,7 +24,6 @@ DEBUG_EXEMPT_PATHS = {
     "/openapi.json",  # OpenAPI schema
 }
 
-# 白名单路径，DEBUG 模式下包含 FastAPI 文档路径
 EXEMPT_PATHS: set[str] = {"/api/v1", "/api/v1/"}  # Root path for health check
 EXEMPT_PATTERNS: list[re.Pattern[str]] = []  # Regex patterns for parameterized exempt paths
 _EXEMPT_ENDPOINT_ATTR = "__jwt_exempt__"
@@ -81,21 +81,69 @@ def verify_token(token: str) -> dict[str, Any]:
         raise erri.unauthorized("Invalid token") from None
 
 
-def get_username(request: Request) -> str:
-    """Get the username from the request state or Authorization header."""
-    state_user = getattr(request.state, "user", None)
-    if isinstance(state_user, str) and state_user:
-        return state_user
-
+def _decode_from_header(request: Request) -> dict[str, Any]:
+    """Decode JWT from Authorization header. Fallback when middleware didn't run."""
     authorization = request.headers.get("Authorization")
     if authorization and authorization.startswith("Bearer "):
         token = authorization.split(" ", 1)[1]
-        payload = verify_token(token)
-        sub = payload.get("sub")
-        if isinstance(sub, str) and sub:
-            return sub
-
+        return verify_token(token)
     raise erri.unauthorized("Unauthorized")
+
+
+def get_user_id(request: Request) -> UUID:
+    """Get user_id from request state (set by middleware) or decode from header.
+
+    JWT sub claim stores user_id (immutable UUID), so no DB lookup needed.
+    """
+    state_uid = getattr(request.state, "user_id", None)
+    if isinstance(state_uid, UUID):
+        return state_uid
+
+    payload = _decode_from_header(request)
+    sub = payload.get("sub")
+    if isinstance(sub, str) and sub:
+        return UUID(sub)
+    raise erri.unauthorized("Unauthorized")
+
+
+def get_username(request: Request) -> str:
+    """Get username from request state (set by middleware) or decode from header."""
+    state_username = getattr(request.state, "username", None)
+    if isinstance(state_username, str) and state_username:
+        return state_username
+
+    payload = _decode_from_header(request)
+    username = payload.get("username")
+    if isinstance(username, str) and username:
+        return username
+    raise erri.unauthorized("Unauthorized")
+
+
+async def get_tenant_id(request: Request) -> UUID | None:
+    """Resolve the current tenant UUID from X-Tenant-ID header.
+
+    Returns:
+        tenant_id if header is present and user is a member, None otherwise.
+
+    Raises:
+        BusinessError: If the header value is invalid or user is not a member.
+    """
+    from tenant.model import get_user_tenant
+
+    header_tenant = request.headers.get("X-Tenant-ID")
+    if not header_tenant:
+        return None
+
+    try:
+        tenant_id = UUID(header_tenant)
+    except ValueError:
+        raise erri.bad_request("Invalid X-Tenant-ID header") from None
+
+    user_id = get_user_id(request)
+    user_tenant = await get_user_tenant(user_id, tenant_id)
+    if not user_tenant:
+        raise erri.forbidden("Not a member of this tenant")
+    return tenant_id
 
 
 def setup_auth_middleware(app: FastAPI) -> None:
@@ -125,5 +173,15 @@ def setup_auth_middleware(app: FastAPI) -> None:
             payload = verify_token(token)
         except erri.BusinessError as e:
             return JSONResponse(status_code=e.status_code, content=resp.error(e.code, e.message).model_dump())
-        request.state.user = payload.get("sub")
+
+        # Store both user_id and username in request state
+        sub = payload.get("sub", "")
+        try:
+            request.state.user_id = UUID(sub) if sub else None
+        except ValueError:
+            return JSONResponse(
+                status_code=401,
+                content=resp.error(resp.Code.UNAUTHORIZED, "Invalid token").model_dump(),
+            )
+        request.state.username = payload.get("username", "")
         return await call_next(request)
