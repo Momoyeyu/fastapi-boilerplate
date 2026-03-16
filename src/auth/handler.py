@@ -55,16 +55,17 @@ if settings.debug:
 
     @auth.exempt
     @router.post("/swagger/login", tags=["swagger"], include_in_schema=True)
-    async def swagger_login(form_data: OAuth2PasswordRequestForm = Depends()) -> Response:
-        """OAuth2-compatible login for Swagger UI. Only available in debug mode."""
+    async def swagger_login(form_data: OAuth2PasswordRequestForm = Depends()) -> dto.OAuth2TokenResponse:
+        """OAuth2-compatible login for Swagger UI. Only available in debug mode.
+
+        Returns RFC 6749 token response (not wrapped in the standard envelope)
+        because Swagger UI expects {"access_token", "token_type"} at the top level.
+        """
         token_pair = await service.login_user(form_data.username, form_data.password)
-        return ok(
-            data=dto.TokenData(
-                access_token=token_pair.access_token,
-                refresh_token=token_pair.refresh_token,
-                expires_in=token_pair.expires_in,
-                refresh_token_expires_in=token_pair.refresh_token_expires_in,
-            ).model_dump()
+        return dto.OAuth2TokenResponse(
+            access_token=token_pair.access_token,
+            refresh_token=token_pair.refresh_token,
+            expires_in=token_pair.expires_in,
         )
 
 
