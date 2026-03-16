@@ -34,44 +34,6 @@ from user.model import User, email_exists, get_user_by_email
 # ---------------------------------------------------------------------------
 
 
-async def create_user_with_tenant(
-    username: str,
-    hashed_password: str | None,
-    email: str,
-    tenant_name: str,
-    *,
-    invitation_code_id: UUID | None = None,
-) -> tuple[User, Tenant, UserTenant]:
-    """Atomically create a user, a tenant, and assign the user as owner.
-
-    All three inserts happen in a single transaction.
-    """
-    async with AsyncSessionLocal() as session:
-        async with session.begin():
-            user = User(
-                username=username,
-                hashed_password=hashed_password,
-                email=email,
-                invitation_code_id=invitation_code_id,
-            )
-            session.add(user)
-            await session.flush()
-
-            tenant = Tenant(name=tenant_name)
-            session.add(tenant)
-            await session.flush()
-
-            user_tenant = UserTenant(user_id=user.id, tenant_id=tenant.id, user_role="owner")
-            session.add(user_tenant)
-            await session.flush()
-
-            await session.refresh(user)
-            await session.refresh(tenant)
-            await session.refresh(user_tenant)
-
-        return user, tenant, user_tenant
-
-
 async def create_user_for_tenant(
     username: str,
     hashed_password: str,

@@ -53,14 +53,6 @@ async def get_tenant(tenant_id: UUID) -> Tenant | None:
         return result.scalars().one_or_none()
 
 
-async def get_tenant_by_name(name: str) -> Tenant | None:
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            select(Tenant).where(Tenant.name == name, Tenant.is_deleted == False)  # noqa: E712
-        )
-        return result.scalars().one_or_none()
-
-
 async def update_tenant(tenant_id: UUID, *, name: str | None = None, status: str | None = None) -> Tenant | None:
     async with AsyncSessionLocal() as session:
         result = await session.execute(
