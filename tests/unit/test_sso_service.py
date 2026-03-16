@@ -254,7 +254,7 @@ async def test_callback_creates_new_user(monkeypatch, fake_redis):
     )
     monkeypatch.setattr(sso_service, "get_oauth_account", async_return(None))
     monkeypatch.setattr(sso_service, "get_user_by_email", async_return(None))
-    monkeypatch.setattr(sso_service, "_create_sso_user_with_tenant", async_return(user))
+    monkeypatch.setattr(sso_service, "_create_sso_user", async_return(user))
     monkeypatch.setattr(sso_service, "create_token", lambda u: token_pair)
 
     result = await sso_service.handle_sso_callback("google", "code", state)

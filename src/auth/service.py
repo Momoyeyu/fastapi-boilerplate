@@ -27,8 +27,7 @@ from common.email import send_verification_email
 from common.utils import get_password_hash, validate_password, verify_password
 from conf.config import settings
 from conf.redis import get_redis
-from tenant.service import create_user_with_tenant
-from user.model import User, email_exists, get_user_by_email, get_user_by_identifier, update_user_password
+from user.model import User, create_user, email_exists, get_user_by_email, get_user_by_identifier, update_user_password
 
 # ---------------------------------------------------------------------------
 # 1. Verification codes (Redis)
@@ -197,15 +196,19 @@ def _jwt() -> PyJWT:
     return PyJWT()
 
 
-def create_access_token(username: str) -> tuple[str, int]:
+def create_access_token(user_id: UUID, username: str) -> tuple[str, int]:
     """Create a JWT access token for the user.
+
+    Claims:
+        sub: user_id (immutable, primary identity)
+        username: current username (convenience, may change)
 
     Returns:
         A tuple of (access_token, expires_in).
     """
     now = int(time.time())
     expires_in = settings.jwt_expire_seconds
-    payload = {"sub": username, "iat": now, "exp": now + expires_in}
+    payload = {"sub": str(user_id), "username": username, "iat": now, "exp": now + expires_in}
     token = _jwt().encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
     return token, expires_in
 
@@ -219,7 +222,7 @@ def create_token(user: User) -> TokenPair:
     if user.id is None:
         raise erri.internal("User ID is required for token creation")
 
-    access_token, expires_in = create_access_token(user.username)
+    access_token, expires_in = create_access_token(user.id, user.username)
     refresh_token_str = create_refresh_token(user.id, user.username)
 
     return TokenPair(
@@ -246,7 +249,7 @@ def refresh_tokens(refresh_token: str) -> TokenPair:
         raise erri.unauthorized("Invalid or expired refresh token")
 
     new_token, user_data = result
-    access_token, expires_in = create_access_token(user_data["username"])
+    access_token, expires_in = create_access_token(UUID(user_data["user_id"]), user_data["username"])
 
     return TokenPair(
         access_token=access_token,
@@ -342,14 +345,10 @@ async def complete_registration(email: str, code: str, password: str) -> TokenPa
     hashed = get_password_hash(password)
 
     username = f"user_{uuid7().hex[:12]}"
-    tenant_name = f"workspace_{uuid7().hex[:12]}"
 
-    try:
-        user, _, _ = await create_user_with_tenant(
-            username, hashed, email, tenant_name, invitation_code_id=invitation_code_id
-        )
-    except Exception:
-        raise erri.internal("Create user failed") from None
+    user = await create_user(username, hashed, email, invitation_code_id=invitation_code_id)
+    if not user:
+        raise erri.internal("Create user failed")
 
     if invitation_code_id is not None:
         await increment_used_count(invitation_code_id)
