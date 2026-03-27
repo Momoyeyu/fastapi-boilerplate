@@ -164,9 +164,6 @@ class FakeRedis:
         self._sets: dict[str, set[str]] = {}
 
     # String operations
-    async def setex(self, key, ttl, value):
-        self._store[key] = value
-
     async def set(self, key, value, ex=None):
         self._store[key] = value
 

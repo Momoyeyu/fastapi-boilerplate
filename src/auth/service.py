@@ -49,7 +49,7 @@ def generate_code() -> str:
 async def create_verification_code(email: str, purpose: PurposeType) -> str:
     code = generate_code()
     key = _make_key(email, purpose)
-    await get_redis().setex(key, settings.verification_code_expire_seconds, code)
+    await get_redis().set(key, code, ex=settings.verification_code_expire_seconds)
     return code
 
 
@@ -68,7 +68,7 @@ _INVITATION_PREFIX = "invitation_context:"
 
 async def store_invitation_context(email: str, invitation_code_id: UUID) -> None:
     key = f"{_INVITATION_PREFIX}{email.lower()}"
-    await get_redis().setex(key, settings.verification_code_expire_seconds, str(invitation_code_id))
+    await get_redis().set(key, str(invitation_code_id), ex=settings.verification_code_expire_seconds)
 
 
 async def consume_invitation_context(email: str) -> UUID | None:

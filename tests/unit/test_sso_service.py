@@ -27,7 +27,7 @@ class FakeRedis:
     def __init__(self):
         self._store = {}
 
-    async def setex(self, key, ttl, value):
+    async def set(self, key, value, ex=None):
         self._store[key] = value
 
     async def get(self, key):

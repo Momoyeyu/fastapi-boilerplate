@@ -26,4 +26,6 @@ async def close_redis() -> None:
     global _client
     with _lock:
         if _client is not None:
+            if hasattr(_client, "connection_pool"):
+                _client.connection_pool.disconnect()
             _client = None

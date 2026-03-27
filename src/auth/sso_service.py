@@ -85,7 +85,7 @@ def _callback_url(provider: str) -> str:
 async def _store_state(provider: str, *, user_id: UUID | None = None) -> str:
     state = secrets.token_urlsafe(32)
     data = json.dumps({"provider": provider, "user_id": str(user_id) if user_id else None})
-    await get_redis().setex(f"{_OAUTH_STATE_PREFIX}{state}", _OAUTH_STATE_TTL, data)
+    await get_redis().set(f"{_OAUTH_STATE_PREFIX}{state}", data, ex=_OAUTH_STATE_TTL)
     return state
 
 

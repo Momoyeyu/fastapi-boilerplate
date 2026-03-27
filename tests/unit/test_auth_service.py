@@ -371,9 +371,6 @@ class FakeRedis:
         self._store = {}
         self._sets = {}
 
-    async def setex(self, key, ttl, value):
-        self._store[key] = value
-
     async def set(self, key, value, ex=None):
         self._store[key] = value
 
