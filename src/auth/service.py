@@ -46,38 +46,38 @@ def generate_code() -> str:
     return str(randbelow(900000) + 100000)
 
 
-def create_verification_code(email: str, purpose: PurposeType) -> str:
+async def create_verification_code(email: str, purpose: PurposeType) -> str:
     code = generate_code()
     key = _make_key(email, purpose)
-    get_redis().setex(key, settings.verification_code_expire_seconds, code)
+    await get_redis().setex(key, settings.verification_code_expire_seconds, code)
     return code
 
 
-def consume_verification_code(email: str, code: str, purpose: PurposeType) -> bool:
+async def consume_verification_code(email: str, code: str, purpose: PurposeType) -> bool:
     key = _make_key(email, purpose)
     r = get_redis()
-    stored = r.get(key)
+    stored = await r.get(key)
     if stored is None or stored != code:
         return False
-    r.delete(key)
+    await r.delete([key])
     return True
 
 
 _INVITATION_PREFIX = "invitation_context:"
 
 
-def store_invitation_context(email: str, invitation_code_id: UUID) -> None:
+async def store_invitation_context(email: str, invitation_code_id: UUID) -> None:
     key = f"{_INVITATION_PREFIX}{email.lower()}"
-    get_redis().setex(key, settings.verification_code_expire_seconds, str(invitation_code_id))
+    await get_redis().setex(key, settings.verification_code_expire_seconds, str(invitation_code_id))
 
 
-def consume_invitation_context(email: str) -> UUID | None:
+async def consume_invitation_context(email: str) -> UUID | None:
     key = f"{_INVITATION_PREFIX}{email.lower()}"
     r = get_redis()
-    value = r.get(key)
+    value = await r.get(key)
     if value is None:
         return None
-    r.delete(key)
+    await r.delete([key])
     return UUID(value)
 
 
@@ -98,7 +98,7 @@ def generate_refresh_token() -> str:
     return secrets.token_urlsafe(32)
 
 
-def create_refresh_token(user_id: UUID, username: str) -> str:
+async def create_refresh_token(user_id: UUID, username: str) -> str:
     """Create and store a new refresh token.
 
     Returns:
@@ -108,45 +108,45 @@ def create_refresh_token(user_id: UUID, username: str) -> str:
     data = json.dumps({"user_id": str(user_id), "username": username})
     ttl = settings.refresh_token_expire_seconds
     r = get_redis()
-    r.set(f"{_REFRESH_PREFIX}{token}", data, ex=ttl)
+    await r.set(f"{_REFRESH_PREFIX}{token}", data, ex=ttl)
     user_set_key = f"{_USER_TOKENS_PREFIX}{user_id}"
-    r.sadd(user_set_key, token)
+    await r.sadd(user_set_key, [token])
     # Refresh TTL on user set so it doesn't grow unbounded.
     # Set to 2x token TTL to cover tokens created at different times.
-    r.expire(user_set_key, ttl * 2)
+    await r.expire(user_set_key, ttl * 2)
     return token
 
 
-def validate_refresh_token(token: str) -> dict | None:
+async def validate_refresh_token(token: str) -> dict | None:
     """Validate a refresh token.
 
     Returns:
         Token data dict {"user_id": "<uuid>", "username": "..."} if valid, None otherwise.
     """
     r = get_redis()
-    data = r.get(f"{_REFRESH_PREFIX}{token}")
+    data = await r.get(f"{_REFRESH_PREFIX}{token}")
     if data is None:
         return None
     return json.loads(data)
 
 
-def revoke_refresh_token(token: str) -> bool:
+async def revoke_refresh_token(token: str) -> bool:
     """Revoke a refresh token.
 
     Returns:
         True if the token was found and revoked, False otherwise.
     """
     r = get_redis()
-    data = r.get(f"{_REFRESH_PREFIX}{token}")
+    data = await r.get(f"{_REFRESH_PREFIX}{token}")
     if data is None:
         return False
     parsed = json.loads(data)
-    r.delete(f"{_REFRESH_PREFIX}{token}")
-    r.srem(f"{_USER_TOKENS_PREFIX}{parsed['user_id']}", token)
+    await r.delete([f"{_REFRESH_PREFIX}{token}"])
+    await r.srem(f"{_USER_TOKENS_PREFIX}{parsed['user_id']}", [token])
     return True
 
 
-def rotate_refresh_token(old_token: str) -> tuple[str, dict] | None:
+async def rotate_refresh_token(old_token: str) -> tuple[str, dict] | None:
     """Atomically rotate a refresh token using GETDEL + pipeline.
 
     Returns:
@@ -156,33 +156,32 @@ def rotate_refresh_token(old_token: str) -> tuple[str, dict] | None:
 
     # Atomically get-and-delete to prevent concurrent rotation
     old_key = f"{_REFRESH_PREFIX}{old_token}"
-    data = r.getdel(old_key)
+    data = await r.getdel(old_key)
     if data is None:
         return None
     parsed = json.loads(data)
 
     # Pipeline the remaining operations
     new_token = generate_refresh_token()
-    pipe = r.pipeline()
-    pipe.srem(f"{_USER_TOKENS_PREFIX}{parsed['user_id']}", old_token)
-    pipe.set(f"{_REFRESH_PREFIX}{new_token}", data, ex=settings.refresh_token_expire_seconds)
-    pipe.sadd(f"{_USER_TOKENS_PREFIX}{parsed['user_id']}", new_token)
-    pipe.execute()
+    async with r.pipeline() as pipe:
+        pipe.srem(f"{_USER_TOKENS_PREFIX}{parsed['user_id']}", [old_token])
+        pipe.set(f"{_REFRESH_PREFIX}{new_token}", data, ex=settings.refresh_token_expire_seconds)
+        pipe.sadd(f"{_USER_TOKENS_PREFIX}{parsed['user_id']}", [new_token])
 
     return new_token, parsed
 
 
-def revoke_all_for_user(user_id: UUID) -> int:
+async def revoke_all_for_user(user_id: UUID) -> int:
     """Revoke all refresh tokens for a user.
 
     Returns:
         The number of tokens revoked.
     """
     r = get_redis()
-    tokens = r.smembers(f"{_USER_TOKENS_PREFIX}{user_id}")
+    tokens = await r.smembers(f"{_USER_TOKENS_PREFIX}{user_id}")
     for token in tokens:
-        r.delete(f"{_REFRESH_PREFIX}{token}")
-    r.delete(f"{_USER_TOKENS_PREFIX}{user_id}")
+        await r.delete([f"{_REFRESH_PREFIX}{token}"])
+    await r.delete([f"{_USER_TOKENS_PREFIX}{user_id}"])
     return len(tokens)
 
 
@@ -213,7 +212,7 @@ def create_access_token(user_id: UUID, username: str) -> tuple[str, int]:
     return token, expires_in
 
 
-def create_token(user: User) -> TokenPair:
+async def create_token(user: User) -> TokenPair:
     """Create access and refresh tokens for the user.
 
     Returns:
@@ -223,7 +222,7 @@ def create_token(user: User) -> TokenPair:
         raise erri.internal("User ID is required for token creation")
 
     access_token, expires_in = create_access_token(user.id, user.username)
-    refresh_token_str = create_refresh_token(user.id, user.username)
+    refresh_token_str = await create_refresh_token(user.id, user.username)
 
     return TokenPair(
         access_token=access_token,
@@ -233,7 +232,7 @@ def create_token(user: User) -> TokenPair:
     )
 
 
-def refresh_tokens(refresh_token: str) -> TokenPair:
+async def refresh_tokens(refresh_token: str) -> TokenPair:
     """Refresh the access token using a refresh token.
 
     Implements Token Rotation: the old refresh token is revoked and a new one is issued.
@@ -244,7 +243,7 @@ def refresh_tokens(refresh_token: str) -> TokenPair:
     Raises:
         BusinessError: If the refresh token is invalid, expired, or revoked.
     """
-    result = rotate_refresh_token(refresh_token)
+    result = await rotate_refresh_token(refresh_token)
     if not result:
         raise erri.unauthorized("Invalid or expired refresh token")
 
@@ -259,13 +258,13 @@ def refresh_tokens(refresh_token: str) -> TokenPair:
     )
 
 
-def revoke_token(refresh_token: str) -> bool:
+async def revoke_token(refresh_token: str) -> bool:
     """Revoke a refresh token.
 
     Returns:
         True if the token was revoked, False if it was not found.
     """
-    return revoke_refresh_token(refresh_token)
+    return await revoke_refresh_token(refresh_token)
 
 
 async def login_user(identifier: str, password: str) -> TokenPair:
@@ -281,7 +280,7 @@ async def login_user(identifier: str, password: str) -> TokenPair:
     user = await get_user_by_identifier(identifier)
     if not user or user.id is None or not verify_password(password, user.hashed_password):
         raise erri.unauthorized("Invalid credentials")
-    return create_token(user)
+    return await create_token(user)
 
 
 # ---------------------------------------------------------------------------
@@ -312,11 +311,11 @@ async def initiate_registration(email: str, password: str, invitation_code: str 
             raise erri.bad_request("Invalid or expired invitation code")
         invitation_code_id = invitation.id
 
-    code = create_verification_code(email, "register")
+    code = await create_verification_code(email, "register")
     await send_verification_email(email, code, "register")
 
     if invitation_code_id is not None:
-        store_invitation_context(email, invitation_code_id)
+        await store_invitation_context(email, invitation_code_id)
 
 
 async def complete_registration(email: str, code: str, password: str) -> TokenPair:
@@ -333,13 +332,13 @@ async def complete_registration(email: str, code: str, password: str) -> TokenPa
     Raises:
         BusinessError: If verification fails or user creation fails.
     """
-    if not consume_verification_code(email, code, "register"):
+    if not await consume_verification_code(email, code, "register"):
         raise erri.bad_request("Invalid or expired verification code")
 
     if await email_exists(email):
         raise erri.conflict("Email already registered")
 
-    invitation_code_id = consume_invitation_context(email)
+    invitation_code_id = await consume_invitation_context(email)
 
     validate_password(password)
     hashed = get_password_hash(password)
@@ -353,7 +352,7 @@ async def complete_registration(email: str, code: str, password: str) -> TokenPa
     if invitation_code_id is not None:
         await increment_used_count(invitation_code_id)
 
-    return create_token(user)
+    return await create_token(user)
 
 
 # ---------------------------------------------------------------------------
@@ -373,7 +372,7 @@ async def request_password_reset(email: str) -> None:
     if not await email_exists(email):
         return
 
-    code = create_verification_code(email, "reset_password")
+    code = await create_verification_code(email, "reset_password")
     await send_verification_email(email, code, "reset_password")
 
 
@@ -391,7 +390,7 @@ async def reset_password(email: str, code: str, new_password: str) -> bool:
     Raises:
         BusinessError: If verification fails.
     """
-    if not consume_verification_code(email, code, "reset_password"):
+    if not await consume_verification_code(email, code, "reset_password"):
         raise erri.bad_request("Invalid or expired verification code")
 
     validate_password(new_password)
@@ -404,6 +403,6 @@ async def reset_password(email: str, code: str, new_password: str) -> bool:
     result = await update_user_password(user.username, hashed)
 
     if result and user.id is not None:
-        revoke_all_for_user(user.id)
+        await revoke_all_for_user(user.id)
 
     return result

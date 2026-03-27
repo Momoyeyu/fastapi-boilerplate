@@ -76,7 +76,7 @@ async def refresh(body: dto.RefreshTokenRequest) -> Response:
 
     Implements Token Rotation: the old refresh token is revoked and a new one is issued.
     """
-    token_pair = service.refresh_tokens(body.refresh_token)
+    token_pair = await service.refresh_tokens(body.refresh_token)
     return ok(
         data=dto.TokenData(
             access_token=token_pair.access_token,
@@ -91,7 +91,7 @@ async def refresh(body: dto.RefreshTokenRequest) -> Response:
 @router.post("/logout")
 async def logout(body: dto.RefreshTokenRequest) -> Response:
     """Logout by revoking the refresh token."""
-    service.revoke_token(body.refresh_token)
+    await service.revoke_token(body.refresh_token)
     return ok(message="Successfully logged out")
 
 

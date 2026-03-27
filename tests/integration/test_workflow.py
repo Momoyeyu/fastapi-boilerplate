@@ -11,13 +11,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from auth.model import InvitationCode
 from common.resp import Code
 from conf import config as config_module
-from conf.redis import get_redis
 
 
 class TestNewUserOnboarding:
     """Simulate a new user's first experience from signup to profile setup."""
 
-    def test_standard_onboarding(self, client: TestClient, mock_email: list):
+    def test_standard_onboarding(self, client: TestClient, mock_email: list, redis_test_db):
         """Register -> verify email -> view profile -> update profile -> logout."""
         # 1. Initiate registration
         resp = client.post(
@@ -28,7 +27,7 @@ class TestNewUserOnboarding:
         assert len(mock_email) == 1
 
         # 2. Verify email
-        code = get_redis().get("verification:onboard@example.com:register")
+        code = redis_test_db._store.get("verification:onboard@example.com:register")
         resp = client.post(
             "/api/v1/auth/register/verify",
             json={"email": "onboard@example.com", "code": code, "password": "Pass1234"},
@@ -61,7 +60,7 @@ class TestNewUserOnboarding:
         assert resp.json()["code"] == Code.OK
 
     async def test_invitation_onboarding(
-        self, client: TestClient, session: AsyncSession, monkeypatch, mock_email: list
+        self, client: TestClient, session: AsyncSession, monkeypatch, mock_email: list, redis_test_db
     ):
         """Invitation code -> register -> verify -> login -> access service."""
         monkeypatch.setattr(config_module.settings, "require_invitation_code", True)
@@ -84,7 +83,7 @@ class TestNewUserOnboarding:
         assert len(mock_email) == 1
 
         # 2. Verify email
-        code = get_redis().get("verification:invited@example.com:register")
+        code = redis_test_db._store.get("verification:invited@example.com:register")
         resp = client.post(
             "/api/v1/auth/register/verify",
             json={"email": "invited@example.com", "code": code, "password": "Pass1234"},
@@ -215,7 +214,7 @@ class TestMultiSession:
 class TestPasswordLifecycle:
     """Verify password change and reset across the full user lifecycle."""
 
-    def test_change_then_reset(self, client: TestClient, register_and_verify, mock_email: list):
+    def test_change_then_reset(self, client: TestClient, register_and_verify, mock_email: list, redis_test_db):
         """Register -> change password -> logout -> login -> forgot -> reset -> login."""
         body = register_and_verify("pwlife@example.com", "Original1")
         headers = {"Authorization": f"Bearer {body['data']['access_token']}"}
@@ -252,7 +251,7 @@ class TestPasswordLifecycle:
         assert len(mock_email) == 1
 
         # 6. Reset password
-        code = get_redis().get("verification:pwlife@example.com:reset_password")
+        code = redis_test_db._store.get("verification:pwlife@example.com:reset_password")
         resp = client.post(
             "/api/v1/auth/password/reset",
             json={"email": "pwlife@example.com", "code": code, "new_password": "ResetPw1"},

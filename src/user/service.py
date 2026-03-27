@@ -37,8 +37,8 @@ async def update_my_profile(
         raise erri.not_found("User not found")
 
     if new_username is not None and user.id is not None:
-        revoke_all_for_user(user.id)
-        token_pair = create_token(user)
+        await revoke_all_for_user(user.id)
+        token_pair = await create_token(user)
 
     return user, token_pair
 
@@ -56,6 +56,6 @@ async def change_password(username: str, old_password: str, new_password: str) -
     result = await update_user_password(username, encrypted_new)
 
     if result and user.id is not None:
-        revoke_all_for_user(user.id)
+        await revoke_all_for_user(user.id)
 
     return result

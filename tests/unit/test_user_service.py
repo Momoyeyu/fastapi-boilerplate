@@ -72,7 +72,7 @@ async def test_change_password_success(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(service, "get_user", async_return(user), raising=True)
     monkeypatch.setattr(service, "update_user_password", async_return(True), raising=True)
 
-    monkeypatch.setattr(service, "revoke_all_for_user", lambda uid: 0)
+    monkeypatch.setattr(service, "revoke_all_for_user", async_return(0))
 
     result = await service.change_password("alice", "old", "NewPass1")
     assert result is True

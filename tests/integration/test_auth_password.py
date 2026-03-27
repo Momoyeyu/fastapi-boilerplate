@@ -3,7 +3,6 @@
 from fastapi.testclient import TestClient
 
 from common.resp import Code
-from conf.redis import get_redis
 
 
 class TestPasswordForgot:
@@ -46,12 +45,12 @@ class TestPasswordForgot:
 class TestPasswordReset:
     """Tests for POST /auth/password/reset endpoint."""
 
-    def test_reset_success(self, client: TestClient, register_and_verify):
+    def test_reset_success(self, client: TestClient, register_and_verify, redis_test_db):
         """Full flow: register → forgot → get code → reset → login with new password."""
         register_and_verify("reset@example.com", "OldPass1")
 
         client.post("/api/v1/auth/password/forgot", json={"email": "reset@example.com"})
-        code = get_redis().get("verification:reset@example.com:reset_password")
+        code = redis_test_db._store.get("verification:reset@example.com:reset_password")
 
         response = client.post(
             "/api/v1/auth/password/reset",
@@ -75,12 +74,12 @@ class TestPasswordReset:
         )
         assert response.json()["code"] == Code.BAD_REQUEST
 
-    def test_reset_code_consumed(self, client: TestClient, register_and_verify):
+    def test_reset_code_consumed(self, client: TestClient, register_and_verify, redis_test_db):
         """Verification code is single-use: second attempt with same code fails."""
         register_and_verify("resetonce@example.com", "Pass1234")
         client.post("/api/v1/auth/password/forgot", json={"email": "resetonce@example.com"})
 
-        code = get_redis().get("verification:resetonce@example.com:reset_password")
+        code = redis_test_db._store.get("verification:resetonce@example.com:reset_password")
 
         resp1 = client.post(
             "/api/v1/auth/password/reset",

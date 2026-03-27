@@ -82,20 +82,20 @@ def _callback_url(provider: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _store_state(provider: str, *, user_id: UUID | None = None) -> str:
+async def _store_state(provider: str, *, user_id: UUID | None = None) -> str:
     state = secrets.token_urlsafe(32)
     data = json.dumps({"provider": provider, "user_id": str(user_id) if user_id else None})
-    get_redis().setex(f"{_OAUTH_STATE_PREFIX}{state}", _OAUTH_STATE_TTL, data)
+    await get_redis().setex(f"{_OAUTH_STATE_PREFIX}{state}", _OAUTH_STATE_TTL, data)
     return state
 
 
-def _consume_state(state: str) -> dict | None:
+async def _consume_state(state: str) -> dict | None:
     r = get_redis()
     key = f"{_OAUTH_STATE_PREFIX}{state}"
-    data = r.get(key)
+    data = await r.get(key)
     if data is None:
         return None
-    r.delete(key)
+    await r.delete([key])
     return json.loads(data)
 
 
@@ -106,7 +106,7 @@ def _consume_state(state: str) -> dict | None:
 
 async def get_authorization_url(provider: str, *, user_id: UUID | None = None) -> str:
     client = _get_client(provider)
-    state = _store_state(provider, user_id=user_id)
+    state = await _store_state(provider, user_id=user_id)
     redirect_uri = _callback_url(provider)
     scopes = _get_scopes(provider)
     url = await client.get_authorization_url(redirect_uri, state=state, scope=scopes)
@@ -224,7 +224,7 @@ async def handle_sso_callback(provider: str, code: str, state: str) -> TokenPair
     - user_id is set  → account linking flow, returns None
     """
     # Validate state
-    state_data = _consume_state(state)
+    state_data = await _consume_state(state)
     if state_data is None:
         raise erri.bad_request("Invalid or expired OAuth state")
     if state_data["provider"] != provider:
@@ -249,7 +249,7 @@ async def handle_sso_callback(provider: str, code: str, state: str) -> TokenPair
         user = await get_user_by_id(oauth_account.user_id)
         if not user or user.is_deleted:
             raise erri.unauthorized("User account not found or deactivated")
-        return create_token(user)
+        return await create_token(user)
 
     # 2. Try to link by email if verified
     if provider_email and email_verified:
@@ -263,7 +263,7 @@ async def handle_sso_callback(provider: str, code: str, state: str) -> TokenPair
                 provider_username=user_info.get("name"),
                 avatar_url=user_info.get("avatar_url"),
             )
-            return create_token(existing_user)
+            return await create_token(existing_user)
 
     # 3. Create new user + oauth_account atomically
     if provider_email and not email_verified:
@@ -286,7 +286,7 @@ async def handle_sso_callback(provider: str, code: str, state: str) -> TokenPair
         logger.exception("Failed to create user via SSO")
         raise erri.internal("Failed to create user") from None
 
-    return create_token(user)
+    return await create_token(user)
 
 
 # ---------------------------------------------------------------------------

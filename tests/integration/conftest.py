@@ -124,82 +124,86 @@ def client(test_engine, test_session_local, monkeypatch) -> TestClient:
 
 
 # ---------------------------------------------------------------------------
-# FakeRedis mock
+# FakeRedis mock (coredis-compatible async API)
 # ---------------------------------------------------------------------------
 
 
 class FakePipeline:
-    """Minimal pipeline mock that buffers and executes commands."""
+    """Minimal pipeline mock that buffers and executes commands as async context manager."""
 
     def __init__(self, redis):
         self._redis = redis
         self._commands: list[tuple] = []
 
-    def set(self, key, value, ex=None):
-        self._commands.append(("set", key, value, ex))
+    async def __aenter__(self):
         return self
 
-    def srem(self, key, *members):
-        self._commands.append(("srem", key, *members))
-        return self
-
-    def sadd(self, key, *members):
-        self._commands.append(("sadd", key, *members))
-        return self
-
-    def execute(self):
-        for cmd in self._commands:
-            getattr(self._redis, cmd[0])(*cmd[1:])
+    async def __aexit__(self, *args):
+        for fn, call_args, call_kwargs in self._commands:
+            await fn(*call_args, **call_kwargs)
         self._commands.clear()
+
+    def set(self, key, value, ex=None):
+        self._commands.append((self._redis.set, (key, value), {"ex": ex}))
+        return self
+
+    def srem(self, key, members):
+        self._commands.append((self._redis.srem, (key, members), {}))
+        return self
+
+    def sadd(self, key, members):
+        self._commands.append((self._redis.sadd, (key, members), {}))
+        return self
 
 
 class FakeRedis:
-    """In-memory Redis mock supporting string and set operations."""
+    """In-memory async Redis mock supporting string and set operations (coredis-compatible)."""
 
     def __init__(self):
         self._store: dict[str, str] = {}
         self._sets: dict[str, set[str]] = {}
 
     # String operations
-    def setex(self, key, ttl, value):
+    async def setex(self, key, ttl, value):
         self._store[key] = value
 
-    def set(self, key, value, ex=None):
+    async def set(self, key, value, ex=None):
         self._store[key] = value
 
-    def get(self, key):
+    async def get(self, key):
         return self._store.get(key)
 
-    def getdel(self, key):
+    async def getdel(self, key):
         return self._store.pop(key, None)
 
-    def delete(self, key):
-        self._store.pop(key, None)
-        self._sets.pop(key, None)
+    async def delete(self, keys):
+        for key in keys:
+            self._store.pop(key, None)
+            self._sets.pop(key, None)
 
     # Set operations
-    def sadd(self, key, *members):
+    async def sadd(self, key, members):
         if key not in self._sets:
             self._sets[key] = set()
         for m in members:
             self._sets[key].add(m)
 
-    def smembers(self, key):
+    async def smembers(self, key):
         return self._sets.get(key, set()).copy()
 
-    def srem(self, key, *members):
+    async def srem(self, key, members):
         if key in self._sets:
             for m in members:
                 self._sets[key].discard(m)
 
-    def flushdb(self):
+    async def flushdb(self):
         self._store.clear()
         self._sets.clear()
 
-    def expire(self, key, ttl):
+    async def expire(self, key, ttl):
         pass  # TTL not enforced in tests
 
-    def pipeline(self):
+    def pipeline(self, transaction=True):
         return FakePipeline(self)
 
     def close(self):
@@ -252,18 +256,16 @@ def mock_email(monkeypatch):
 
 
 @pytest.fixture
-def register_and_verify(client):
+def register_and_verify(client, redis_test_db):
     """Register a user through the two-step process and return the response body."""
 
     def _do(email: str, password: str, invitation_code: str | None = None) -> dict:
-        from conf.redis import get_redis
-
         body: dict = {"email": email, "password": password}
         if invitation_code is not None:
             body["invitation_code"] = invitation_code
         client.post("/api/v1/auth/register", json=body)
         key = f"verification:{email.lower()}:register"
-        code = get_redis().get(key)
+        code = redis_test_db._store.get(key)
         response = client.post(
             "/api/v1/auth/register/verify",
             json={"email": email, "code": code, "password": password},
