@@ -27,14 +27,15 @@ class FakeRedis:
     def __init__(self):
         self._store = {}
 
-    def setex(self, key, ttl, value):
+    async def set(self, key, value, ex=None):
         self._store[key] = value
 
-    def get(self, key):
+    async def get(self, key):
         return self._store.get(key)
 
-    def delete(self, key):
-        self._store.pop(key, None)
+    async def delete(self, keys):
+        for key in keys:
+            self._store.pop(key, None)
 
 
 @pytest.fixture
@@ -49,29 +50,29 @@ def fake_redis():
 # ---------------------------------------------------------------------------
 
 
-def test_store_and_consume_state(fake_redis):
-    state = sso_service._store_state("google")
+async def test_store_and_consume_state(fake_redis):
+    state = await sso_service._store_state("google")
     assert state is not None
-    data = sso_service._consume_state(state)
+    data = await sso_service._consume_state(state)
     assert data is not None
     assert data["provider"] == "google"
     assert data["user_id"] is None
 
 
-def test_store_state_with_user_id(fake_redis):
-    state = sso_service._store_state("github", user_id=_ALICE_ID)
-    data = sso_service._consume_state(state)
+async def test_store_state_with_user_id(fake_redis):
+    state = await sso_service._store_state("github", user_id=_ALICE_ID)
+    data = await sso_service._consume_state(state)
     assert data["user_id"] == str(_ALICE_ID)
 
 
-def test_consume_state_only_once(fake_redis):
-    state = sso_service._store_state("google")
-    sso_service._consume_state(state)
-    assert sso_service._consume_state(state) is None
+async def test_consume_state_only_once(fake_redis):
+    state = await sso_service._store_state("google")
+    await sso_service._consume_state(state)
+    assert await sso_service._consume_state(state) is None
 
 
-def test_consume_invalid_state(fake_redis):
-    assert sso_service._consume_state("nonexistent") is None
+async def test_consume_invalid_state(fake_redis):
+    assert await sso_service._consume_state("nonexistent") is None
 
 
 # ---------------------------------------------------------------------------
@@ -124,7 +125,7 @@ async def test_callback_invalid_state(fake_redis):
 
 
 async def test_callback_state_provider_mismatch(fake_redis):
-    state = sso_service._store_state("google")
+    state = await sso_service._store_state("google")
     with pytest.raises(erri.BusinessError) as exc:
         await sso_service.handle_sso_callback("github", "code123", state)
     assert exc.value.code == Code.BAD_REQUEST
@@ -132,7 +133,7 @@ async def test_callback_state_provider_mismatch(fake_redis):
 
 async def test_callback_existing_oauth_account(monkeypatch, fake_redis):
     """If oauth_account exists, return tokens for linked user."""
-    state = sso_service._store_state("google")
+    state = await sso_service._store_state("google")
     user = User(id=_ALICE_ID, username="alice", email="alice@test.com", hashed_password=None)
     oauth_acc = OAuthAccount(user_id=_ALICE_ID, provider="google", provider_user_id="g123")
     token_pair = TokenPair(access_token="at", refresh_token="rt", expires_in=3600, refresh_token_expires_in=604800)
@@ -162,7 +163,7 @@ async def test_callback_existing_oauth_account(monkeypatch, fake_redis):
     )
     monkeypatch.setattr(sso_service, "get_oauth_account", async_return(oauth_acc))
     monkeypatch.setattr(sso_service, "get_user_by_id", async_return(user))
-    monkeypatch.setattr(sso_service, "create_token", lambda u: token_pair)
+    monkeypatch.setattr(sso_service, "create_token", async_return(token_pair))
 
     result = await sso_service.handle_sso_callback("google", "code", state)
     assert result.access_token == "at"
@@ -170,7 +171,7 @@ async def test_callback_existing_oauth_account(monkeypatch, fake_redis):
 
 async def test_callback_auto_link_by_email(monkeypatch, fake_redis):
     """If no oauth_account but email matches existing user, auto-link."""
-    state = sso_service._store_state("github")
+    state = await sso_service._store_state("github")
     user = User(
         id=_ALICE_ID,
         username="alice",
@@ -208,7 +209,7 @@ async def test_callback_auto_link_by_email(monkeypatch, fake_redis):
     )
     monkeypatch.setattr(sso_service, "get_oauth_account", async_return(None))
     monkeypatch.setattr(sso_service, "get_user_by_email", async_return(user))
-    monkeypatch.setattr(sso_service, "create_token", lambda u: token_pair)
+    monkeypatch.setattr(sso_service, "create_token", async_return(token_pair))
 
     async def mock_create(*args, **kwargs):
         created_accounts.append(args)
@@ -223,7 +224,7 @@ async def test_callback_auto_link_by_email(monkeypatch, fake_redis):
 
 async def test_callback_creates_new_user(monkeypatch, fake_redis):
     """If no match at all, create new user + oauth_account atomically."""
-    state = sso_service._store_state("google")
+    state = await sso_service._store_state("google")
     user = User(id=_ALICE_ID, username="user_abc", email="new@gmail.com", hashed_password=None)
     token_pair = TokenPair(
         access_token="new_at", refresh_token="new_rt", expires_in=3600, refresh_token_expires_in=604800
@@ -255,7 +256,7 @@ async def test_callback_creates_new_user(monkeypatch, fake_redis):
     monkeypatch.setattr(sso_service, "get_oauth_account", async_return(None))
     monkeypatch.setattr(sso_service, "get_user_by_email", async_return(None))
     monkeypatch.setattr(sso_service, "_create_sso_user", async_return(user))
-    monkeypatch.setattr(sso_service, "create_token", lambda u: token_pair)
+    monkeypatch.setattr(sso_service, "create_token", async_return(token_pair))
 
     result = await sso_service.handle_sso_callback("google", "code", state)
     assert result.access_token == "new_at"

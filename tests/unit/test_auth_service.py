@@ -101,12 +101,9 @@ def test_verify_password_incorrect():
 
 
 async def test_request_password_reset_sends_code(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(
-        service, "email_exists", lambda *a, **k: __import__("asyncio").coroutine(lambda: True)(), raising=True
-    )
     sent = {}
 
-    monkeypatch.setattr(service, "create_verification_code", lambda email, purpose: "654321", raising=True)
+    monkeypatch.setattr(service, "create_verification_code", async_return("654321"), raising=True)
 
     async def async_mock_send(email, code, purpose):
         sent["email"] = email
@@ -115,11 +112,7 @@ async def test_request_password_reset_sends_code(monkeypatch: pytest.MonkeyPatch
         return True
 
     monkeypatch.setattr(service, "send_verification_email", async_mock_send, raising=True)
-
-    async def mock_email_exists(email):
-        return True
-
-    monkeypatch.setattr(service, "email_exists", mock_email_exists, raising=True)
+    monkeypatch.setattr(service, "email_exists", async_return(True), raising=True)
 
     await service.request_password_reset("alice@test.com")
     assert sent["email"] == "alice@test.com"
@@ -143,7 +136,7 @@ async def test_initiate_registration_success(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(service, "email_exists", async_return(False), raising=True)
     code_created = {}
 
-    def mock_create_code(email, purpose):
+    async def mock_create_code(email, purpose):
         code_created["email"] = email
         code_created["purpose"] = purpose
         return "123456"
@@ -157,16 +150,16 @@ async def test_initiate_registration_success(monkeypatch: pytest.MonkeyPatch):
 
 
 async def test_complete_registration_invalid_code(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(service, "consume_verification_code", lambda *args: False, raising=True)
+    monkeypatch.setattr(service, "consume_verification_code", async_return(False), raising=True)
     with pytest.raises(erri.BusinessError) as exc:
         await service.complete_registration("alice@test.com", "wrong", "StrongPw1")
     assert exc.value.code == Code.BAD_REQUEST
 
 
 async def test_complete_registration_success(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(service, "consume_verification_code", lambda *args: True, raising=True)
+    monkeypatch.setattr(service, "consume_verification_code", async_return(True), raising=True)
     monkeypatch.setattr(service, "email_exists", async_return(False), raising=True)
-    monkeypatch.setattr(service, "consume_invitation_context", lambda email: None)
+    monkeypatch.setattr(service, "consume_invitation_context", async_return(None))
 
     user = User(id=_ALICE_ID, username="alice", email="alice@test.com", hashed_password="x")
 
@@ -176,7 +169,7 @@ async def test_complete_registration_success(monkeypatch: pytest.MonkeyPatch):
         expires_in=3600,
         refresh_token_expires_in=604800,
     )
-    monkeypatch.setattr(service, "create_token", lambda u: mock_token_pair, raising=True)
+    monkeypatch.setattr(service, "create_token", async_return(mock_token_pair), raising=True)
 
     monkeypatch.setattr(
         service,
@@ -211,18 +204,18 @@ async def test_initiate_registration_invalid_invitation_code(monkeypatch: pytest
 async def test_initiate_registration_valid_invitation_code(monkeypatch: pytest.MonkeyPatch, mock_settings: MagicMock):
     mock_settings.require_invitation_code = True
     monkeypatch.setattr(service, "email_exists", async_return(False), raising=True)
-    monkeypatch.setattr(service, "create_verification_code", lambda *a: "123456")
+    monkeypatch.setattr(service, "create_verification_code", async_return("123456"))
     monkeypatch.setattr(service, "send_verification_email", async_return(None))
 
     mock_inv = InvitationCode(id=_INV_ID, code="VALID", max_uses=10, used_count=0, is_active=True)
     monkeypatch.setattr(service, "validate_invitation_code", async_return(mock_inv))
 
     stored: dict[str, UUID] = {}
-    monkeypatch.setattr(
-        service,
-        "store_invitation_context",
-        lambda email, inv_id: stored.update({"inv_id": inv_id}),  # type: ignore[func-returns-value]
-    )
+
+    async def mock_store_inv(email, inv_id):
+        stored["inv_id"] = inv_id
+
+    monkeypatch.setattr(service, "store_invitation_context", mock_store_inv)
 
     await service.initiate_registration("alice@test.com", "StrongPw1", "VALID")
     assert stored["inv_id"] == _INV_ID
@@ -230,7 +223,7 @@ async def test_initiate_registration_valid_invitation_code(monkeypatch: pytest.M
 
 async def test_initiate_registration_skips_invitation_when_disabled(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(service, "email_exists", async_return(False), raising=True)
-    monkeypatch.setattr(service, "create_verification_code", lambda *a: "123456")
+    monkeypatch.setattr(service, "create_verification_code", async_return("123456"))
     monkeypatch.setattr(service, "send_verification_email", async_return(None))
 
     # Should succeed without invitation code validation
@@ -238,9 +231,9 @@ async def test_initiate_registration_skips_invitation_when_disabled(monkeypatch:
 
 
 async def test_complete_registration_with_invitation_context(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(service, "consume_verification_code", lambda *args: True, raising=True)
+    monkeypatch.setattr(service, "consume_verification_code", async_return(True), raising=True)
     monkeypatch.setattr(service, "email_exists", async_return(False), raising=True)
-    monkeypatch.setattr(service, "consume_invitation_context", lambda email: _INV_ID)
+    monkeypatch.setattr(service, "consume_invitation_context", async_return(_INV_ID))
 
     captured_kwargs: dict = {}
 
@@ -256,7 +249,7 @@ async def test_complete_registration_with_invitation_context(monkeypatch: pytest
         expires_in=3600,
         refresh_token_expires_in=604800,
     )
-    monkeypatch.setattr(service, "create_token", lambda u: mock_token_pair, raising=True)
+    monkeypatch.setattr(service, "create_token", async_return(mock_token_pair), raising=True)
 
     incremented: list[UUID] = []
 
@@ -310,7 +303,7 @@ async def test_login_user_success_creates_token(monkeypatch: pytest.MonkeyPatch)
         refresh_token_expires_in=604800,
     )
 
-    def _create_token(passed_user: object):
+    async def _create_token(passed_user: object):
         captured["user"] = passed_user
         return mock_token_pair
 
@@ -332,7 +325,7 @@ async def test_login_user_with_email(monkeypatch: pytest.MonkeyPatch):
         expires_in=3600,
         refresh_token_expires_in=604800,
     )
-    monkeypatch.setattr(service, "create_token", lambda u: mock_token_pair, raising=True)
+    monkeypatch.setattr(service, "create_token", async_return(mock_token_pair), raising=True)
 
     token_pair = await service.login_user("alice@test.com", "pw")
     assert token_pair.access_token == "token-123"
@@ -344,71 +337,72 @@ async def test_login_user_with_email(monkeypatch: pytest.MonkeyPatch):
 
 
 class FakeRedisPipeline:
-    """Minimal pipeline mock that buffers and executes commands."""
+    """Minimal pipeline mock that buffers and executes commands as async context manager."""
 
     def __init__(self, redis):
         self._redis = redis
-        self._commands = []
+        self._commands: list[tuple] = []
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *args):
+        for fn, call_args, call_kwargs in self._commands:
+            await fn(*call_args, **call_kwargs)
+        self._commands.clear()
 
     def set(self, key, value, ex=None):
-        self._commands.append(("set", key, value, ex))
+        self._commands.append((self._redis.set, (key, value), {"ex": ex}))
         return self
 
-    def srem(self, key, *members):
-        self._commands.append(("srem", key, *members))
+    def srem(self, key, members):
+        self._commands.append((self._redis.srem, (key, members), {}))
         return self
 
-    def sadd(self, key, *members):
-        self._commands.append(("sadd", key, *members))
+    def sadd(self, key, members):
+        self._commands.append((self._redis.sadd, (key, members), {}))
         return self
-
-    def execute(self):
-        for cmd in self._commands:
-            getattr(self._redis, cmd[0])(*cmd[1:])
-        self._commands.clear()
 
 
 class FakeRedis:
-    """Minimal Redis mock for unit testing."""
+    """Minimal async Redis mock for unit testing (coredis-compatible)."""
 
     def __init__(self):
         self._store = {}
         self._sets = {}
 
-    def setex(self, key, ttl, value):
+    async def set(self, key, value, ex=None):
         self._store[key] = value
 
-    def set(self, key, value, ex=None):
-        self._store[key] = value
-
-    def get(self, key):
+    async def get(self, key):
         return self._store.get(key)
 
-    def getdel(self, key):
+    async def getdel(self, key):
         return self._store.pop(key, None)
 
-    def delete(self, key):
-        self._store.pop(key, None)
-        self._sets.pop(key, None)
+    async def delete(self, keys):
+        for key in keys:
+            self._store.pop(key, None)
+            self._sets.pop(key, None)
 
-    def sadd(self, key, *members):
+    async def sadd(self, key, members):
         if key not in self._sets:
             self._sets[key] = set()
         for m in members:
             self._sets[key].add(m)
 
-    def smembers(self, key):
+    async def smembers(self, key):
         return self._sets.get(key, set()).copy()
 
-    def srem(self, key, *members):
+    async def srem(self, key, members):
         if key in self._sets:
             for m in members:
                 self._sets[key].discard(m)
 
-    def expire(self, key, ttl):
+    async def expire(self, key, ttl):
         pass  # TTL not enforced in tests
 
-    def pipeline(self):
+    def pipeline(self, transaction=True):
         return FakeRedisPipeline(self)
 
 
@@ -419,41 +413,41 @@ def fake_redis():
         yield fake
 
 
-def test_create_refresh_token(fake_redis):
-    token = create_refresh_token(_ALICE_ID, "alice")
+async def test_create_refresh_token(fake_redis):
+    token = await create_refresh_token(_ALICE_ID, "alice")
     assert len(token) > 0
     # Token should be stored in Redis
-    assert fake_redis.get(f"refresh_token:{token}") is not None
+    assert await fake_redis.get(f"refresh_token:{token}") is not None
     # Token should be tracked in user set
-    assert token in fake_redis.smembers(f"user_tokens:{_ALICE_ID}")
+    assert token in await fake_redis.smembers(f"user_tokens:{_ALICE_ID}")
 
 
-def test_validate_refresh_token_success(fake_redis):
-    token = create_refresh_token(_ALICE_ID, "alice")
-    data = validate_refresh_token(token)
+async def test_validate_refresh_token_success(fake_redis):
+    token = await create_refresh_token(_ALICE_ID, "alice")
+    data = await validate_refresh_token(token)
     assert data is not None
     assert data["user_id"] == str(_ALICE_ID)
     assert data["username"] == "alice"
 
 
-def test_validate_refresh_token_invalid(fake_redis):
-    assert validate_refresh_token("nonexistent") is None
+async def test_validate_refresh_token_invalid(fake_redis):
+    assert await validate_refresh_token("nonexistent") is None
 
 
-def test_revoke_refresh_token_success(fake_redis):
-    token = create_refresh_token(_ALICE_ID, "alice")
-    assert revoke_refresh_token(token) is True
-    assert validate_refresh_token(token) is None
-    assert token not in fake_redis.smembers(f"user_tokens:{_ALICE_ID}")
+async def test_revoke_refresh_token_success(fake_redis):
+    token = await create_refresh_token(_ALICE_ID, "alice")
+    assert await revoke_refresh_token(token) is True
+    assert await validate_refresh_token(token) is None
+    assert token not in await fake_redis.smembers(f"user_tokens:{_ALICE_ID}")
 
 
-def test_revoke_refresh_token_nonexistent(fake_redis):
-    assert revoke_refresh_token("nonexistent") is False
+async def test_revoke_refresh_token_nonexistent(fake_redis):
+    assert await revoke_refresh_token("nonexistent") is False
 
 
-def test_rotate_refresh_token_success(fake_redis):
-    old_token = create_refresh_token(_ALICE_ID, "alice")
-    result = rotate_refresh_token(old_token)
+async def test_rotate_refresh_token_success(fake_redis):
+    old_token = await create_refresh_token(_ALICE_ID, "alice")
+    result = await rotate_refresh_token(old_token)
 
     assert result is not None
     new_token, data = result
@@ -462,28 +456,28 @@ def test_rotate_refresh_token_success(fake_redis):
     assert data["username"] == "alice"
 
     # Old token revoked
-    assert validate_refresh_token(old_token) is None
+    assert await validate_refresh_token(old_token) is None
     # New token valid
-    assert validate_refresh_token(new_token) is not None
+    assert await validate_refresh_token(new_token) is not None
 
 
-def test_rotate_refresh_token_invalid(fake_redis):
-    assert rotate_refresh_token("nonexistent") is None
+async def test_rotate_refresh_token_invalid(fake_redis):
+    assert await rotate_refresh_token("nonexistent") is None
 
 
-def test_revoke_all_for_user(fake_redis):
-    t1 = create_refresh_token(_ALICE_ID, "alice")
-    t2 = create_refresh_token(_ALICE_ID, "alice")
-    t3 = create_refresh_token(_BOB_ID, "bob")
+async def test_revoke_all_for_user(fake_redis):
+    t1 = await create_refresh_token(_ALICE_ID, "alice")
+    t2 = await create_refresh_token(_ALICE_ID, "alice")
+    t3 = await create_refresh_token(_BOB_ID, "bob")
 
-    count = revoke_all_for_user(_ALICE_ID)
+    count = await revoke_all_for_user(_ALICE_ID)
     assert count == 2
 
     # Alice's tokens revoked
-    assert validate_refresh_token(t1) is None
-    assert validate_refresh_token(t2) is None
+    assert await validate_refresh_token(t1) is None
+    assert await validate_refresh_token(t2) is None
     # Bob's token still valid
-    assert validate_refresh_token(t3) is not None
+    assert await validate_refresh_token(t3) is not None
 
 
 # ---------------------------------------------------------------------------
@@ -499,50 +493,50 @@ def test_generate_code_is_six_digits():
         assert 100000 <= int(code) <= 999999
 
 
-def test_create_verification_code_stores_in_redis(fake_redis):
-    code = create_verification_code("Alice@Test.com", "register")
+async def test_create_verification_code_stores_in_redis(fake_redis):
+    code = await create_verification_code("Alice@Test.com", "register")
     assert len(code) == 6
-    stored = fake_redis.get("verification:alice@test.com:register")
+    stored = await fake_redis.get("verification:alice@test.com:register")
     assert stored == code
 
 
-def test_consume_verification_code_success(fake_redis):
-    code = create_verification_code("user@test.com", "register")
-    assert consume_verification_code("user@test.com", code, "register") is True
+async def test_consume_verification_code_success(fake_redis):
+    code = await create_verification_code("user@test.com", "register")
+    assert await consume_verification_code("user@test.com", code, "register") is True
     # Code should be deleted after consumption
-    assert fake_redis.get("verification:user@test.com:register") is None
+    assert await fake_redis.get("verification:user@test.com:register") is None
 
 
-def test_consume_verification_code_wrong_code(fake_redis):
-    create_verification_code("user@test.com", "register")
-    assert consume_verification_code("user@test.com", "000000", "register") is False
+async def test_consume_verification_code_wrong_code(fake_redis):
+    await create_verification_code("user@test.com", "register")
+    assert await consume_verification_code("user@test.com", "000000", "register") is False
 
 
-def test_consume_verification_code_no_code(fake_redis):
-    assert consume_verification_code("noone@test.com", "123456", "register") is False
+async def test_consume_verification_code_no_code(fake_redis):
+    assert await consume_verification_code("noone@test.com", "123456", "register") is False
 
 
-def test_consume_verification_code_wrong_purpose(fake_redis):
-    code = create_verification_code("user@test.com", "register")
-    assert consume_verification_code("user@test.com", code, "reset_password") is False
+async def test_consume_verification_code_wrong_purpose(fake_redis):
+    code = await create_verification_code("user@test.com", "register")
+    assert await consume_verification_code("user@test.com", code, "reset_password") is False
 
 
-def test_create_verification_code_overwrites_previous(fake_redis):
-    code1 = create_verification_code("user@test.com", "register")
-    code2 = create_verification_code("user@test.com", "register")
+async def test_create_verification_code_overwrites_previous(fake_redis):
+    code1 = await create_verification_code("user@test.com", "register")
+    code2 = await create_verification_code("user@test.com", "register")
     # Old code should no longer work if different
     if code1 != code2:
-        assert consume_verification_code("user@test.com", code1, "register") is False
-    assert consume_verification_code("user@test.com", code2, "register") is True
+        assert await consume_verification_code("user@test.com", code1, "register") is False
+    assert await consume_verification_code("user@test.com", code2, "register") is True
 
 
-def test_store_and_consume_invitation_context(fake_redis):
+async def test_store_and_consume_invitation_context(fake_redis):
     inv_id = UUID("01936b2a-7c00-7000-8000-0000000000a1")
-    store_invitation_context("Alice@Test.com", inv_id)
-    assert consume_invitation_context("Alice@Test.com") == inv_id
+    await store_invitation_context("Alice@Test.com", inv_id)
+    assert await consume_invitation_context("Alice@Test.com") == inv_id
     # Should be deleted after consumption
-    assert consume_invitation_context("Alice@Test.com") is None
+    assert await consume_invitation_context("Alice@Test.com") is None
 
 
-def test_consume_invitation_context_missing(fake_redis):
-    assert consume_invitation_context("nobody@test.com") is None
+async def test_consume_invitation_context_missing(fake_redis):
+    assert await consume_invitation_context("nobody@test.com") is None

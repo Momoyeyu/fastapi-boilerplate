@@ -217,7 +217,7 @@ class TestAcceptInvitation:
         monkeypatch.setattr(service, "get_password_hash", lambda pw: "hashed")
         monkeypatch.setattr(service, "create_user_for_tenant", async_return((user, _make_user_tenant("member"))))
         monkeypatch.setattr(service, "update_invitation_status", async_return(inv))
-        monkeypatch.setattr(auth_service, "create_token", lambda u: token_pair)
+        monkeypatch.setattr(auth_service, "create_token", async_return(token_pair))
 
         result = await service.accept_invitation("valid-token", "StrongPw1")
         assert result.access_token == "at"

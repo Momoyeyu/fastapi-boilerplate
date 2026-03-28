@@ -105,11 +105,8 @@ def test_get_username_returns_username_from_request_state_when_middleware_instal
     auth.setup_auth_middleware(app)
     client = TestClient(app)
 
-    # Mock refresh token creation (now returns a string)
-    monkeypatch.setattr(auth_service, "create_refresh_token", lambda uid, uname: "mock-refresh", raising=True)
-
-    token_pair = auth_service.create_token(User(id=_UID1, username="alice", hashed_password="x"))
-    resp = client.get("/me", headers={"Authorization": f"Bearer {token_pair.access_token}"})
+    access_token, _ = auth_service.create_access_token(_UID1, "alice")
+    resp = client.get("/me", headers={"Authorization": f"Bearer {access_token}"})
     assert resp.status_code == 200
     assert resp.json() == {"username": "alice"}
 
@@ -125,11 +122,8 @@ def test_get_username_can_parse_username_from_authorization_header_without_middl
 
     client = TestClient(app)
 
-    # Mock refresh token creation (now returns a string)
-    monkeypatch.setattr(auth_service, "create_refresh_token", lambda uid, uname: "mock-refresh", raising=True)
-
-    token_pair = auth_service.create_token(User(id=_UID2, username="bob", hashed_password="x"))
-    resp = client.get("/me", headers={"Authorization": f"Bearer {token_pair.access_token}"})
+    access_token, _ = auth_service.create_access_token(_UID2, "bob")
+    resp = client.get("/me", headers={"Authorization": f"Bearer {access_token}"})
     assert resp.status_code == 200
     assert resp.json() == {"username": "bob"}
 
@@ -141,11 +135,8 @@ def test_user_whoami_returns_username_from_token(monkeypatch: pytest.MonkeyPatch
     auth.setup_auth_middleware(app)
     client = TestClient(app)
 
-    # Mock refresh token creation (now returns a string)
-    monkeypatch.setattr(auth_service, "create_refresh_token", lambda uid, uname: "mock-refresh", raising=True)
-
-    token_pair = auth_service.create_token(User(id=_UID1, username="alice", hashed_password="x"))
-    resp = client.get("/user/whoami", headers={"Authorization": f"Bearer {token_pair.access_token}"})
+    access_token, _ = auth_service.create_access_token(_UID1, "alice")
+    resp = client.get("/user/whoami", headers={"Authorization": f"Bearer {access_token}"})
     assert resp.status_code == 200
     assert resp.json()["code"] == Code.OK
     assert resp.json()["data"]["username"] == "alice"
@@ -173,11 +164,8 @@ def test_user_me_uses_get_username_to_fetch_profile(monkeypatch: pytest.MonkeyPa
 
     monkeypatch.setattr(user_handler.service, "get_user_profile", _get_user_profile, raising=True)
 
-    # Mock refresh token creation (now returns a string)
-    monkeypatch.setattr(auth_service, "create_refresh_token", lambda uid, uname: "mock-refresh", raising=True)
-
-    token_pair = auth_service.create_token(User(id=_UID1, username="alice", hashed_password="x"))
-    resp = client.get("/user/me", headers={"Authorization": f"Bearer {token_pair.access_token}"})
+    access_token, _ = auth_service.create_access_token(_UID1, "alice")
+    resp = client.get("/user/me", headers={"Authorization": f"Bearer {access_token}"})
     assert resp.status_code == 200
     assert captured["username"] == "alice"
     assert resp.json()["data"]["username"] == "alice"
@@ -205,15 +193,10 @@ def test_user_me_post_updates_profile(monkeypatch: pytest.MonkeyPatch):
 
     monkeypatch.setattr(user_handler.service, "update_my_profile", _update_my_profile, raising=True)
 
-    # Mock refresh token creation (now returns a string)
-    monkeypatch.setattr(auth_service, "create_refresh_token", lambda uid, uname: "mock-refresh", raising=True)
-
-    token_pair = auth_service.create_token(
-        User(id=_UID1, username="alice", hashed_password="x", email="alice@test.com")
-    )
+    access_token, _ = auth_service.create_access_token(_UID1, "alice")
     resp = client.post(
         "/user/me",
-        headers={"Authorization": f"Bearer {token_pair.access_token}"},
+        headers={"Authorization": f"Bearer {access_token}"},
         json={"avatar_url": "https://example.com/new.png"},
     )
     assert resp.status_code == 200

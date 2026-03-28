@@ -234,7 +234,7 @@ async def accept_invitation(token: str, password: str):
         raise erri.internal("Failed to create user") from None
 
     await update_invitation_status(invitation.id, "accepted")
-    return create_token(user)
+    return await create_token(user)
 
 
 async def cancel_invitation(user_id: UUID, tenant_id: UUID, invitation_id: UUID) -> None:

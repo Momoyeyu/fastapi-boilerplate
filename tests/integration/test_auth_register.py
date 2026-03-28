@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from auth.model import InvitationCode
 from common.resp import Code
 from conf import config as config_module
-from conf.redis import get_redis
 
 
 def _initiate(client: TestClient, email: str, password: str, invitation_code: str | None = None):
@@ -57,10 +56,10 @@ class TestAuthRegister:
         )
         assert response.json()["code"] == Code.BAD_REQUEST
 
-    def test_register_code_consumed_after_use(self, client: TestClient, register_and_verify):
+    def test_register_code_consumed_after_use(self, client: TestClient, register_and_verify, redis_test_db):
         register_and_verify("consumed@example.com", "Pass1234")
         key = "verification:consumed@example.com:register"
-        assert get_redis().get(key) is None
+        assert redis_test_db._store.get(key) is None
 
 
 class TestInvitationDisabled:
@@ -88,7 +87,9 @@ class TestInvitationRequired:
         response = _initiate(client, "bad@example.com", "Pass1234", "INVALID")
         assert response.json()["code"] == Code.BAD_REQUEST
 
-    async def test_register_with_valid_code_full_flow(self, client: TestClient, session: AsyncSession, monkeypatch):
+    async def test_register_with_valid_code_full_flow(
+        self, client: TestClient, session: AsyncSession, monkeypatch, redis_test_db
+    ):
         monkeypatch.setattr(config_module.settings, "require_invitation_code", True)
 
         inv = InvitationCode(code="TESTCODE", max_uses=10, used_count=0, is_active=True)
@@ -101,7 +102,7 @@ class TestInvitationRequired:
         assert response.json()["code"] == Code.OK
 
         # Step 2: Verify
-        code = get_redis().get("verification:valid@example.com:register")
+        code = redis_test_db._store.get("verification:valid@example.com:register")
         verify_resp = client.post(
             "/api/v1/auth/register/verify",
             json={"email": "valid@example.com", "code": code, "password": "Pass1234"},

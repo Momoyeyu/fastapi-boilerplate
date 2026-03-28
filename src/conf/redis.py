@@ -1,24 +1,31 @@
-import redis as redis_lib
+import threading
+
+import coredis
 
 from conf.config import settings
 
-_client: redis_lib.Redis | None = None
+_client: coredis.Redis | None = None
+_lock = threading.Lock()
 
 
-def get_redis() -> redis_lib.Redis:
+def get_redis() -> coredis.Redis:
     global _client
     if _client is None:
-        _client = redis_lib.Redis(
-            host=settings.redis_host,
-            port=settings.redis_port,
-            db=settings.redis_db,
-            decode_responses=True,
-        )
+        with _lock:
+            if _client is None:
+                _client = coredis.Redis(
+                    host=settings.redis_host,
+                    port=settings.redis_port,
+                    db=settings.redis_db,
+                    decode_responses=True,
+                )
     return _client
 
 
-def close_redis() -> None:
+async def close_redis() -> None:
     global _client
-    if _client is not None:
-        _client.close()
-        _client = None
+    with _lock:
+        if _client is not None:
+            if hasattr(_client, "connection_pool"):
+                _client.connection_pool.disconnect()
+            _client = None
