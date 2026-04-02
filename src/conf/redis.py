@@ -22,10 +22,8 @@ def get_redis() -> coredis.Redis:
     return _client
 
 
-async def close_redis() -> None:
+def clear_redis() -> None:
+    """Clear the global reference (call after the async context manager exits)."""
     global _client
     with _lock:
-        if _client is not None:
-            if hasattr(_client, "connection_pool"):
-                _client.connection_pool.disconnect()
-            _client = None
+        _client = None

@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 from conf import redis as redis_module
-from conf.redis import close_redis, get_redis
+from conf.redis import clear_redis, get_redis
 
 
 def test_get_redis_creates_client(monkeypatch):
@@ -28,18 +28,18 @@ def test_get_redis_returns_existing_client(monkeypatch):
     monkeypatch.setattr(redis_module, "_client", None)
 
 
-async def test_close_redis_resets(monkeypatch):
+def test_clear_redis_resets_client(monkeypatch):
     mock_client = MagicMock()
     monkeypatch.setattr(redis_module, "_client", mock_client)
 
-    await close_redis()
+    clear_redis()
 
     assert redis_module._client is None
 
 
-async def test_close_redis_noop_when_none(monkeypatch):
+def test_clear_redis_noop_when_none(monkeypatch):
     monkeypatch.setattr(redis_module, "_client", None)
 
-    await close_redis()  # should not raise
+    clear_redis()  # should not raise
 
     assert redis_module._client is None

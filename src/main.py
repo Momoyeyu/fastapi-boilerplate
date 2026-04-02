@@ -11,7 +11,7 @@ from conf import logging
 from conf.config import settings
 from conf.db import close_db
 from conf.openapi import setup_openapi
-from conf.redis import close_redis
+from conf.redis import clear_redis, get_redis
 from middleware.auth import setup_auth_middleware
 from middleware.logging import setup_logging_middleware
 from tenant.handler import router as tenant_router
@@ -20,10 +20,11 @@ from user.handler import router as user_router
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
-    logger.info("Application started")
-    yield
-    logger.info("Application shutdown")
-    await close_redis()
+    async with get_redis():
+        logger.info("Application started")
+        yield
+        logger.info("Application shutdown")
+    clear_redis()
     await close_db()
 
 
