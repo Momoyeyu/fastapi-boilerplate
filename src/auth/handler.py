@@ -22,7 +22,7 @@ async def register_user(body: dto.RegisterRequest) -> Response:
 @router.post("/register/verify")
 async def register_verify(body: dto.RegisterVerifyRequest) -> Response:
     """Complete registration after email verification."""
-    token_pair = await service.complete_registration(body.email, body.code, body.password)
+    token_pair = await service.complete_registration(body.email, body.code)
     return ok(
         data=dto.TokenData(
             access_token=token_pair.access_token,

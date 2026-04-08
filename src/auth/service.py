@@ -63,6 +63,29 @@ async def consume_verification_code(email: str, code: str, purpose: PurposeType)
     return True
 
 
+_PENDING_PASSWORD_PREFIX = "pending_password:"
+
+
+async def store_pending_password(email: str, hashed_password: str) -> None:
+    key = f"{_PENDING_PASSWORD_PREFIX}{email.lower()}"
+    await get_redis().set(key, hashed_password, ex=settings.verification_code_expire_seconds)
+
+
+async def has_pending_password(email: str) -> bool:
+    key = f"{_PENDING_PASSWORD_PREFIX}{email.lower()}"
+    return await get_redis().get(key) is not None
+
+
+async def consume_pending_password(email: str) -> str | None:
+    key = f"{_PENDING_PASSWORD_PREFIX}{email.lower()}"
+    r = get_redis()
+    value = await r.get(key)
+    if value is None:
+        return None
+    await r.delete([key])
+    return value
+
+
 _INVITATION_PREFIX = "invitation_context:"
 
 
@@ -291,9 +314,12 @@ async def login_user(identifier: str, password: str) -> TokenPair:
 async def initiate_registration(email: str, password: str, invitation_code: str | None = None) -> None:
     """Initiate registration by sending a verification code.
 
+    Validates and caches the hashed password in Redis so that the verify step
+    only requires email + code.
+
     Args:
         email: User's email address.
-        password: User's password (validated but not stored yet).
+        password: User's password (validated and cached as hash).
         invitation_code: Optional invitation code (required if configured).
 
     Raises:
@@ -311,6 +337,10 @@ async def initiate_registration(email: str, password: str, invitation_code: str 
             raise erri.bad_request("Invalid or expired invitation code")
         invitation_code_id = invitation.id
 
+    validate_password(password)
+    hashed = get_password_hash(password)
+    await store_pending_password(email, hashed)
+
     code = await create_verification_code(email, "register")
     await send_verification_email(email, code, "register")
 
@@ -318,13 +348,15 @@ async def initiate_registration(email: str, password: str, invitation_code: str 
         await store_invitation_context(email, invitation_code_id)
 
 
-async def complete_registration(email: str, code: str, password: str) -> TokenPair:
+async def complete_registration(email: str, code: str) -> TokenPair:
     """Complete registration after email verification.
+
+    The hashed password is retrieved from Redis where it was cached during
+    the initiate step — the caller no longer needs to supply it.
 
     Args:
         email: User's email address.
         code: Verification code.
-        password: User's password.
 
     Returns:
         A TokenPair for the newly created user.
@@ -332,16 +364,23 @@ async def complete_registration(email: str, code: str, password: str) -> TokenPa
     Raises:
         BusinessError: If verification fails or user creation fails.
     """
+    # Check pending password first (non-destructive peek) so that a missing
+    # password doesn't consume the one-time verification code, leaving the
+    # user in a dead-end state.
+    if not await has_pending_password(email):
+        raise erri.bad_request("Registration session expired, please register again")
+
     if not await consume_verification_code(email, code, "register"):
         raise erri.bad_request("Invalid or expired verification code")
 
     if await email_exists(email):
         raise erri.conflict("Email already registered")
 
-    invitation_code_id = await consume_invitation_context(email)
+    hashed = await consume_pending_password(email)
+    if not hashed:
+        raise erri.bad_request("Registration session expired, please register again")
 
-    validate_password(password)
-    hashed = get_password_hash(password)
+    invitation_code_id = await consume_invitation_context(email)
 
     username = f"user_{uuid7().hex[:12]}"
 

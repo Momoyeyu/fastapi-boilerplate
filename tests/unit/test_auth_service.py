@@ -8,14 +8,17 @@ from auth.dto import TokenPair
 from auth.model import InvitationCode
 from auth.service import (
     consume_invitation_context,
+    consume_pending_password,
     consume_verification_code,
     create_refresh_token,
     create_verification_code,
     generate_code,
+    has_pending_password,
     revoke_all_for_user,
     revoke_refresh_token,
     rotate_refresh_token,
     store_invitation_context,
+    store_pending_password,
     validate_refresh_token,
 )
 from common import erri
@@ -135,30 +138,49 @@ async def test_initiate_registration_email_exists(monkeypatch: pytest.MonkeyPatc
 async def test_initiate_registration_success(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(service, "email_exists", async_return(False), raising=True)
     code_created = {}
+    stored_password = {}
 
     async def mock_create_code(email, purpose):
         code_created["email"] = email
         code_created["purpose"] = purpose
         return "123456"
 
+    async def mock_store_password(email, hashed):
+        stored_password["email"] = email
+        stored_password["hashed"] = hashed
+
     monkeypatch.setattr(service, "create_verification_code", mock_create_code, raising=True)
     monkeypatch.setattr(service, "send_verification_email", async_return(True), raising=True)
+    monkeypatch.setattr(service, "store_pending_password", mock_store_password)
 
     await service.initiate_registration("alice@test.com", "StrongPw1")
     assert code_created["email"] == "alice@test.com"
     assert code_created["purpose"] == "register"
+    assert stored_password["email"] == "alice@test.com"
+    assert stored_password["hashed"] is not None
 
 
 async def test_complete_registration_invalid_code(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(service, "has_pending_password", async_return(True))
     monkeypatch.setattr(service, "consume_verification_code", async_return(False), raising=True)
     with pytest.raises(erri.BusinessError) as exc:
-        await service.complete_registration("alice@test.com", "wrong", "StrongPw1")
+        await service.complete_registration("alice@test.com", "wrong")
     assert exc.value.code == Code.BAD_REQUEST
 
 
+async def test_complete_registration_expired_password(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(service, "has_pending_password", async_return(False))
+    with pytest.raises(erri.BusinessError) as exc:
+        await service.complete_registration("alice@test.com", "123456")
+    assert exc.value.code == Code.BAD_REQUEST
+    assert "expired" in exc.value.message.lower()
+
+
 async def test_complete_registration_success(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(service, "has_pending_password", async_return(True))
     monkeypatch.setattr(service, "consume_verification_code", async_return(True), raising=True)
     monkeypatch.setattr(service, "email_exists", async_return(False), raising=True)
+    monkeypatch.setattr(service, "consume_pending_password", async_return("hashed_pw"))
     monkeypatch.setattr(service, "consume_invitation_context", async_return(None))
 
     user = User(id=_ALICE_ID, username="alice", email="alice@test.com", hashed_password="x")
@@ -177,7 +199,7 @@ async def test_complete_registration_success(monkeypatch: pytest.MonkeyPatch):
         async_return(user),
     )
 
-    result = await service.complete_registration("alice@test.com", "123456", "StrongPw1")
+    result = await service.complete_registration("alice@test.com", "123456")
     assert result.access_token == "token-123"
 
 
@@ -206,6 +228,7 @@ async def test_initiate_registration_valid_invitation_code(monkeypatch: pytest.M
     monkeypatch.setattr(service, "email_exists", async_return(False), raising=True)
     monkeypatch.setattr(service, "create_verification_code", async_return("123456"))
     monkeypatch.setattr(service, "send_verification_email", async_return(None))
+    monkeypatch.setattr(service, "store_pending_password", async_return(None))
 
     mock_inv = InvitationCode(id=_INV_ID, code="VALID", max_uses=10, used_count=0, is_active=True)
     monkeypatch.setattr(service, "validate_invitation_code", async_return(mock_inv))
@@ -225,14 +248,17 @@ async def test_initiate_registration_skips_invitation_when_disabled(monkeypatch:
     monkeypatch.setattr(service, "email_exists", async_return(False), raising=True)
     monkeypatch.setattr(service, "create_verification_code", async_return("123456"))
     monkeypatch.setattr(service, "send_verification_email", async_return(None))
+    monkeypatch.setattr(service, "store_pending_password", async_return(None))
 
     # Should succeed without invitation code validation
     await service.initiate_registration("alice@test.com", "StrongPw1", "ANYCODE")
 
 
 async def test_complete_registration_with_invitation_context(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(service, "has_pending_password", async_return(True))
     monkeypatch.setattr(service, "consume_verification_code", async_return(True), raising=True)
     monkeypatch.setattr(service, "email_exists", async_return(False), raising=True)
+    monkeypatch.setattr(service, "consume_pending_password", async_return("hashed_pw"))
     monkeypatch.setattr(service, "consume_invitation_context", async_return(_INV_ID))
 
     captured_kwargs: dict = {}
@@ -258,7 +284,7 @@ async def test_complete_registration_with_invitation_context(monkeypatch: pytest
 
     monkeypatch.setattr(service, "increment_used_count", mock_increment)
 
-    await service.complete_registration("alice@test.com", "123456", "StrongPw1")
+    await service.complete_registration("alice@test.com", "123456")
     assert captured_kwargs["invitation_code_id"] == _INV_ID
     assert incremented == [_INV_ID]
 
@@ -528,6 +554,26 @@ async def test_create_verification_code_overwrites_previous(fake_redis):
     if code1 != code2:
         assert await consume_verification_code("user@test.com", code1, "register") is False
     assert await consume_verification_code("user@test.com", code2, "register") is True
+
+
+async def test_store_and_consume_pending_password(fake_redis):
+    await store_pending_password("Alice@Test.com", "hashed_abc")
+    assert await consume_pending_password("Alice@Test.com") == "hashed_abc"
+    # Should be deleted after consumption
+    assert await consume_pending_password("Alice@Test.com") is None
+
+
+async def test_consume_pending_password_missing(fake_redis):
+    assert await consume_pending_password("nobody@test.com") is None
+
+
+async def test_has_pending_password_true(fake_redis):
+    await store_pending_password("user@test.com", "hashed_abc")
+    assert await has_pending_password("user@test.com") is True
+
+
+async def test_has_pending_password_false(fake_redis):
+    assert await has_pending_password("nobody@test.com") is False
 
 
 async def test_store_and_consume_invitation_context(fake_redis):
