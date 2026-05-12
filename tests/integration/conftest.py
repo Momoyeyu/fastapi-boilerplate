@@ -268,7 +268,7 @@ def register_and_verify(client, redis_test_db):
         code = redis_test_db._store.get(key)
         response = client.post(
             "/api/v1/auth/register/verify",
-            json={"email": email, "code": code, "password": password},
+            json={"email": email, "code": code},
         )
         return response.json()
 

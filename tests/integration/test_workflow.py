@@ -30,7 +30,7 @@ class TestNewUserOnboarding:
         code = redis_test_db._store.get("verification:onboard@example.com:register")
         resp = client.post(
             "/api/v1/auth/register/verify",
-            json={"email": "onboard@example.com", "code": code, "password": "Pass1234"},
+            json={"email": "onboard@example.com", "code": code},
         )
         assert resp.json()["code"] == Code.OK
         tokens = resp.json()["data"]
@@ -86,7 +86,7 @@ class TestNewUserOnboarding:
         code = redis_test_db._store.get("verification:invited@example.com:register")
         resp = client.post(
             "/api/v1/auth/register/verify",
-            json={"email": "invited@example.com", "code": code, "password": "Pass1234"},
+            json={"email": "invited@example.com", "code": code},
         )
         assert resp.json()["code"] == Code.OK
 

@@ -52,7 +52,7 @@ class TestAuthRegister:
         _initiate(client, "wrongcode@example.com", "Pass1234")
         response = client.post(
             "/api/v1/auth/register/verify",
-            json={"email": "wrongcode@example.com", "code": "000000", "password": "Pass1234"},
+            json={"email": "wrongcode@example.com", "code": "000000"},
         )
         assert response.json()["code"] == Code.BAD_REQUEST
 
@@ -105,7 +105,7 @@ class TestInvitationRequired:
         code = redis_test_db._store.get("verification:valid@example.com:register")
         verify_resp = client.post(
             "/api/v1/auth/register/verify",
-            json={"email": "valid@example.com", "code": code, "password": "Pass1234"},
+            json={"email": "valid@example.com", "code": code},
         )
         assert verify_resp.json()["code"] == Code.OK
         assert "access_token" in verify_resp.json()["data"]

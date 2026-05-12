@@ -12,7 +12,6 @@ class RegisterRequest(BaseModel):
 class RegisterVerifyRequest(BaseModel):
     email: EmailStr
     code: str
-    password: str
 
 
 class TokenData(BaseModel):
