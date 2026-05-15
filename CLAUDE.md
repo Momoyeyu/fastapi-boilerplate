@@ -1,7 +1,9 @@
 # Code Quality
 
 - `make lint` — check format
-- `make test` — run tests
+- `make test` — run unit tests + incremental diff coverage (mirrors CI)
+- `make test-integration` — run integration tests only
+- `make test-all` — run full suite (unit + integration)
 - `make run` — verify dev env
 
 # Workflow
