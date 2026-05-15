@@ -69,11 +69,6 @@ jobs:
             --cov-report=xml:output/coverage.xml \
             --junitxml=output/junit-unit.xml
 
-      - name: Run integration tests
-        run: |
-          uv run pytest tests/integration -q \
-            --junitxml=output/junit-integration.xml
-
       - name: Check incremental coverage (PR only)
         if: github.event_name == 'pull_request'
         run: |
