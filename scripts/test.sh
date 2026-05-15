@@ -131,7 +131,7 @@ if include_patterns:
     cmd.extend(include_patterns)
 if exclude_patterns:
     cmd.append('--exclude')
-    cmd.extend(os.path.basename(p) for p in exclude_patterns)
+    cmd.extend(exclude_patterns)
 
 result = subprocess.run(cmd)
 sys.exit(result.returncode)
