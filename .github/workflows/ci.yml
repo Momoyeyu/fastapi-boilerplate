@@ -98,8 +98,12 @@ jobs:
               cmd.append('--include')
               cmd.extend(include_patterns)
           if exclude_patterns:
-              cmd.append('--exclude')
-              cmd.extend(exclude_patterns)
+              import os as _os
+              basenames = [_os.path.basename(p) for p in exclude_patterns]
+              basenames = [b for b in basenames if b not in ('*', '**', '')]
+              if basenames:
+                  cmd.append('--exclude')
+                  cmd.extend(basenames)
 
           result = subprocess.run(cmd)
           sys.exit(result.returncode)
