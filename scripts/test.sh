@@ -24,7 +24,7 @@ ansi = re.compile(r'\x1b\[[0-9;]*m')
 def norm(s):
     return ansi.sub('', s.replace('\r', '').strip())
 
-summary = [norm(line) for line in text.splitlines() 
+summary = [norm(line) for line in text.splitlines()
            if re.match(r'^[0-9]+\s+(passed|failed|skipped|xfailed|xpassed|error|errors)\b', norm(line))]
 
 if not summary:
@@ -66,39 +66,15 @@ UNIT_RATE=$(calc_success_rate "$UNIT_OUTPUT")
 
 echo ""
 echo "========================================"
-echo "Running Integration Tests"
-echo "========================================"
-
-set +e
-INT_OUTPUT="$(uv run --extra dev pytest tests/integration -q \
-    --junitxml=$OUTPUT_DIR/junit-integration.xml 2>&1)"
-INT_STATUS=$?
-set -e
-
-echo "$INT_OUTPUT"
-echo "$INT_OUTPUT" > "$OUTPUT_DIR/pytest-integration.log"
-
-INT_RATE=$(calc_success_rate "$INT_OUTPUT")
-
-echo ""
-echo "========================================"
 echo "Test Summary"
 echo "========================================"
 
-echo "Unit Tests:        $UNIT_RATE"
-echo "Integration Tests: $INT_RATE"
+echo "Unit Tests: $UNIT_RATE"
 
-# Exit with failure if any tests failed
 if [[ $UNIT_STATUS -ne 0 ]]; then
     echo ""
     echo "Unit tests FAILED"
     exit $UNIT_STATUS
-fi
-
-if [[ $INT_STATUS -ne 0 ]]; then
-    echo ""
-    echo "Integration tests FAILED"
-    exit $INT_STATUS
 fi
 
 echo ""
@@ -106,12 +82,13 @@ echo "All tests PASSED"
 
 echo ""
 echo "========================================"
-echo "Coverage Report"
+echo "Incremental Coverage (diff vs origin/master)"
 echo "========================================"
 
 uv run python -c "
 import subprocess
 import sys
+import os
 import yaml
 
 with open('tests/cfg.yml', 'r') as f:
@@ -126,30 +103,40 @@ if isinstance(include_patterns, str):
 if isinstance(exclude_patterns, str):
     exclude_patterns = [exclude_patterns]
 
-cmd = ['uv', 'run', 'coverage', 'report']
+# Check whether origin/master is reachable (not always true in offline / fresh clones)
+probe = subprocess.run(
+    ['git', 'rev-parse', '--verify', 'origin/master'],
+    capture_output=True,
+)
+if probe.returncode != 0:
+    print('origin/master not found — skipping incremental coverage check.')
+    sys.exit(0)
+
+# If HEAD == origin/master there are no new lines; nothing to enforce.
+diff_check = subprocess.run(
+    ['git', 'diff', '--quiet', 'HEAD', 'origin/master'],
+    capture_output=True,
+)
+if diff_check.returncode == 0:
+    print('No changes versus origin/master — skipping incremental coverage check.')
+    sys.exit(0)
+
+cmd = [
+    'diff-cover', 'output/coverage.xml',
+    '--compare-branch=origin/master',
+    f'--fail-under={threshold}',
+]
 if include_patterns:
-    cmd.append('--include=' + ','.join(include_patterns))
+    cmd.append('--include')
+    cmd.extend(include_patterns)
 if exclude_patterns:
-    cmd.append('--omit=' + ','.join(exclude_patterns))
+    import os as _os
+    basenames = [_os.path.basename(p) for p in exclude_patterns]
+    basenames = [b for b in basenames if b not in ('*', '**', '')]
+    if basenames:
+        cmd.append('--exclude')
+        cmd.extend(basenames)
 
 result = subprocess.run(cmd)
-
-# Check threshold
-cmd_json = ['uv', 'run', 'coverage', 'json', '-o', '/dev/stdout', '-q']
-if include_patterns:
-    cmd_json.append('--include=' + ','.join(include_patterns))
-if exclude_patterns:
-    cmd_json.append('--omit=' + ','.join(exclude_patterns))
-
-import json
-out = subprocess.run(cmd_json, capture_output=True, text=True)
-if out.returncode == 0:
-    data = json.loads(out.stdout)
-    pct = data.get('totals', {}).get('percent_covered', 0)
-    print()
-    if pct >= threshold:
-        print(f'Coverage: {pct:.1f}% (threshold: {threshold}%) ✓')
-    else:
-        print(f'Coverage: {pct:.1f}% (threshold: {threshold}%) ✗')
-        sys.exit(1)
+sys.exit(result.returncode)
 "

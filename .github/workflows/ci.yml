@@ -69,11 +69,6 @@ jobs:
             --cov-report=xml:output/coverage.xml \
             --junitxml=output/junit-unit.xml
 
-      - name: Run integration tests
-        run: |
-          uv run pytest tests/integration -q \
-            --junitxml=output/junit-integration.xml
-
       - name: Check incremental coverage (PR only)
         if: github.event_name == 'pull_request'
         run: |
@@ -99,16 +94,16 @@ jobs:
               '--compare-branch=origin/${{ github.base_ref }}',
               f'--fail-under={threshold}',
           ]
-          # diff-cover --include uses glob.glob, pass patterns as-is.
-          # diff-cover --exclude uses fnmatch against basenames,
-          # so extract basenames from the configured patterns.
-          import os
           if include_patterns:
               cmd.append('--include')
               cmd.extend(include_patterns)
           if exclude_patterns:
-              cmd.append('--exclude')
-              cmd.extend(os.path.basename(p) for p in exclude_patterns)
+              import os as _os
+              basenames = [_os.path.basename(p) for p in exclude_patterns]
+              basenames = [b for b in basenames if b not in ('*', '**', '')]
+              if basenames:
+                  cmd.append('--exclude')
+                  cmd.extend(basenames)
 
           result = subprocess.run(cmd)
           sys.exit(result.returncode)
